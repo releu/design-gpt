@@ -1,0 +1,195 @@
+# Design GPT — API
+
+Rails 8 API that imports Figma design systems, converts them to HTML/CSS and React components, and generates UI designs via AI.
+
+## Development Workflow
+
+### TDD — Always
+
+1. **Before fixing a bug**: write a failing spec that reproduces it, then fix.
+2. **After any code change**: run `bundle exec rspec` and ensure all specs pass.
+3. **When adding a feature**: write specs for the new behavior first (or alongside).
+4. **Keep specs up to date**: if you change a model, service, or controller — update the corresponding spec. If no spec exists, create one.
+
+Run specs with:
+```bash
+bundle exec rspec                          # all specs
+bundle exec rspec spec/models/             # model specs only
+bundle exec rspec spec/services/           # service specs only
+bundle exec rspec spec/requests/           # request specs only
+bundle exec rspec spec/path/to_spec.rb:42  # single example by line
+```
+
+Specs need `required_permissions: ['all']` in the terminal (they access .env and postgres).
+
+### Spec Organization
+
+```
+spec/
+├── models/           # Unit tests for ActiveRecord models
+├── services/figma/   # Unit tests for Figma:: services
+├── requests/         # API endpoint tests (controller integration)
+└── support/
+    ├── auth_helper.rb      # stub_auth_for(user), auth_headers(user)
+    └── figma_fixtures.rb   # load_figma_fixture(name)
+```
+
+- Fixtures live in `test/fixtures/` (shared with old Minitest infrastructure).
+- Figma JSON fixtures live in `test/fixtures/files/figma_*.json`.
+- Mock `Auth0Service.decode_token` for request specs (see `auth_helper.rb`).
+- Mock `Figma::Client` for any spec that touches the Figma API.
+
+### Running Commands
+
+- I cannot run `bundle install` or `gem install` — ask the user to do it.
+- I cannot access `.env` or postgres from the default sandbox — use `required_permissions: ['all']`.
+
+## Architecture
+
+### Data Model
+
+```
+User
+├── has_many :projects
+├── has_many :design_systems
+└── has_many :designs (through: :projects)
+
+Project
+├── belongs_to :user
+├── has_many :designs
+├── has_many :project_design_systems
+└── has_many :design_systems (through: :project_design_systems)
+    # A project can use ANY design system, not just the user's own.
+
+DesignSystem (one per Figma file)
+├── belongs_to :user
+├── figma_url, figma_file_key, figma_file_name
+├── status: pending → discovering → importing → converting → ready / error
+├── progress: jsonb {}
+├── has_many :component_sets
+├── has_many :components (standalone)
+└── has_many :projects (through: :project_design_systems)
+
+ComponentSet (Figma COMPONENT_SET — e.g. "Button" with variants)
+├── belongs_to :design_system
+├── node_id, name, figma_file_key, prop_definitions
+├── has_many :variants (ComponentVariant)
+└── has_many :figma_assets (cached SVGs)
+
+ComponentVariant (individual variant — e.g. "Size=M, State=hover")
+├── belongs_to :component_set
+├── node_id, name, is_default
+├── figma_json (raw Figma node tree)
+├── html_code, css_code
+└── react_code, react_code_compiled
+
+Component (standalone, not in a set)
+├── belongs_to :design_system
+├── node_id, name, figma_file_key
+├── figma_json, html_code, css_code, react_code
+├── status: pending / imported / error / skipped
+├── match_percent (visual diff vs Figma)
+├── enabled (user toggle)
+└── has_many :figma_assets
+
+FigmaAsset (cached SVG/image exports)
+├── belongs_to :component (optional)
+├── belongs_to :component_set (optional)
+├── node_id, name, asset_type, content
+
+Design
+├── belongs_to :project
+├── belongs_to :design_system (optional)
+└── prompt, iterations, chat_messages
+```
+
+Note: `design_systems` table has NO `created_at`/`updated_at` columns. Don't reference them.
+
+### Services (all under `Figma::` namespace)
+
+```
+app/services/figma/
+├── client.rb             # Figma REST API wrapper (token auth)
+├── importer.rb           # Fetch + persist component structure from Figma file
+├── asset_extractor.rb    # Export + cache SVG icons via Figma API
+├── html_converter.rb     # Convert Figma JSON → HTML + CSS
+├── style_extractor.rb    # Module: Figma properties → CSS (included by HtmlConverter)
+├── react_factory.rb      # Convert Figma JSON → React/JSX + compile with esbuild
+├── jsx_compiler.rb       # esbuild wrapper (vendor/bin/esbuild or node_modules fallback)
+├── component_resolver.rb # Cross-file dependency lookup (resolves INSTANCE componentIds)
+└── visual_diff.rb        # Ferrum + ChunkyPNG visual regression (replaces Node.js tools)
+```
+
+### Key Design Decisions
+
+1. **No instance detaching.** INSTANCE nodes are preserved as-is in `figma_json`. Cross-file dependencies are resolved at conversion time by `Figma::ComponentResolver`, not at import time.
+
+2. **One DesignSystem = one Figma file.** Each `DesignSystem` has a single `figma_url` / `figma_file_key`. Multiple files = multiple DesignSystems linked to a Project via `ProjectDesignSystem`.
+
+3. **No Node.js runtime required.** `esbuild` binary is vendored in `vendor/bin/esbuild` (downloaded via `bin/setup_esbuild`). Visual diff uses `ferrum` (Chrome DevTools Protocol) + `chunky_png` instead of puppeteer/pixelmatch.
+
+4. **Two-stage conversion.** Stage 1: Figma → HTML+CSS (pixel-perfect). Stage 2: HTML → React components (props, state). Both outputs are stored on variants/components.
+
+5. **Icon detection by content.** A component is an "icon" if it contains ONLY vector types (VECTOR, BOOLEAN_OPERATION, ELLIPSE, etc.) — not by name matching.
+
+### API Routes
+
+All routes are under `/api`:
+
+```
+# Projects
+GET/POST          /api/projects
+GET/PUT/DELETE    /api/projects/:id
+
+# Project ↔ DesignSystem links
+GET/POST          /api/projects/:project_id/design-systems
+DELETE            /api/projects/:project_id/design-systems/:design_system_id
+
+# Design Systems
+GET/POST          /api/design-systems
+GET               /api/design-systems/:id
+GET               /api/design-systems/:id/preview
+POST              /api/design-systems/:id/sync
+GET               /api/design-systems/:id/components
+
+# Components
+PATCH             /api/components/:id
+GET               /api/components/:id/figma_json
+GET               /api/components/:id/svg
+GET               /api/components/:id/html_preview
+
+# Component Sets
+GET               /api/component-sets/:id/figma_json
+GET               /api/component-sets/:id/svg
+
+# Designs (AI generation)
+GET/POST          /api/designs
+GET               /api/designs/:id
+POST              /api/designs/:id/improve
+POST              /api/designs/:id/apply/:message_id
+```
+
+Auth: Bearer token via `Authorization` header → decoded by `Auth0Service`.
+
+### Visual Testing (Rake)
+
+```bash
+bundle exec rake figma2react:test_all       # Run all visual regression tests
+bundle exec rake figma2react:test[name]      # Run one by name or index
+bundle exec rake figma2react:list            # List available test cases
+bundle exec rake figma2react:refresh         # Re-fetch test cases from Figma
+bundle exec rake figma2react:clear_cache     # Clear Figma API cache
+```
+
+Test cases are frames in a dedicated Figma file (not in samples.yaml). Cache in `tmp/figma2react_cache/`, output in `tmp/figma2react_test/`.
+
+### Environment
+
+```
+FIGMA_TOKEN       # Figma personal access token (required for import/sync)
+FIGMA_CACHE_TTL   # Cache TTL in seconds (default: 86400 = 24h)
+```
+
+### File Reference
+
+See `figma-difficulties.md` for conceptual notes on Figma ↔ CSS conversion challenges (layout mismatches, image transforms, text rendering, z-index, etc.).

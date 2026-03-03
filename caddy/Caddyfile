@@ -1,0 +1,17 @@
+design-gpt.localtest.me {
+  tls internal
+
+  @api path /api*
+  handle @api {
+    reverse_proxy 127.0.0.1:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto https
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Port 443
+    }
+  }
+
+  handle {
+    reverse_proxy 127.0.0.1:5173
+  }
+}

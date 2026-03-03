@@ -1,0 +1,25 @@
+example_lib:
+  user: alice
+  name: Example Lib
+  figma_url: https://www.figma.com/design/75U91YIrYa65xhYcM0olH5/example-lib?node-id=0-1
+  figma_file_key: 75U91YIrYa65xhYcM0olH5
+  figma_file_name: example-lib
+  status: ready
+  progress: {}
+
+example_icons:
+  user: alice
+  name: Example Icons
+  figma_url: https://www.figma.com/design/dlYQK7x0jXbn8HCFFvZ0lw/example-icons?node-id=0-1
+  figma_file_key: dlYQK7x0jXbn8HCFFvZ0lw
+  figma_file_name: example-icons
+  status: ready
+  progress: {}
+
+empty_ds:
+  user: alice
+  name: Empty DS
+  figma_url: https://www.figma.com/design/aaaBBBccc111/empty?node-id=0-1
+  figma_file_key: aaaBBBccc111
+  status: pending
+  progress: {}

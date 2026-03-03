@@ -1,0 +1,14 @@
+# Large binary/data files — not useful for coding context
+test/fonts/
+test/figma2react/references/
+public/training/
+tmp/
+log/
+node_modules/
+vendor/
+
+# Auto-generated
+db/cable_schema.rb
+db/cache_schema.rb
+db/queue_schema.rb
+Gemfile.lock

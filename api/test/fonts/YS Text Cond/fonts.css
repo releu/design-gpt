@@ -1,0 +1,222 @@
+/*
+	This font software is the property of Commercial Type.
+
+	You may not modify the font software, use it on another website, or install it on a computer.
+
+	License information is available at http://commercialtype.com/eula
+	For more information please visit Commercial Type at http://commercialtype.com or email us at info[at]commercialtype.com
+
+	Copyright (C) 2016 Schwartzco Inc.
+	
+*/
+
+
+.YSTextCond-Thin {
+    font-family: "YS Text Cond";
+    font-weight: 100;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-ThinItalic {
+    font-family: "YS Text Cond";
+    font-weight: 100;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Light {
+    font-family: "YS Text Cond";
+    font-weight: 300;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-LightItalic {
+    font-family: "YS Text Cond";
+    font-weight: 300;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Regular {
+    font-family: "YS Text Cond";
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-RegularItalic {
+    font-family: "YS Text Cond";
+    font-weight: 400;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Medium {
+    font-family: "YS Text Cond";
+    font-weight: 500;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-MediumItalic {
+    font-family: "YS Text Cond";
+    font-weight: 500;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Bold {
+    font-family: "YS Text Cond";
+    font-weight: 700;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-BoldItalic {
+    font-family: "YS Text Cond";
+    font-weight: 700;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Heavy {
+    font-family: "YS Text Cond";
+    font-weight: 800;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-HeavyItalic {
+    font-family: "YS Text Cond";
+    font-weight: 800;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+.YSTextCond-Black {
+    font-family: "YS Text Cond";
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSTextCond-BlackItalic {
+    font-family: "YS Text Cond";
+    font-weight: 900;
+    font-style: italic;
+    font-stretch: normal;
+}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Thin.woff2") format("woff2"),
+		     url("YS Text Cond-Thin.woff") format("woff");
+	font-weight: 100;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Thin Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Thin Italic.woff") format("woff");
+	font-weight: 100;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Light.woff2") format("woff2"),
+		     url("YS Text Cond-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Light Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Light Italic.woff") format("woff");
+	font-weight: 300;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Regular.woff2") format("woff2"),
+		     url("YS Text Cond-Regular.woff") format("woff");
+	font-weight: 400;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Regular Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Regular Italic.woff") format("woff");
+	font-weight: 400;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Medium.woff2") format("woff2"),
+		     url("YS Text Cond-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Medium Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Medium Italic.woff") format("woff");
+	font-weight: 500;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Bold.woff2") format("woff2"),
+		     url("YS Text Cond-Bold.woff") format("woff");
+	font-weight: 700;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Bold Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Bold Italic.woff") format("woff");
+	font-weight: 700;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Heavy.woff2") format("woff2"),
+		     url("YS Text Cond-Heavy.woff") format("woff");
+	font-weight: 800;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Heavy Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Heavy Italic.woff") format("woff");
+	font-weight: 800;
+	font-style: italic;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Black.woff2") format("woff2"),
+		     url("YS Text Cond-Black.woff") format("woff");
+	font-weight: 900;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Text Cond";
+	src: url("YS Text Cond-Black Italic.woff2") format("woff2"),
+		     url("YS Text Cond-Black Italic.woff") format("woff");
+	font-weight: 900;
+	font-style: italic;
+	}

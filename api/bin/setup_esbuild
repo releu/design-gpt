@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+# Downloads the correct esbuild binary for the current platform.
+# The binary is placed in vendor/bin/esbuild and used by Figma::JsxCompiler.
+#
+# Usage:
+#   bin/setup_esbuild          # download for current platform
+#   bin/setup_esbuild 0.27.2   # specific version
+
+require "net/http"
+require "uri"
+require "fileutils"
+require "rubygems/package"
+require "zlib"
+
+VERSION = ARGV[0] || "0.27.2"
+
+PLATFORM_MAP = {
+  ["x86_64", "linux"]    => "esbuild-linux-64",
+  ["aarch64", "linux"]   => "esbuild-linux-arm64",
+  ["x86_64", "darwin"]   => "esbuild-darwin-64",
+  ["arm64", "darwin"]    => "esbuild-darwin-arm64",
+  ["x86_64", "mingw32"]  => "esbuild-windows-64",
+}
+
+def detect_platform
+  cpu = RbConfig::CONFIG["host_cpu"]
+  os = RbConfig::CONFIG["host_os"]
+
+  normalized_os = case os
+                  when /linux/i then "linux"
+                  when /darwin/i then "darwin"
+                  when /mingw|mswin/i then "mingw32"
+                  else os
+                  end
+
+  normalized_cpu = case cpu
+                   when /x86_64|x64|amd64/i then "x86_64"
+                   when /aarch64|arm64/i then "arm64"
+                   else cpu
+                   end
+
+  [normalized_cpu, normalized_os]
+end
+
+def download(url)
+  uri = URI(url)
+  response = Net::HTTP.get_response(uri)
+
+  case response
+  when Net::HTTPRedirection
+    download(response["location"])
+  when Net::HTTPSuccess
+    response.body
+  else
+    raise "Failed to download #{url}: #{response.code} #{response.message}"
+  end
+end
+
+platform = detect_platform
+package_name = PLATFORM_MAP[platform]
+
+unless package_name
+  puts "Unsupported platform: #{platform.join("-")}"
+  puts "Supported: #{PLATFORM_MAP.keys.map { |k| k.join("-") }.join(", ")}"
+  exit 1
+end
+
+url = "https://registry.npmjs.org/#{package_name}/-/#{package_name}-#{VERSION}.tgz"
+vendor_dir = File.expand_path("../vendor/bin", __dir__)
+dest = File.join(vendor_dir, "esbuild")
+
+puts "Platform: #{platform.join("-")} -> #{package_name}"
+puts "Version:  #{VERSION}"
+puts "URL:      #{url}"
+puts "Dest:     #{dest}"
+puts
+
+FileUtils.mkdir_p(vendor_dir)
+
+puts "Downloading..."
+tgz_data = download(url)
+
+puts "Extracting..."
+io = StringIO.new(tgz_data)
+gz = Zlib::GzipReader.new(io)
+tar = Gem::Package::TarReader.new(gz)
+
+binary_found = false
+tar.each do |entry|
+  # The binary is at package/bin/esbuild inside the tarball
+  if entry.full_name =~ %r{package/bin/esbuild$}
+    File.open(dest, "wb") { |f| f.write(entry.read) }
+    File.chmod(0o755, dest)
+    binary_found = true
+    break
+  end
+end
+
+tar.close
+gz.close
+
+unless binary_found
+  puts "ERROR: esbuild binary not found in package"
+  exit 1
+end
+
+# Verify
+version_output = `#{dest} --version 2>&1`.strip
+puts "\n✓ Installed esbuild #{version_output} at #{dest}"

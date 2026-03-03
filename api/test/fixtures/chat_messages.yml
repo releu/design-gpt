@@ -1,0 +1,17 @@
+user_message:
+  design_id: <%= ActiveRecord::FixtureSet.identify(:alice_design) %>
+  author: user
+  message: Build a landing page
+  state: completed
+
+designer_message:
+  design_id: <%= ActiveRecord::FixtureSet.identify(:alice_design) %>
+  author: designer
+  message: "Here is the landing page design"
+  state: completed
+
+art_director_message:
+  design_id: <%= ActiveRecord::FixtureSet.identify(:alice_design) %>
+  author: art_director
+  message: '{"verdict":"good","feedback":"Looks great, nice layout."}'
+  state: completed

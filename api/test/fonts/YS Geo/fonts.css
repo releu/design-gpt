@@ -1,0 +1,117 @@
+/*
+	This font software is the property of Commercial Type.
+
+	You may not modify the font software, use it on another website, or install it on a computer.
+
+	License information is available at http://commercialtype.com/eula
+	For more information please visit Commercial Type at http://commercialtype.com or email us at info[at]commercialtype.com
+
+	Copyright (C) 2016 Schwartzco Inc.
+	
+*/
+
+
+.YSGeo-Thin {
+    font-family: "YS Geo";
+    font-weight: 200;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Light {
+    font-family: "YS Geo";
+    font-weight: 300;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Regular {
+    font-family: "YS Geo";
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Medium {
+    font-family: "YS Geo";
+    font-weight: 500;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Bold {
+    font-family: "YS Geo";
+    font-weight: 700;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Heavy {
+    font-family: "YS Geo";
+    font-weight: 800;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSGeo-Black {
+    font-family: "YS Geo";
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Thin.woff2") format("woff2"),
+		     url("YS Geo-Thin.woff") format("woff");
+	font-weight: 200;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Light.woff2") format("woff2"),
+		     url("YS Geo-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Regular.woff2") format("woff2"),
+		     url("YS Geo-Regular.woff") format("woff");
+	font-weight: 400;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Medium.woff2") format("woff2"),
+		     url("YS Geo-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Bold.woff2") format("woff2"),
+		     url("YS Geo-Bold.woff") format("woff");
+	font-weight: 700;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Heavy.woff2") format("woff2"),
+		     url("YS Geo-Heavy.woff") format("woff");
+	font-weight: 800;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Geo";
+	src: url("YS Geo-Black.woff2") format("woff2"),
+		     url("YS Geo-Black.woff") format("woff");
+	font-weight: 900;
+	font-style: normal;
+	}

@@ -1,0 +1,84 @@
+{
+  "name": "invalid-lib",
+  "lastModified": "2026-02-24T10:00:00Z",
+  "version": "9999",
+  "document": {
+    "id": "0:0",
+    "name": "Document",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "0:1",
+        "name": "Page 1",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "10:100",
+            "name": "Title",
+            "type": "COMPONENT_SET",
+            "componentPropertyDefinitions": {
+              "Size": { "type": "VARIANT", "defaultValue": "M" }
+            },
+            "children": [
+              {
+                "id": "10:101",
+                "name": "Size=M",
+                "type": "COMPONENT",
+                "children": [
+                  {
+                    "id": "10:102",
+                    "name": "@title",
+                    "type": "TEXT",
+                    "characters": "First title"
+                  },
+                  {
+                    "id": "10:103",
+                    "name": "@title",
+                    "type": "TEXT",
+                    "characters": "Second title (duplicate)"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "20:200",
+            "name": "Heading",
+            "type": "COMPONENT",
+            "children": [
+              {
+                "id": "20:201",
+                "name": "@title",
+                "type": "TEXT",
+                "characters": "Heading text"
+              },
+              {
+                "id": "20:202",
+                "name": "@title",
+                "type": "TEXT",
+                "characters": "Duplicate heading text"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "componentSets": {
+    "10:100": {
+      "name": "Title",
+      "description": "A title component set with duplicate @name"
+    }
+  },
+  "components": {
+    "10:101": {
+      "name": "Size=M",
+      "description": "",
+      "componentSetId": "10:100"
+    },
+    "20:200": {
+      "name": "Heading",
+      "description": "A standalone component with duplicate @name"
+    }
+  }
+}

@@ -1,0 +1,117 @@
+/*
+	This font software is the property of Commercial Type.
+
+	You may not modify the font software, use it on another website, or install it on a computer.
+
+	License information is available at http://commercialtype.com/eula
+	For more information please visit Commercial Type at http://commercialtype.com or email us at info[at]commercialtype.com
+
+	Copyright (C) 2016 Schwartzco Inc.
+	
+*/
+
+
+.YSDisplayCond-Thin {
+    font-family: "YS Display Cond";
+    font-weight: 100;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Light {
+    font-family: "YS Display Cond";
+    font-weight: 300;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Regular {
+    font-family: "YS Display Cond";
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Medium {
+    font-family: "YS Display Cond";
+    font-weight: 500;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Bold {
+    font-family: "YS Display Cond";
+    font-weight: 700;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Heavy {
+    font-family: "YS Display Cond";
+    font-weight: 800;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayCond-Black {
+    font-family: "YS Display Cond";
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Thin.woff2") format("woff2"),
+		     url("YS Display Cond-Thin.woff") format("woff");
+	font-weight: 100;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Light.woff2") format("woff2"),
+		     url("YS Display Cond-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Regular.woff2") format("woff2"),
+		     url("YS Display Cond-Regular.woff") format("woff");
+	font-weight: 400;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Medium.woff2") format("woff2"),
+		     url("YS Display Cond-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Bold.woff2") format("woff2"),
+		     url("YS Display Cond-Bold.woff") format("woff");
+	font-weight: 700;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Heavy.woff2") format("woff2"),
+		     url("YS Display Cond-Heavy.woff") format("woff");
+	font-weight: 800;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Cond";
+	src: url("YS Display Cond-Black.woff2") format("woff2"),
+		     url("YS Display Cond-Black.woff") format("woff");
+	font-weight: 900;
+	font-style: normal;
+	}

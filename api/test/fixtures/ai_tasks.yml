@@ -1,0 +1,20 @@
+pending_task:
+  payload:
+    model: gpt-5
+    input:
+      - role: system
+        content:
+          - type: input_text
+            text: You are a UI designer.
+      - role: user
+        content:
+          - type: input_text
+            text: Build a landing page
+    text:
+      format:
+        type: json_schema
+        name: render_code_args
+        strict: true
+        schema:
+          type: object
+  state: pending

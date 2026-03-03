@@ -1,0 +1,165 @@
+{
+  "name": "example-lib",
+  "lastModified": "2026-01-15T10:00:00Z",
+  "version": "1234",
+  "document": {
+    "id": "0:0",
+    "name": "Document",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "0:1",
+        "name": "Page 1",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "1:100",
+            "name": "Button",
+            "type": "COMPONENT_SET",
+            "componentPropertyDefinitions": {
+              "Size": { "type": "VARIANT", "defaultValue": "M" },
+              "State": { "type": "VARIANT", "defaultValue": "default" }
+            },
+            "children": [
+              {
+                "id": "1:101",
+                "name": "Size=M, State=default",
+                "type": "COMPONENT",
+                "children": [
+                  {
+                    "id": "1:110",
+                    "name": "button-inner",
+                    "type": "FRAME",
+                    "children": [
+                      {
+                        "id": "1:111",
+                        "name": "IconArrow",
+                        "type": "INSTANCE",
+                        "componentId": "2:101",
+                        "children": [
+                          {
+                            "id": "I1:111;2:102",
+                            "name": "arrow-vector",
+                            "type": "VECTOR",
+                            "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 0, "b": 0, "a": 1 } }]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "1:112",
+                        "name": "label",
+                        "type": "TEXT",
+                        "characters": "Click me",
+                        "style": { "fontFamily": "Inter", "fontSize": 14, "fontWeight": 500 }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "1:102",
+                "name": "Size=M, State=hover",
+                "type": "COMPONENT",
+                "children": [
+                  {
+                    "id": "1:120",
+                    "name": "button-inner",
+                    "type": "FRAME",
+                    "children": [
+                      {
+                        "id": "1:121",
+                        "name": "IconArrow",
+                        "type": "INSTANCE",
+                        "componentId": "2:101",
+                        "children": [
+                          {
+                            "id": "I1:121;2:102",
+                            "name": "arrow-vector",
+                            "type": "VECTOR",
+                            "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 0, "b": 0, "a": 1 } }]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "1:122",
+                        "name": "label",
+                        "type": "TEXT",
+                        "characters": "Click me",
+                        "style": { "fontFamily": "Inter", "fontSize": 14, "fontWeight": 500 }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "1:200",
+            "name": "Divider",
+            "type": "COMPONENT",
+            "children": [
+              {
+                "id": "1:201",
+                "name": "line",
+                "type": "RECTANGLE",
+                "fills": [{ "type": "SOLID", "color": { "r": 0.8, "g": 0.8, "b": 0.8, "a": 1 } }]
+              }
+            ]
+          },
+          {
+            "id": "1:300",
+            "name": "Badge",
+            "type": "COMPONENT",
+            "children": [
+              {
+                "id": "1:301",
+                "name": "badge-frame",
+                "type": "FRAME",
+                "children": [
+                  {
+                    "id": "1:302",
+                    "name": "count",
+                    "type": "TEXT",
+                    "characters": "3",
+                    "style": { "fontFamily": "Inter", "fontSize": 12, "fontWeight": 700 }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "components": {
+    "1:101": {
+      "key": "abc123",
+      "name": "Size=M, State=default",
+      "description": "",
+      "componentSetId": "1:100"
+    },
+    "1:102": {
+      "key": "abc124",
+      "name": "Size=M, State=hover",
+      "description": "",
+      "componentSetId": "1:100"
+    },
+    "1:200": {
+      "key": "def456",
+      "name": "Divider",
+      "description": "A simple divider line"
+    },
+    "1:300": {
+      "key": "ghi789",
+      "name": "Badge",
+      "description": "A notification badge"
+    }
+  },
+  "componentSets": {
+    "1:100": {
+      "key": "set_abc",
+      "name": "Button",
+      "description": "A reusable button"
+    }
+  }
+}

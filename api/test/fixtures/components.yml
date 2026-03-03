@@ -1,0 +1,80 @@
+# example-lib standalone components (leaf — no INSTANCE deps)
+divider:
+  component_library: example_lib
+  node_id: "1:200"
+  name: Divider
+  description: A simple divider line
+  figma_file_key: 75U91YIrYa65xhYcM0olH5
+  figma_file_name: example-lib
+  figma_json:
+    id: "1:200"
+    type: COMPONENT
+    name: Divider
+    children:
+      - id: "1:201"
+        type: RECTANGLE
+        name: line
+        fills:
+          - type: SOLID
+            color: { r: 0.8, g: 0.8, b: 0.8, a: 1 }
+  status: imported
+  enabled: true
+  html_code: '<div class="divider"></div>'
+  css_code: '.divider { height: 1px; background: #ccc; }'
+
+badge:
+  component_library: example_lib
+  node_id: "1:300"
+  name: Badge
+  description: A notification badge
+  figma_file_key: 75U91YIrYa65xhYcM0olH5
+  figma_file_name: example-lib
+  figma_json:
+    id: "1:300"
+    type: COMPONENT
+    name: Badge
+    children:
+      - id: "1:301"
+        type: FRAME
+        name: badge-frame
+        children:
+          - id: "1:302"
+            type: TEXT
+            name: count
+            characters: "3"
+  status: imported
+  enabled: true
+  html_code: '<span class="badge">3</span>'
+  css_code: '.badge { background: red; color: white; border-radius: 50%; padding: 2px 6px; }'
+
+# A component with deps (has INSTANCE referencing icon from example_icons)
+card_with_icon:
+  component_library: example_lib
+  node_id: "1:400"
+  name: CardWithIcon
+  description: A card that uses an icon
+  figma_file_key: 75U91YIrYa65xhYcM0olH5
+  figma_file_name: example-lib
+  figma_json:
+    id: "1:400"
+    type: COMPONENT
+    name: CardWithIcon
+    children:
+      - id: "1:401"
+        type: FRAME
+        name: card-frame
+        children:
+          - id: "1:402"
+            type: INSTANCE
+            name: IconClose
+            componentId: "2:201"
+            children:
+              - id: "I1:402;2:202"
+                type: VECTOR
+                name: close
+          - id: "1:403"
+            type: TEXT
+            name: title
+            characters: Card Title
+  status: pending
+  enabled: true

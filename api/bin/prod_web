@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require "json"
+data = JSON.parse(`heroku config -j`)
+
+system %(DATABASE_URL="#{data["DATABASE_URL"]}" bin/rails s)

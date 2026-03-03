@@ -1,0 +1,87 @@
+{
+  "name": "example-icons",
+  "lastModified": "2026-01-15T10:00:00Z",
+  "version": "5678",
+  "document": {
+    "id": "0:0",
+    "name": "Document",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "0:1",
+        "name": "Icons",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "2:100",
+            "name": "IconArrow",
+            "type": "COMPONENT_SET",
+            "componentPropertyDefinitions": {},
+            "children": [
+              {
+                "id": "2:101",
+                "name": "Default",
+                "type": "COMPONENT",
+                "children": [
+                  {
+                    "id": "2:102",
+                    "name": "arrow",
+                    "type": "VECTOR",
+                    "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 0, "b": 0, "a": 1 }, "visible": true }]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "2:200",
+            "name": "IconClose",
+            "type": "COMPONENT_SET",
+            "componentPropertyDefinitions": {},
+            "children": [
+              {
+                "id": "2:201",
+                "name": "Default",
+                "type": "COMPONENT",
+                "children": [
+                  {
+                    "id": "2:202",
+                    "name": "close",
+                    "type": "VECTOR",
+                    "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 0, "b": 0, "a": 1 }, "visible": true }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "components": {
+    "2:101": {
+      "key": "icon_arrow_key",
+      "name": "Default",
+      "description": "",
+      "componentSetId": "2:100"
+    },
+    "2:201": {
+      "key": "icon_close_key",
+      "name": "Default",
+      "description": "",
+      "componentSetId": "2:200"
+    }
+  },
+  "componentSets": {
+    "2:100": {
+      "key": "icon_arrow_set_key",
+      "name": "IconArrow",
+      "description": "Arrow icon"
+    },
+    "2:200": {
+      "key": "icon_close_set_key",
+      "name": "IconClose",
+      "description": "Close icon"
+    }
+  }
+}

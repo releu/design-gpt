@@ -1,0 +1,3 @@
+alice_render:
+  token: test-render-token-123
+  image: "PNG_TEST_DATA"

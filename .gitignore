@@ -1,0 +1,21 @@
+.DS_Store
+figma-plugin-remove-images/
+cubes/
+libs/
+
+# Dependencies
+api/vendor/
+app/node_modules/
+e2e/node_modules/
+
+# Environment
+api/.env
+app/.env
+
+# Generated
+e2e/.features-gen/
+e2e/test-results/
+e2e/screenshots/
+api/tmp/
+api/log/
+api/storage/

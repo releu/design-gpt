@@ -1,0 +1,117 @@
+/*
+	This font software is the property of Commercial Type.
+
+	You may not modify the font software, use it on another website, or install it on a computer.
+
+	License information is available at http://commercialtype.com/eula
+	For more information please visit Commercial Type at http://commercialtype.com or email us at info[at]commercialtype.com
+
+	Copyright (C) 2016 Schwartzco Inc.
+	
+*/
+
+
+.YSDisplayWide-Thin {
+    font-family: "YS Display Wide";
+    font-weight: 100;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Light {
+    font-family: "YS Display Wide";
+    font-weight: 300;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Regular {
+    font-family: "YS Display Wide";
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Medium {
+    font-family: "YS Display Wide";
+    font-weight: 500;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Bold {
+    font-family: "YS Display Wide";
+    font-weight: 700;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Heavy {
+    font-family: "YS Display Wide";
+    font-weight: 800;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+.YSDisplayWide-Black {
+    font-family: "YS Display Wide";
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Thin.woff2") format("woff2"),
+		     url("YS Display Wide-Thin.woff") format("woff");
+	font-weight: 100;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Light.woff2") format("woff2"),
+		     url("YS Display Wide-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Regular.woff2") format("woff2"),
+		     url("YS Display Wide-Regular.woff") format("woff");
+	font-weight: 400;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Medium.woff2") format("woff2"),
+		     url("YS Display Wide-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Bold.woff2") format("woff2"),
+		     url("YS Display Wide-Bold.woff") format("woff");
+	font-weight: 700;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Heavy.woff2") format("woff2"),
+		     url("YS Display Wide-Heavy.woff") format("woff");
+	font-weight: 800;
+	font-style: normal;
+	}
+
+@font-face {
+	font-family: "YS Display Wide";
+	src: url("YS Display Wide-Black.woff2") format("woff2"),
+		     url("YS Display Wide-Black.woff") format("woff");
+	font-weight: 900;
+	font-style: normal;
+	}

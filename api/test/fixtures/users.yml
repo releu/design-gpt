@@ -1,0 +1,9 @@
+alice:
+  username: alice
+  auth0_id: auth0|alice123
+  email: alice@example.com
+
+bob:
+  username: bob
+  auth0_id: auth0|bob456
+  email: bob@example.com

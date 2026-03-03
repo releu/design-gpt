@@ -1,0 +1,48 @@
+@font-face {
+  font-family: "suiss";
+  src: url("../assets/SuisseIntl-Book-WebM.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "suiss";
+  src: url("../assets/SuisseIntl-SemiBold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+
+:root {
+  --ff-text: "suiss";
+  --ff-header: "suiss";
+  --font-text-s: 14px/16px var(--ff-text);
+  --font-text-m: 15px/18px var(--ff-text);
+  --font-bold-m: bold 16px/20px var(--ff-text);
+  --font-text-l: 26px/32px var(--ff-text);
+  --font-header-l: 48px/54px var(--ff-header);
+  --font-header-m: 28px/32px var(--ff-header);
+  --black: #1b1b1f;
+  --blue: #a0c7fe;
+  --gray: #a6a5a2;
+  --green: #4cd964;
+  --lightgray: #dad9d6;
+  --orange: #ff5c00;
+  --superdarkgray: #565553;
+  --superlightgray: #edece8;
+  --violet: #e26de9;
+  --white: #ffffff;
+  --yellow: #f8ed32;
+}
+
+body {
+  margin: 0;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: #edece8;
+  color: var(--black);
+  font: var(--font-text-m);
+}
