@@ -5,6 +5,15 @@ class ApplicationController < ActionController::API
     head :ok
   end
 
+  def spa_fallback
+    file = Rails.public_path.join("index.html")
+    if file.exist?
+      render file: file, layout: false, content_type: "text/html"
+    else
+      head :not_found
+    end
+  end
+
   private
 
   def not_found

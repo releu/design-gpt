@@ -1,21 +1,36 @@
+# General
+node_modules/
+.env
+*.log
 .DS_Store
-figma-plugin-remove-images/
-cubes/
-libs/
+.hats-role
 
-# Dependencies
-api/vendor/
-app/node_modules/
-e2e/node_modules/
+# Developer dependencies
+developer/api/vendor/
+developer/app/node_modules/
+developer/e2e/node_modules/
 
-# Environment
-api/.env
-app/.env
+# Developer environment
+developer/api/.env
+developer/app/.env
 
-# Generated
-e2e/.features-gen/
-e2e/test-results/
-e2e/screenshots/
-api/tmp/
-api/log/
-api/storage/
+# Developer build artifacts
+developer/e2e/.features-gen/
+developer/e2e/test-results/
+developer/e2e/screenshots/
+developer/api/tmp/
+developer/api/log/
+developer/api/storage/
+developer/api/public/assets/
+developer/api/public/index.html
+developer/api/public/favicon.ico
+
+# Developer vendored/external
+developer/cubes/
+developer/libs/
+developer/figma-plugin-remove-images/
+
+# QA
+qa/node_modules/
+qa/.features-gen/
+qa/test-results/

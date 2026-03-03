@@ -1,0 +1,112 @@
+@component-browser
+Feature: Component Library Browser
+  Users can browse their imported component libraries, view individual components
+  with live preview, inspect React code, and see visual diff results.
+  Technical: Libraries page at /libraries, detail at /libraries/:id.
+  Preview page at /api/component-libraries/:id/preview renders all components.
+  ComponentDetail supports interactive props (VARIANT dropdowns, TEXT inputs, BOOLEAN checkboxes).
+
+  Background:
+    Given the user is logged in as "alice@example.com"
+
+  @critical @happy-path
+  Scenario: View the component libraries list
+    Given the user has imported 2 component libraries: "UI Kit" (ready) and "Icons" (importing)
+    When the user navigates to /libraries
+    Then the page should display 2 library cards
+    And "UI Kit" should show its name, status, and component count
+    And "Icons" should show its current import status
+
+  @happy-path
+  Scenario: Navigate to library detail page
+    Given a ready component library "UI Kit" exists
+    When the user clicks on the "UI Kit" library card
+    Then the user should be navigated to /libraries/:id
+    And the page should display the library name "UI Kit"
+    And all component sets and standalone components should be listed
+
+  @happy-path
+  Scenario: Library detail shows sync progress for non-ready libraries
+    Given a component library exists with status "importing"
+    When the user views the library detail page
+    Then a status badge should show "importing"
+    And a progress bar should indicate the current sync step
+
+  @happy-path
+  Scenario: Import a new library from the libraries page
+    When the user enters a Figma URL in the import input on the libraries page
+    And clicks the import button
+    Then a new component library should be created
+    And a sync job should be triggered
+    And the libraries list should refresh
+
+  @happy-path
+  Scenario: Component preview page renders all components
+    Given a component library "UI Kit" has 5 component sets and 3 standalone components
+    When the preview page is loaded at /api/component-libraries/:id/preview
+    Then all 8 components should be rendered in a grid layout
+    And each card should show the component name, type badge, and live React preview
+    And component sets should show their variants list
+    And vector components should display their SVG icons
+
+  @happy-path
+  Scenario: Component detail shows interactive props
+    Given a component "Button" has variant props:
+      | prop_name | type    | values                      |
+      | Size      | VARIANT | sm, md, lg                  |
+      | State     | VARIANT | default, hover, pressed     |
+      | Label     | TEXT    |                             |
+      | Disabled  | BOOLEAN |                             |
+    When the user views the Button component detail
+    Then "Size" should have a dropdown with options "sm", "md", "lg"
+    And "State" should have a dropdown with options "default", "hover", "pressed"
+    And "Label" should have a text input field
+    And "Disabled" should have a checkbox
+
+  @happy-path
+  Scenario: Changing props updates the live preview
+    Given the user is viewing a component "Button" with a preview iframe loaded
+    When the user changes the "State" prop from "default" to "hover"
+    Then a postMessage with updated JSX should be sent to the preview iframe
+    And the iframe should re-render the component with the "hover" state
+
+  @happy-path
+  Scenario: Component detail shows React code
+    Given a component "Button" has generated React code
+    When the user expands the "React Code" section
+    Then the code editor should display the component's React source code
+    And the code should be read-only
+
+  @happy-path
+  Scenario: Component detail shows configuration (root and children)
+    Given a component "Page" is marked as root with allowed_children ["Title", "Button"]
+    When the user views the component detail
+    And expands the "Configuration" section
+    Then a "Root" row should show "yes" badge
+    And an "Allowed children" row should list "Title" and "Button"
+
+  @happy-path
+  Scenario: Component detail modal shows visual diff
+    Given a component has Figma and React screenshots and a diff image
+    When the user opens the component detail modal
+    Then the visual diff overlay should show three panels: Figma, React, and Diff
+    And the match percentage badge should be displayed
+
+  @happy-path
+  Scenario: Update component library visibility
+    Given a component library "UI Kit" exists with is_public false
+    When the user sends PATCH /api/component-libraries/:id with is_public true
+    Then the library should be publicly accessible to other users
+
+  @edge-case
+  Scenario: Component with no variants still displays correctly
+    Given a standalone component "Divider" exists with no variants
+    When the user views the component detail
+    Then the props section should be empty or hidden
+    And the preview should render the component with default props
+
+  @edge-case
+  Scenario: Preview page handles components without React code gracefully
+    Given a component exists without compiled React code
+    When the preview page loads
+    Then a "Component not found" error should be shown in that component's preview area
