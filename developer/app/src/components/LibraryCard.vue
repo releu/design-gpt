@@ -31,6 +31,7 @@ export default {
     cardClasses() {
       return {
         LibraryCard: true,
+        "library-card": true,
         LibraryCard_selected: this.selected,
       };
     },

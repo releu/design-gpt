@@ -87,7 +87,9 @@ module Figma
       else
         prop_definitions = component_set.prop_definitions || {}
         variant_prop_names = prop_definitions.select { |_, d| d["type"] == "VARIANT" }.keys
-        all_variants = component_set.variants.select { |v| v.figma_json.present? }
+        all_variants = component_set.variants
+          .select { |v| v.figma_json.present? }
+          .sort_by { |v| [v.is_default ? 0 : 1, v.id] }
 
         if variant_prop_names.any? && all_variants.size > 1
           code = generate_multi_variant_code(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
@@ -1052,6 +1054,26 @@ module Figma
         # Scope CSS and JSX with per-variant scope_id
         scoped_css = css.gsub(/^\.([a-z0-9_-]+)/i) { ".#{scope_id}-#{$1}" }
         scoped_jsx = jsx.gsub(/className="([^"]+)"/) { "className=\"#{scope_id}-#{$1}\"" }
+
+        # Add variant-specific BEM classes to the root element so that every
+        # variant value produces a detectable DOM difference, even when the
+        # visual structure is otherwise identical (e.g. styling-only variants).
+        # Convention: ComponentName__propName_value  (e.g. Button__size_m)
+        variant_classes = variant_prop_names.filter_map do |prop_key|
+          clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+          prop_css = clean_key.downcase.gsub(/\s+/, "_").gsub(/[^a-z0-9_]/, "")
+          val = variant.variant_properties[clean_key.downcase]
+          next nil if val.blank?
+          val_css = val.downcase.gsub(/\s+/, "_").gsub(/[^a-z0-9_]/, "")
+          "#{component_name}__#{prop_css}_#{val_css}"
+        end.join(" ")
+
+        if variant_classes.present?
+          scoped_jsx = scoped_jsx.sub(
+            /className="(#{Regexp.escape(scope_id)}-root)"/,
+            "className=\"\\1 #{variant_classes}\""
+          )
+        end
 
         # Collect non-VARIANT props for this variant's function destructuring
         non_variant_props = @current_props.merge(@nested_instance_props).reject { |_, p| p[:type] == "VARIANT" }

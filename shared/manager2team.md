@@ -66,3 +66,49 @@ After reviewing all 8 design descriptions (01-global-design-system through 08-on
 - **Designer**: No action needed -- specs now align with your design descriptions.
 
 ---
+
+## 2 2026-03-03T16:00 -- Manager
+
+Re: Sprint 2 -- fix 3 remaining bugs from QA validation
+
+QA's E2E run (25 passed, 6 failed, 57 blocked) has been analyzed. All 6 failures trace back to 3 root causes. Here is what needs to happen.
+
+### For Developer (2 bugs)
+
+**Bug 1 (CRITICAL): Preview iframe never appears after design generation -- blocks 29 scenarios**
+
+The investigation shows:
+- `DesignView.vue` `fetchDesign()` only sets `currentIterationId` when the iteration already has `jsx` content
+- When a design is first generated, the iteration is created with no `jsx` yet
+- The AI job (`AiRequestJob`) later sets `iteration.jsx`, then `design.status` changes to `ready`
+- There IS polling in DesignView.vue (triggered by `design.status === 'generating'`) but something is preventing the Preview from rendering once generation completes
+- Also: `previewRenderer` computed falls through to `design.design_system_id` which does NOT exist on the Design model -- designs link to component_libraries via a junction table
+
+Key files:
+- `developer/app/src/views/DesignView.vue` lines ~141-157 (`previewRenderer` computed) and ~183-199 (`fetchDesign`)
+- `developer/app/src/components/Preview.vue` (understand `v-if` condition for iframe)
+- `developer/api/app/jobs/ai_request_job.rb` lines ~32-35 (jsx + status update)
+
+Fix: Make sure that after AI generation completes and polling picks up the updated iteration, `currentIterationId` is set and the Preview iframe becomes visible. Investigate whether `design.design_system_id` fallback is causing "about:blank" and whether Preview hides on "about:blank" src.
+
+**Bug 2: Library detail page has no identifiable heading element -- blocks 9 scenarios**
+
+`LibraryDetailView.vue` renders the library name as a plain `<div>{{ library.name }}</div>` with no class attribute and no semantic heading element. The QA test (and any reasonable selector) cannot find it.
+
+Fix: In `LibraryDetailView.vue` (the `<div v-if="library">{{ library.name }}</div>` in the header slot), add `class="LibraryDetail__name"` and/or change it to an `<h2>` element.
+
+### For QA (1 fix)
+
+**Bug 3: DS modal import timeout too short -- 300s vs actual ~9 minutes**
+
+In the DS modal test, the step waiting for `.DesignSystemModal__browser` uses a 300s (5-minute) timeout, but Figma imports routinely take 8-10 minutes. Increase this to 600s (10 minutes).
+
+Key file: `qa/steps/modal-ui.steps.js` -- find the timeout for `.DesignSystemModal__browser` visibility and increase it.
+
+### Priority
+
+1. Developer fixes Bug 1 (preview iframe) -- the single biggest unblock (29 scenarios)
+2. Developer fixes Bug 2 (library detail heading) -- quick, unblocks 9 scenarios
+3. QA fixes Bug 3 (modal timeout) -- low effort, unblocks 14 DS modal scenarios
+
+---

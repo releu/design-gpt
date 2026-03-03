@@ -1,6 +1,6 @@
 <template>
   <div class="OnboardingStepOrganize">
-    <div class="OnboardingStepOrganize__title">Organize components</div>
+    <div class="OnboardingStepOrganize__title">Configure structure</div>
     <div class="OnboardingStepOrganize__subtitle">
       Mark root components and configure which children they can contain.
     </div>

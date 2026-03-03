@@ -17,7 +17,7 @@ Feature: Design System Modal
     When I add the Cubes Figma URL
     Then the Figma URL should appear in the pending list
     When I click the import button
-    Then the component browser should be visible within 5 minutes
+    Then the component browser should be visible within 10 minutes
     And the component browser menu should list component names
     When I enter the design system name "QA Cubes"
     And I click "Save" in the modal

@@ -1,5 +1,126 @@
 # QA to Developer
 
+## 5 2026-03-03 -- QA
+
+Re: Full E2E run #3 results -- fast suite 82/93 pass, render suite 130/155 components OK
+
+### Overall
+
+Fast suite (no Figma/OpenAI required): **82 passed, 11 failed** out of 93 tests.
+Render suite (Figma import, 155 components): **130/155 components render correctly, 25 empty #root**, 3 scenarios blocked.
+
+### Fast suite failures needing Developer attention
+
+**1. API response shape: POST /api/component-libraries returns only `{"id":N}`**
+
+Tests expect the create response to include `status` (should be `"pending"`) and `figma_file_key` (the key extracted from the URL). Currently both are missing. Please add them to the ComponentLibraries create action response.
+
+**2. API response shape: POST /api/designs missing `status` field**
+
+Create design response does not include `status`. Please add it.
+
+**3. Screenshots controller: invalid type returns 404 instead of 400**
+
+`GET /api/components/:id/screenshots/:type` with `type=invalid` returns 404 (not found). Expected behavior is 400 (bad request). The controller should validate the type param and return 400 for unrecognized values.
+
+**4. No ready library in E2E test DB (affects visual diff and Figma JSON tests)**
+
+Four tests need `I have a component from a ready library` but `rails e2e:setup` seeds only the users fixture. Options: (a) seed a minimal ready ComponentLibrary + Component in `lib/tasks/e2e.rake`, or (b) we skip those tests until there is a rendered library. Affected scenarios:
+- Visual Diff: Invalid screenshot type returns 400
+- Visual Diff: Visual diff for existing component returns data
+- Figma JSON: Figma JSON for existing component returns data
+- Figma JSON: Figma JSON for existing component set returns data
+
+**5. Sign-in screen unauthenticated tests (2 failures)**
+
+The "Unauthenticated user sees sign-in screen" and "Auth0 login error keeps user on sign-in screen" tests time out waiting for the sign-in card. Worth opening the app in a browser without auth to confirm the card renders and `[class*='sign-in']` elements are present. May be a race with the Auth0 E2E mock.
+
+**6. Onboarding Step 1 enter and proceed (1 failure)**
+
+The test enters a prompt and clicks Next, but the assertion that the wizard advanced to "Libraries" fails. Check: (a) what `disabled` looks like on the Next button (attribute vs opacity class), and (b) what element has the "Libraries" label in the stepper active state.
+
+**7. AI pipeline design generation creates a task (1 failure)**
+
+Creating a design via API after creating a library (never synced, no components) fails. The library exists but has no components, so schema generation likely produces empty output. This is the same no-ready-library root cause as #4.
+
+### Render suite: 25 components produce empty #root
+
+130/155 components rendered correctly with default props. 25 produced `#root is empty after render`. Full list in `shared/qa-report.md`. The pattern appears to be: pure-visual sub-elements (icons, dividers, skeleton loaders, cursors, sub-handles, flag icons, financial widgets). Recommended: inspect `react_code` for a sample of these in the DB and check whether Babel throws a JS error at render time that gets silently swallowed.
+
+Note: the variant/text/prop-combination scenarios (3 tests) did not run because the serial chain was broken by the default render failure. These will run once the 25 empty-#root components are fixed.
+
+### Full report
+
+See `/Users/releu/Code/design-gpt/shared/qa-report.md` -- "Full E2E run #3" section at the top.
+
+---
+
+## 4 2026-03-03T18:00 -- QA
+
+Re: Prop validation tests now assert real HTML changes -- Developer action required
+
+### What changed in tests
+
+`qa/steps/component-rendering.steps.js` -- the main "I validate every component with all prop combinations" scenario is rewritten. "No render error" is no longer sufficient. The new rules:
+
+**VARIANT props** -- each sampled option is compared against the baseline (first option). The test fails if `innerHTML` of `#root` is identical after the change. Failure message explicitly says to add a variant class to the root element.
+
+**BOOLEAN props** -- captures `innerHTML` before toggling, toggles, captures after. Fails if HTML is identical. (Also restores original state after each prop so later props start clean.)
+
+**TEXT props** -- generates a unique sentinel per prop (`QA{ci}x{pi}x{timestamp}`), fills it, checks that the exact string appears in `#root` textContent. No longer just "no render error".
+
+### Developer action required: add variant classes to component root elements
+
+The VARIANT test will fail for any component where two variant values happen to produce visually identical markup (same structure, same text, just different styling). To fix this category of failure, **every generated React component must add a variant-specific CSS class to its root element** for each VARIANT prop.
+
+**Convention**:
+
+```
+.ComponentName__propName_value
+```
+
+- `ComponentName` = the component set name in PascalCase (same as the function name, e.g. `Button`)
+- `propName` = the Figma prop name, lowercased, spaces replaced with underscores (e.g. `type`, `size`, `state`)
+- `value` = the selected variant value, lowercased, spaces replaced with underscores (e.g. `primary`, `large`, `hover`)
+
+**Example** -- a Button component with a VARIANT prop "Type" (values: Primary, Secondary, Ghost):
+
+```jsx
+export function Button({ Type = "Primary", ...props }) {
+  const typeClass = `Button__type_${Type.toLowerCase()}`;
+  return (
+    <div className={`Button ${typeClass}`}>
+      ...
+    </div>
+  );
+}
+```
+
+This change must happen in `ReactFactory` (the service that generates React code from Figma component data), not manually per component. The factory already knows the prop names and their type (VARIANT). It should emit the className construction for every VARIANT prop on the root element.
+
+**Where to implement**: `developer/api/app/services/figma/react_factory.rb` -- in the section that generates the JSX function body / root element className.
+
+---
+
+## 3 2026-03-03T17:30 -- QA
+
+Re: DS modal import timeout increased to 10 minutes
+
+**Bug 3 fixed (QA-side):**
+
+- `qa/steps/design-system-modal.steps.js`: Step text changed from `"the component browser should be visible within 5 minutes"` → `"within 10 minutes"`. Timeout changed from `300_000` (5 min) to `600_000` (10 min).
+- `qa/features/11-design-system-modal.feature`: Step text updated to match (`within 5 minutes` → `within 10 minutes`).
+
+**Note on Preview iframe bug (dev reply):**
+Developer flagged that if `OPENAI_API_KEY` is not configured in `developer/api/.env`, `AiRequestJob` will fail and design status goes to `error` -- the preview will never show regardless of frontend fixes. The frontend code is now as robust as possible. We need `.env` with a valid `OPENAI_API_KEY` before the generation workflow tests can pass.
+
+**Current known state:**
+- DS modal import timeout: fixed (10 min)
+- Library detail heading: fixed (`LibraryDetail__name` class added by dev)
+- Preview iframe after generation: frontend fix applied; still needs `OPENAI_API_KEY` env var to verify end-to-end
+
+---
+
 ## 1 2026-03-03T13:00 -- QA
 
 Re: Major test update -- 114 scenarios across 9 rewritten + 1 new feature files, aligned with Manager's spec revision

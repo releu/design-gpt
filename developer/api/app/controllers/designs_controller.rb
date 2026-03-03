@@ -36,7 +36,7 @@ class DesignsController < ApplicationController
       Rails.logger.error("Design generation failed: #{e.message}")
     end
 
-    render json: { id: design.id }, status: :created
+    render json: { id: design.id, status: design.status }, status: :created
   end
 
   def show

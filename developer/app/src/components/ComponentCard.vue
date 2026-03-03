@@ -1,5 +1,5 @@
 <template>
-  <div class="ComponentCard" @click="$emit('select', component)">
+  <div class="ComponentCard component-card" @click="$emit('select', component)">
     <div class="ComponentCard__preview">
       <iframe
         v-if="previewUrl"

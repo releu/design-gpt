@@ -2,24 +2,30 @@
 # Downloads the correct esbuild binary for the current platform.
 # The binary is placed in vendor/bin/esbuild and used by Figma::JsxCompiler.
 #
+# Uses the scoped @esbuild/{platform} packages (introduced in esbuild 0.17+).
+# The old unscoped esbuild-{platform} packages are no longer published.
+#
 # Usage:
 #   bin/setup_esbuild          # download for current platform
-#   bin/setup_esbuild 0.27.2   # specific version
+#   bin/setup_esbuild 0.27.3   # specific version
 
 require "net/http"
 require "uri"
 require "fileutils"
 require "rubygems/package"
 require "zlib"
+require "stringio"
 
-VERSION = ARGV[0] || "0.27.2"
+VERSION = ARGV[0] || "0.27.3"
 
+# Scoped package names under @esbuild/ scope (used since esbuild 0.17+).
+# Package name is the suffix after @esbuild/ and also the tarball slug.
 PLATFORM_MAP = {
-  ["x86_64", "linux"]    => "esbuild-linux-64",
-  ["aarch64", "linux"]   => "esbuild-linux-arm64",
-  ["x86_64", "darwin"]   => "esbuild-darwin-64",
-  ["arm64", "darwin"]    => "esbuild-darwin-arm64",
-  ["x86_64", "mingw32"]  => "esbuild-windows-64",
+  ["x86_64", "linux"]    => "linux-x64",
+  ["aarch64", "linux"]   => "linux-arm64",
+  ["x86_64", "darwin"]   => "darwin-x64",
+  ["arm64", "darwin"]    => "darwin-arm64",
+  ["x86_64", "mingw32"]  => "win32-x64",
 }
 
 def detect_platform
@@ -57,19 +63,20 @@ def download(url)
 end
 
 platform = detect_platform
-package_name = PLATFORM_MAP[platform]
+platform_slug = PLATFORM_MAP[platform]
 
-unless package_name
+unless platform_slug
   puts "Unsupported platform: #{platform.join("-")}"
   puts "Supported: #{PLATFORM_MAP.keys.map { |k| k.join("-") }.join(", ")}"
   exit 1
 end
 
-url = "https://registry.npmjs.org/#{package_name}/-/#{package_name}-#{VERSION}.tgz"
+# Scoped package URL format: @esbuild/darwin-arm64/-/darwin-arm64-0.27.3.tgz
+url = "https://registry.npmjs.org/@esbuild/#{platform_slug}/-/#{platform_slug}-#{VERSION}.tgz"
 vendor_dir = File.expand_path("../vendor/bin", __dir__)
 dest = File.join(vendor_dir, "esbuild")
 
-puts "Platform: #{platform.join("-")} -> #{package_name}"
+puts "Platform: #{platform.join("-")} -> @esbuild/#{platform_slug}"
 puts "Version:  #{VERSION}"
 puts "URL:      #{url}"
 puts "Dest:     #{dest}"

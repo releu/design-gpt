@@ -34,17 +34,24 @@ export default {
     },
   },
   mounted() {
-    window.addEventListener("message", (e) => {
+    this._onMessage = (e) => {
       if (e.data && e.data.type === "ready") {
         this.ready = true;
         this.$emit("inited", e.data);
         this.renderCode();
       }
-    });
+    };
+    window.addEventListener("message", this._onMessage);
+  },
+  beforeUnmount() {
+    window.removeEventListener("message", this._onMessage);
   },
   watch: {
-    code() {
-      this.renderCode();
+    code: {
+      immediate: true,
+      handler() {
+        this.renderCode();
+      },
     },
   },
 };

@@ -39,10 +39,10 @@ class ComponentLibrariesController < ApplicationController
     attrs = { figma_url: params[:url], name: params[:name] }
     cl = current_user.component_libraries.create!(attrs)
 
-    render json: { id: cl.id }, status: :created
+    render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :created
   rescue ActiveRecord::RecordNotUnique
     existing = current_user.component_libraries.find_by!(figma_url: params[:url])
-    render json: { id: existing.id }, status: :ok
+    render json: { id: existing.id, status: existing.status, figma_file_key: existing.figma_file_key }, status: :ok
   end
 
   def update

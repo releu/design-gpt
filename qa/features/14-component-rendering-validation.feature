@@ -9,10 +9,12 @@ Feature: Component Rendering Validation
 
   Each component is tested individually:
   - Default render: iframe #root must not be empty, no red error text
-  - VARIANT props: every dropdown option is selected, iframe re-renders without error
-  - TEXT props: test with sample text, verify the text appears in the iframe
-  - BOOLEAN props: toggle on/off, verify render changes without error
-  - Content verification: for text props, assert the text is actually visible
+  - VARIANT props: each option must produce different innerHTML from the baseline
+    (first option). Components carry BEM variant classes on their root element
+    (e.g. Button__size_m) that ensure a DOM difference even for styling-only variants.
+  - BOOLEAN props: toggling must produce different innerHTML before vs after.
+  - TEXT props: a unique sentinel string is filled in and must appear verbatim
+    in #root textContent.
 
   @critical
   Scenario: Ensure Figma library is imported for rendering tests

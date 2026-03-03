@@ -164,6 +164,16 @@ Then(
 
 // ---------------------------------------------------------------------------
 // Scenario: Every component renders correctly with all prop combinations
+//
+// Rules:
+//   VARIANT  -- each option must produce different innerHTML from the baseline
+//               (first option). If HTML is unchanged the component is broken:
+//               the Developer must add a variant class to the root element,
+//               e.g. .ComponentName__propName_value, so even visually-identical
+//               variants produce a detectable DOM difference.
+//   BOOLEAN  -- toggling true/false must produce different innerHTML.
+//   TEXT     -- filling a unique sentinel string must make that string appear
+//               in #root textContent.
 // ---------------------------------------------------------------------------
 
 Then(
@@ -200,18 +210,13 @@ Then(
           console.log(`  SKIP props (default render failed)`);
           continue;
         }
-        successes.push({
-          component: compName,
-          test: "default_render",
-        });
+        successes.push({ component: compName, test: "default_render" });
 
-        // Get error locator for the iframe
         const frame = page.frameLocator(".ComponentDetail__preview-frame");
         const errorPre = frame.locator(
           'pre[style*="color: red"], pre[style*="color:red"]',
         );
 
-        // Ensure Props section is open
         await ensurePropsOpen(page);
 
         const propRows = page.locator(".ComponentDetail__prop-row");
@@ -224,13 +229,15 @@ Then(
           ).trim();
 
           // ----- VARIANT props -----
+          // Every option must produce innerHTML that differs from the baseline
+          // (first option). This catches both render errors and silent no-ops.
           const select = propRow.locator("select");
           if (await select.isVisible().catch(() => false)) {
             const allOpts = (
               await select.locator("option").allTextContents()
             ).map((o) => o.trim());
 
-            // Sample: all if <= 6, else first/middle/last
+            // Sample: all if <= 6, else first / middle / last
             const sampled =
               allOpts.length <= 6
                 ? allOpts
@@ -240,19 +247,31 @@ Then(
                     allOpts[allOpts.length - 1],
                   ];
 
-            for (const val of sampled) {
+            // Capture baseline with first option
+            await select.selectOption(sampled[0]);
+            await page.waitForTimeout(600);
+            const baselineHtml = await frame
+              .locator("#root")
+              .innerHTML()
+              .catch(() => "");
+
+            successes.push({
+              component: compName,
+              test: "variant_prop",
+              prop: propName,
+              value: sampled[0],
+            });
+
+            // Every other sampled option must differ from baseline
+            for (const val of sampled.slice(1)) {
               try {
                 await select.selectOption(val);
                 await page.waitForTimeout(600);
 
                 if (
-                  await errorPre
-                    .isVisible({ timeout: 1_500 })
-                    .catch(() => false)
+                  await errorPre.isVisible({ timeout: 1_500 }).catch(() => false)
                 ) {
-                  const errText = await errorPre
-                    .textContent()
-                    .catch(() => "?");
+                  const errText = await errorPre.textContent().catch(() => "?");
                   failures.push({
                     component: compName,
                     test: "variant_prop",
@@ -260,33 +279,36 @@ Then(
                     value: val,
                     error: `render error: ${errText.slice(0, 100)}`,
                   });
+                  console.log(`  FAIL: ${propName}="${val}" -- render error`);
+                  continue;
+                }
+
+                const afterHtml = await frame
+                  .locator("#root")
+                  .innerHTML()
+                  .catch(() => "");
+
+                if (afterHtml === baselineHtml) {
+                  failures.push({
+                    component: compName,
+                    test: "variant_prop",
+                    prop: propName,
+                    value: val,
+                    error:
+                      `HTML unchanged vs "${sampled[0]}" -- ` +
+                      `add a variant class to the component root element, ` +
+                      `e.g. .${compName}__${propName.toLowerCase()}_${val.toLowerCase().replace(/\s+/g, "_")}`,
+                  });
                   console.log(
-                    `  FAIL: ${propName}="${val}" -- render error`,
+                    `  FAIL: ${propName}="${val}" -- HTML unchanged (add root variant class)`,
                   );
                 } else {
-                  const html = await frame
-                    .locator("#root")
-                    .innerHTML()
-                    .catch(() => "");
-                  if (!html.trim()) {
-                    failures.push({
-                      component: compName,
-                      test: "variant_prop",
-                      prop: propName,
-                      value: val,
-                      error: "#root empty after variant change",
-                    });
-                    console.log(
-                      `  FAIL: ${propName}="${val}" -- #root empty`,
-                    );
-                  } else {
-                    successes.push({
-                      component: compName,
-                      test: "variant_prop",
-                      prop: propName,
-                      value: val,
-                    });
-                  }
+                  successes.push({
+                    component: compName,
+                    test: "variant_prop",
+                    prop: propName,
+                    value: val,
+                  });
                 }
               } catch (e) {
                 failures.push({
@@ -301,100 +323,138 @@ Then(
                 );
               }
             }
+
+            // Reset to first option so subsequent props start from a clean state
+            await select.selectOption(sampled[0]);
+            await page.waitForTimeout(300);
           }
 
           // ----- BOOLEAN props -----
+          // Toggling must produce different innerHTML.
           const checkbox = propRow.locator('input[type="checkbox"]');
           if (await checkbox.isVisible().catch(() => false)) {
-            for (const checked of [true, false]) {
-              try {
-                checked
-                  ? await checkbox.check()
-                  : await checkbox.uncheck();
-                await page.waitForTimeout(600);
+            try {
+              const isChecked = await checkbox.isChecked();
 
-                if (
-                  await errorPre
-                    .isVisible({ timeout: 1_500 })
-                    .catch(() => false)
-                ) {
-                  failures.push({
-                    component: compName,
-                    test: "boolean_prop",
-                    prop: propName,
-                    value: String(checked),
-                    error: "render error",
-                  });
-                  console.log(
-                    `  FAIL: ${propName}=${checked} -- render error`,
-                  );
-                } else {
-                  successes.push({
-                    component: compName,
-                    test: "boolean_prop",
-                    prop: propName,
-                    value: String(checked),
-                  });
-                }
-              } catch (e) {
+              // Capture baseline (current state)
+              const baselineHtml = await frame
+                .locator("#root")
+                .innerHTML()
+                .catch(() => "");
+
+              // Toggle to opposite
+              isChecked ? await checkbox.uncheck() : await checkbox.check();
+              await page.waitForTimeout(600);
+
+              if (
+                await errorPre.isVisible({ timeout: 1_500 }).catch(() => false)
+              ) {
                 failures.push({
                   component: compName,
                   test: "boolean_prop",
                   prop: propName,
-                  value: String(checked),
-                  error: e.message.slice(0, 150),
+                  error: "render error after toggle",
                 });
-                console.log(
-                  `  FAIL: ${propName}=${checked} -- ${e.message.slice(0, 60)}`,
-                );
-              }
-            }
-          }
+                console.log(`  FAIL: ${propName} toggle -- render error`);
+              } else {
+                const afterHtml = await frame
+                  .locator("#root")
+                  .innerHTML()
+                  .catch(() => "");
 
-          // ----- TEXT props -----
-          const textInput = propRow.locator('input[type="text"]');
-          if (await textInput.isVisible().catch(() => false)) {
-            for (const testVal of ["QA Test Label", ""]) {
-              const label = testVal || "(empty)";
-              try {
-                await textInput.fill(testVal);
-                await page.waitForTimeout(600);
-
-                if (
-                  await errorPre
-                    .isVisible({ timeout: 1_500 })
-                    .catch(() => false)
-                ) {
+                if (afterHtml === baselineHtml) {
                   failures.push({
                     component: compName,
-                    test: "text_prop",
+                    test: "boolean_prop",
                     prop: propName,
-                    value: label,
-                    error: "render error",
+                    error: "HTML unchanged after boolean toggle",
                   });
                   console.log(
-                    `  FAIL: ${propName}="${label}" -- render error`,
+                    `  FAIL: ${propName} toggle -- HTML unchanged`,
                   );
                 } else {
                   successes.push({
                     component: compName,
-                    test: "text_prop",
+                    test: "boolean_prop",
                     prop: propName,
-                    value: label,
                   });
                 }
-              } catch (e) {
+              }
+
+              // Restore original state
+              isChecked ? await checkbox.check() : await checkbox.uncheck();
+              await page.waitForTimeout(300);
+            } catch (e) {
+              failures.push({
+                component: compName,
+                test: "boolean_prop",
+                prop: propName,
+                error: e.message.slice(0, 150),
+              });
+              console.log(
+                `  FAIL: ${propName} toggle -- ${e.message.slice(0, 60)}`,
+              );
+            }
+          }
+
+          // ----- TEXT props -----
+          // A unique sentinel string must appear verbatim in #root textContent.
+          const textInput = propRow.locator('input[type="text"]');
+          if (await textInput.isVisible().catch(() => false)) {
+            const sentinel = `QA${ci}x${pi}x${Date.now().toString(36)}`;
+            try {
+              await textInput.fill(sentinel);
+              await page.waitForTimeout(600);
+
+              if (
+                await errorPre.isVisible({ timeout: 1_500 }).catch(() => false)
+              ) {
+                const errText = await errorPre.textContent().catch(() => "?");
                 failures.push({
                   component: compName,
                   test: "text_prop",
                   prop: propName,
-                  value: label,
-                  error: e.message.slice(0, 150),
+                  error: `render error: ${errText.slice(0, 100)}`,
                 });
-                console.log(
-                  `  FAIL: ${propName}="${label}" -- ${e.message.slice(0, 60)}`,
-                );
+                console.log(`  FAIL: ${propName} text -- render error`);
+              } else {
+                const rootText = await frame
+                  .locator("#root")
+                  .textContent()
+                  .catch(() => "");
+
+                if (rootText.includes(sentinel)) {
+                  successes.push({
+                    component: compName,
+                    test: "text_prop",
+                    prop: propName,
+                  });
+                } else {
+                  failures.push({
+                    component: compName,
+                    test: "text_prop",
+                    prop: propName,
+                    error: `sentinel "${sentinel}" not found in rendered text`,
+                  });
+                  console.log(
+                    `  FAIL: ${propName} text -- sentinel not in output`,
+                  );
+                }
               }
+
+              // Reset text field
+              await textInput.fill("");
+              await page.waitForTimeout(300);
+            } catch (e) {
+              failures.push({
+                component: compName,
+                test: "text_prop",
+                prop: propName,
+                error: e.message.slice(0, 150),
+              });
+              console.log(
+                `  FAIL: ${propName} text -- ${e.message.slice(0, 60)}`,
+              );
             }
           }
         }

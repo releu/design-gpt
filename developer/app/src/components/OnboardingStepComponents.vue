@@ -1,13 +1,13 @@
 <template>
   <div class="OnboardingStepComponents">
-    <div class="OnboardingStepComponents__title">Review components</div>
+    <div class="OnboardingStepComponents__title">Review your imports</div>
     <div class="OnboardingStepComponents__subtitle">
-      These components were imported from your Figma files. Click any to view details.
+      These items were imported from your Figma files. Click any to view details.
     </div>
 
     <div v-if="componentSets.length > 0" class="OnboardingStepComponents__section">
       <div class="OnboardingStepComponents__section-title">
-        Component Sets ({{ componentSets.length }})
+        Sets ({{ componentSets.length }})
       </div>
       <div class="OnboardingStepComponents__grid">
         <ComponentCard
@@ -21,7 +21,7 @@
 
     <div v-if="components.length > 0" class="OnboardingStepComponents__section">
       <div class="OnboardingStepComponents__section-title">
-        Standalone Components ({{ components.length }})
+        Standalone ({{ components.length }})
       </div>
       <div class="OnboardingStepComponents__grid">
         <ComponentCard

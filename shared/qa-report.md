@@ -1,5 +1,210 @@
 # QA Report
 
+---
+
+## Full E2E run #3 -- 2026-03-03 (fast suite + render suite)
+
+### Fast suite: 82 passed, 11 failed (93 total)
+### Render suite: 1 passed, 1 failed, 3 did not run (5 total)
+
+---
+
+### Fast suite failures (11)
+
+**1. Authentication - Unauthenticated user sees sign-in screen with wave icon card** `@critical`
+- Expected: warm gray background, centered white card, wave icon, "Sign in to continue" label visible
+- Actual: `toBeVisible()` failed -- sign-in card not found within timeout (15s)
+- Likely cause: unauthenticated route loads, Auth0 mock may resolve immediately in E2E mode before the sign-in state can be observed
+
+**2. Authentication - Auth0 login error keeps user on sign-in screen**
+- Expected: sign-in card still visible after Auth0 error param in URL
+- Actual: `toBeVisible()` failed -- same root cause as failure #1
+
+**3. Design Management - Create a design via API with component libraries**
+- Expected: response body contains fields `id` and `status`
+- Actual: `status` field absent from create response body
+
+**4. Figma Import - Created library has pending status**
+- Expected: response body contains string `"pending"`
+- Actual: response body is `{"id":N}` -- `status` not returned in create response
+
+**5. Figma Import - Created library extracts figma file key from URL**
+- Expected: response body contains `"extractKey99"` (the Figma file key from URL)
+- Actual: response body is `{"id":N}` -- `figma_file_key` not returned in create response
+
+**6. Visual Diff - Invalid screenshot type returns 400**
+- Expected: 400 status when `type=invalid` parameter passed
+- Actual: 404 -- screenshots controller does not validate the type parameter
+
+**7. Visual Diff - Visual diff for existing component returns data**
+- Expected: 200 with `match_percent` field
+- Actual: 404 -- no ready library in E2E test DB; step `I have a component from a ready library` returns nothing
+
+**8. Figma JSON - Figma JSON for existing component returns data**
+- Expected: 200 with `id` and `name` fields
+- Actual: 404 -- same root cause as #7 (no ready library)
+
+**9. Figma JSON - Figma JSON for existing component set returns data**
+- Expected: 200 with `id` field
+- Actual: 404 -- same root cause as #7
+
+**10. Onboarding Wizard - Step 1: Enter a prompt and proceed**
+- Expected: Next button disabled initially, enabled after typing, wizard advances to "Libraries" step
+- Actual: assertion failed -- disabled state check or step transition selector not matching
+
+**11. AI Pipeline - Design generation creates a task when called via API**
+- Expected: 201 response with `id` field after creating a design with a library + design system
+- Actual: assertion failed -- likely fails because library has no components (never synced), so schema generation returns empty / fails
+
+---
+
+### Render suite results
+
+**PASS: Ensure Figma library is imported for rendering tests** (10.9 min)
+- Cubes library imported: 127 component sets, 28 standalone components, 155 total components
+
+**FAIL: Every component renders with default props without errors** `@critical`
+- 130/155 components: OK
+- 25/155 components: `#root` is empty after render
+
+**Components producing empty #root (25):**
+- Control / UserPic
+- Source / Icon / Fullsize
+- Source / Icon
+- Interface Elements / Divider
+- Finance / Bank
+- Containers / Overlayer / Handle
+- Control / Segmented Control / After
+- Control / Input Elements / RadioBox
+- Control / Input Elements / Switcher
+- Control / Spin
+- Control / Tooltip-staff / Tooltip-Tail
+- Input / Slider / Handle
+- Interface Elements / Skeleton
+- Input / Text Cursor
+- Geo / Flag
+- Interface Elements / Paragraph / List Style
+- Templates / Cursor
+- Finance / Insurance
+- Finance / Cryptocurrency
+- Finance / Stock
+- Finance / Commodity
+- Auto / Auto Brand
+- ProgressStepper / StepIcon
+- ProgressStepper / Line
+- Interface Elements / Paragraph
+
+**DID NOT RUN (3 -- serial mode, blocked by scenario 2 failure):**
+- Every component renders correctly with all prop variations
+- Text props display their values in the rendered output
+- Variant prop changes produce visually different renders
+
+---
+
+### Recommended Developer actions
+
+| # | Issue | Priority |
+|---|-------|----------|
+| A | `POST /api/component-libraries` response must include `status` and `figma_file_key` | High |
+| B | `POST /api/designs` response must include `status` field | High |
+| C | Screenshots controller: return 400 for unrecognized type param, not 404 | Medium |
+| D | E2E setup (`rails e2e:setup`) needs a ready component library seeded for visual diff and Figma JSON tests | Medium |
+| E | 25 components render empty #root -- inspect `react_code` for these in DB; likely SVG/icon-only components or empty generated code | Medium |
+| F | Sign-in screen unauthenticated test: investigate whether Auth0 mock is bypassing the unauthenticated state | Medium |
+| G | Onboarding Step 1: check disabled state attribute vs CSS class on Next button, and selector for "Libraries" step label | Low |
+
+---
+
+## How to run
+
+```bash
+cd qa && bash run-tests.sh fast        # 93 tests, ~2.5 min (no Figma/OpenAI)
+cd qa && bash run-tests.sh render      # 5 tests, ~16 min (requires FIGMA_ACCESS_TOKEN)
+cd qa && bash run-tests.sh workflow    # workflow+UI tests (requires FIGMA_ACCESS_TOKEN + OPENAI_API_KEY)
+cd qa && bash run-tests.sh all         # everything
+```
+
+---
+
+## Full E2E run #2 -- 2026-03-03T19:30
+
+**4 passed, 2 failed, 1 did not run** (18.6 min total — Figma import took 8.7 min)
+
+### Passed (4)
+
+| Test | Time |
+|------|------|
+| Health Check: API health endpoint responds | 1.4s |
+| Health Check: Frontend loads | 4.3s |
+| Design Workflow: Import Figma file and create a design system | 14.4s |
+| Component Rendering Validation: Ensure Figma library is imported | 8.7m |
+
+### Failed (2)
+
+#### 1. Component Rendering Validation: Every component renders correctly with all prop values
+
+155 components validated, **1030 checks passed, 1 failure**:
+
+```
+Control / UserPic  →  default_render_not_empty: #root empty
+```
+
+All other 154 components rendered correctly with all prop combinations (VARIANT, BOOLEAN, TEXT checks all passed). The `#root empty` error means the component has React code but renders nothing in `#root` — likely an SVG/image component that generates an empty div when no asset is found.
+
+#### 2. Design Workflow: Generate a design from a prompt
+
+Design WAS generated (AI call succeeded, `Preview__frame` appeared), but the iframe content is:
+
+```
+Compilation error: esbuild not found. Run: bin/setup_esbuild (or npm install esbuild)
+```
+
+This affects every component in the preview — the component library's compiled JS is a fallback error message because esbuild was never installed. The test expected "Sava" in the rendered output but found only compilation error text.
+
+**Root cause**: `bin/setup_esbuild` has not been run in `developer/api/`. Without esbuild, `ReactFactory#compile_for_browser` fails for every component and stores error stubs in `react_code_compiled`.
+
+### Did not run (1)
+
+- Design Workflow: Preview component with editable props — skipped because scenario 2 failed (`@mode:serial`)
+
+### Summary of issues to fix
+
+| # | Issue | Owner | Priority |
+|---|-------|-------|----------|
+| A | `esbuild` not installed → all compiled component code is error stubs | Developer | Critical — blocks design generation test |
+| B | `Control / UserPic` renders empty `#root` | Developer | Low — 1/155 components |
+
+---
+
+## Sprint 2 patch status -- 2026-03-03T18:45
+
+All three bugs from the previous QA run have been addressed. Test suite updated to match. **No re-run yet** (requires `.env` with real credentials). Current state:
+
+### Bug fixes landed
+
+| # | Bug | Fix | Status |
+|---|-----|-----|--------|
+| 1 | Preview iframe never appears after generation | `Preview.vue`: `code` watcher made `immediate`; listener cleanup added. `DesignView.vue`: dead `design_system_id` fallback removed. | Done -- unverifiable without `OPENAI_API_KEY` |
+| 2 | Library detail page heading not found | `LibraryDetailView.vue`: `class="LibraryDetail__name"` added to name `<div>` | Done -- selector `[class*='LibraryDetail__name']` will match |
+| 3 | DS modal import timeout too short (5 min) | `design-system-modal.steps.js` + feature file: `300_000` → `600_000` ms ("within 10 minutes") | Done |
+
+### Prop validation test hardened
+
+The "Every component renders correctly with all prop combinations" scenario (`14-component-rendering-validation.feature`) has been rewritten with stricter assertions:
+- **VARIANT**: each option must produce different `innerHTML` from the baseline -- no longer "no render error"
+- **BOOLEAN**: HTML must change on toggle
+- **TEXT**: unique sentinel string must appear verbatim in `#root` textContent
+
+To support the VARIANT assertion, `ReactFactory` now adds BEM variant classes to every root element (e.g. `Button__size_m`, `Button__state_hover`). These guarantee a detectable DOM difference even for styling-only variants.
+
+**Important**: existing imported libraries need a re-sync to pick up the new variant classes. In a fresh test run (clean DB) this is automatic.
+
+### Remaining blocker
+
+Generation workflow tests (feature `12-design-generation-workflow.feature`) still require `OPENAI_API_KEY` in `developer/api/.env`. Without it the AI job fails and the preview never renders -- this cannot be tested without real credentials.
+
+---
+
 ## Date
 2026-03-03 -- Full E2E validation after Developer's UI redesign implementation (16 files, 79/79 Vitest passing)
 

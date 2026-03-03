@@ -112,6 +112,27 @@ RSpec.describe Figma::ReactFactory, "multi-variant dispatch" do
       expect(code).to include("buttonv0-")
       expect(code).to include("buttonv1-")
     end
+
+    it "adds variant BEM classes to each variant's root element" do
+      result = factory.generate_component_set(multi_variant_set)
+      code = result[:code]
+
+      # variant 0: Size=M, State=default
+      expect(code).to include("Button__size_m")
+      expect(code).to include("Button__state_default")
+
+      # variant 1: Size=M, State=hover
+      expect(code).to include("Button__state_hover")
+    end
+
+    it "includes variant BEM classes alongside the scoped root class" do
+      result = factory.generate_component_set(multi_variant_set)
+      code = result[:code]
+
+      # Root element must carry both the scoped class and the variant classes
+      expect(code).to match(/className="buttonv0-root Button__size_m Button__state_default"/)
+      expect(code).to match(/className="buttonv1-root Button__size_m Button__state_hover"/)
+    end
   end
 
   describe "single-variant component set with VARIANT prop" do

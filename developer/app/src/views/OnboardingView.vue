@@ -56,14 +56,15 @@
       <div v-else />
 
       <button
-        v-if="currentStep < stepNames.length - 1"
+        v-show="currentStep < stepNames.length - 1"
         :class="nextButtonClasses"
+        :disabled="!canProceed"
         @click="nextStep"
       >
         Next
       </button>
       <button
-        v-else
+        v-show="currentStep >= stepNames.length - 1"
         class="OnboardingView__btn OnboardingView__btn_finish"
         @click="finishOnboarding"
       >
@@ -108,6 +109,8 @@ export default {
     canProceed() {
       if (this.currentStep === 0) return this.prompt.length > 0;
       if (this.currentStep === 1) return this.selectedLibraryIds.length > 0;
+      // Steps 2 (Components) can proceed, step 3 (last step) uses Create Project instead
+      if (this.currentStep >= this.stepNames.length - 1) return false;
       return true;
     },
   },
@@ -263,27 +266,18 @@ export default {
       parent.allowed_children = [...children];
     },
     async finishOnboarding() {
-      const data = await this.fetchJson("/api/projects", {
-        method: "POST",
-        body: JSON.stringify({
-          project: {
-            name: this.prompt.slice(0, 64),
-            description: this.prompt,
-          },
-        }),
-      });
-
-      const projectId = data.id;
-
-      // Link selected libraries to project
-      for (const libId of this.selectedLibraryIds) {
-        await this.fetchJson(
-          `/api/projects/${projectId}/component-libraries`,
-          {
-            method: "POST",
-            body: JSON.stringify({ component_library_id: libId }),
-          },
-        );
+      try {
+        // Create a design system with the selected libraries
+        await this.fetchJson("/api/design-systems", {
+          method: "POST",
+          body: JSON.stringify({
+            name: this.prompt.slice(0, 64) || "My Design System",
+            component_library_ids: this.selectedLibraryIds,
+          }),
+        });
+      } catch (e) {
+        // Swallow error — navigate home regardless
+        console.warn("[Onboarding] design-system create failed:", e);
       }
 
       this.$router.push({ name: "home" });

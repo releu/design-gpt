@@ -1,8 +1,8 @@
 <template>
   <div class="OnboardingStepLibraries">
-    <div class="OnboardingStepLibraries__title">Choose component libraries</div>
+    <div class="OnboardingStepLibraries__title">Choose your design system</div>
     <div class="OnboardingStepLibraries__subtitle">
-      Select existing libraries or import a new one from Figma.
+      Select an existing import or add a new one from Figma.
     </div>
 
     <div v-if="availableLibraries.length > 0" class="OnboardingStepLibraries__list">

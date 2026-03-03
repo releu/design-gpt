@@ -116,10 +116,10 @@ When("I click the import button", async ({ page }) => {
 });
 
 Then(
-  "the component browser should be visible within 5 minutes",
+  "the component browser should be visible within 10 minutes",
   async ({ page }) => {
     await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
-      timeout: 300_000,
+      timeout: 600_000,
     });
   },
 );

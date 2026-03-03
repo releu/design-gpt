@@ -5,12 +5,12 @@
     </template>
 
     <template v-else-if="authorized === false">
-      <div class="App__sign-in">
-        <div class="App__sign-in-card" @click="handleLogin">
-          <img class="App__sign-in-icon" src="./assets/hand.png" alt="wave" />
+      <div class="App__signin">
+        <div class="App__signin-card" @click="handleLogin">
+          <img class="App__signin-icon" src="./assets/hand.png" alt="wave" />
         </div>
-        <div class="App__sign-in-label">Sign in to continue</div>
-        <div v-if="authError" class="App__sign-in-error">{{ authError.message || 'Authentication error' }}</div>
+        <div class="App__signin-label">Sign in to continue</div>
+        <div v-if="authError" class="App__signin-error">{{ authError.message || 'Authentication error' }}</div>
       </div>
     </template>
   </div>

@@ -169,9 +169,6 @@ export default {
       if (this.currentIterationId) {
         return `/api/iterations/${this.currentIterationId}/renderer`;
       }
-      if (this.design && this.design.design_system_id) {
-        return `/api/design-systems/${this.design.design_system_id}/renderer`;
-      }
       return "about:blank";
     },
   },

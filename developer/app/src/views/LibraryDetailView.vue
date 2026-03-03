@@ -1,7 +1,7 @@
 <template>
   <OnboardingLayout>
     <template #header>
-      <div v-if="library">{{ library.name }}</div>
+      <div v-if="library" class="LibraryDetail__name">{{ library.name }}</div>
     </template>
 
     <template #content>
