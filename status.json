@@ -1,1 +1,31 @@
-{}
+{
+  "messages": {
+    "manager2team": {
+      "count": 1,
+      "read_by": {
+        "qa": 1,
+        "developer": 1
+      }
+    },
+    "designer2team": {
+      "count": 1,
+      "read_by": {
+        "manager": 1,
+        "qa": 1,
+        "developer": 1
+      }
+    },
+    "qa2dev": {
+      "count": 2,
+      "read_by": {
+        "developer": 1
+      }
+    },
+    "dev2qa": {
+      "count": 1,
+      "read_by": {
+        "qa": 1
+      }
+    }
+  }
+}

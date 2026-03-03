@@ -46,29 +46,29 @@
     </template>
 
     <template #footer>
-      <div
+      <button
         v-if="currentStep > 0"
         class="OnboardingView__btn OnboardingView__btn_back"
         @click="currentStep--"
       >
         Back
-      </div>
+      </button>
       <div v-else />
 
-      <div
+      <button
         v-if="currentStep < stepNames.length - 1"
         :class="nextButtonClasses"
         @click="nextStep"
       >
         Next
-      </div>
-      <div
+      </button>
+      <button
         v-else
         class="OnboardingView__btn OnboardingView__btn_finish"
         @click="finishOnboarding"
       >
         Create Project
-      </div>
+      </button>
     </template>
   </OnboardingLayout>
 </template>

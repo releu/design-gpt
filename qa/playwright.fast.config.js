@@ -16,6 +16,7 @@ const testDir = defineBddConfig({
     "./features/09-api-ai-pipeline.feature",
     "./features/10-api-image-search.feature",
     "./features/18-onboarding-wizard.feature",
+    "./features/19-ui-layout-design-system.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen",

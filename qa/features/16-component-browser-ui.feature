@@ -3,7 +3,8 @@
 Feature: Component Library Browser UI
   Users can browse their imported component libraries, view individual
   components with live preview, inspect React code, and see configuration.
-  Libraries page at /libraries, detail at /libraries/:id.
+  ComponentDetail is shared across: design system modal, settings panel, library detail page.
+  UI reference: designer/06-design-system-modal.md, designer/05-design-page.md
 
   Scenario: Setup library for browser tests
     Given I navigate to the home page
@@ -11,6 +12,8 @@ Feature: Component Library Browser UI
     When I ensure the QA design system "QA Browser" is imported from Cubes
     Then the design system "QA Browser" should appear in the library selector
     And there are no console errors
+
+  # --- Libraries List Page ---
 
   Scenario: Libraries list page displays library cards
     Given I navigate to the libraries page
@@ -25,8 +28,31 @@ Feature: Component Library Browser UI
     And the library detail page should display the library name
     And there are no console errors
 
+  # --- ComponentDetail Structure ---
+
+  Scenario: ComponentDetail shows name, type badge, and status badge
+    Given I navigate to the home page
+    And the app container is visible
+    When I open the design system browser for "QA Browser"
+    And I click the first component in the menu
+    Then the component detail panel should show the component name
+    And the component detail should show the type badge
+    And the component detail should show the status badge
+    And there are no console errors
+
+  Scenario: ComponentDetail shows Figma link and sync action
+    Given I navigate to the home page
+    And the app container is visible
+    When I open the design system browser for "QA Browser"
+    And I click the first component in the menu
+    Then the component detail should show a "link to figma" link
+    And the component detail should show a "sync with figma" action
+    And there are no console errors
+
+  # --- Interactive Props ---
+
   @critical
-  Scenario: Component detail shows interactive props
+  Scenario: ComponentDetail shows interactive props with type-dependent controls
     Given I navigate to the home page
     And the app container is visible
     When I open the design system browser for "QA Browser"
@@ -35,7 +61,7 @@ Feature: Component Library Browser UI
     And variant props should have dropdown selects
     And there are no console errors
 
-  Scenario: Changing props updates the live preview
+  Scenario: Changing props updates the live preview in real-time
     Given I navigate to the home page
     And the app container is visible
     When I open the design system browser for "QA Browser"
@@ -45,7 +71,20 @@ Feature: Component Library Browser UI
     Then the preview iframe content should differ from the captured content
     And there are no console errors
 
-  Scenario: Component detail shows React code
+  # --- Live Preview ---
+
+  Scenario: ComponentDetail shows live preview iframe
+    Given I navigate to the home page
+    And the app container is visible
+    When I open the design system browser for "QA Browser"
+    And I click a component that has variant props
+    Then the live preview iframe should be visible with a border
+    And the preview iframe should render the component
+    And there are no console errors
+
+  # --- React Code ---
+
+  Scenario: ComponentDetail shows React code in read-only editor
     Given I navigate to the home page
     And the app container is visible
     When I open the design system browser for "QA Browser"
@@ -54,13 +93,18 @@ Feature: Component Library Browser UI
     Then the code section should display React source code
     And there are no console errors
 
-  Scenario: Component detail shows configuration for root components
+  # --- Configuration ---
+
+  Scenario: ComponentDetail shows configuration for root components
     Given I navigate to the home page
     And the app container is visible
     When I open the design system browser for "QA Browser"
     And I find a root component in the menu
     Then the Configuration section should show root badge "yes"
+    And the allowed children list should not be empty
     And there are no console errors
+
+  # --- Overview ---
 
   Scenario: Overview shows library file counts
     Given I navigate to the home page
@@ -69,6 +113,8 @@ Feature: Component Library Browser UI
     Then the Overview panel should show the design system name
     And the Overview should display file names with component counts
     And there are no console errors
+
+  # --- Preview Page ---
 
   Scenario: Component preview page renders all components in grid
     Given I navigate to the home page

@@ -1,33 +1,32 @@
 <template>
   <div class="ChatPanel">
-    <div class="ChatPanel__label">CHAT</div>
     <div class="ChatPanel__messages" ref="messagesList">
-      <div v-if="!messages || !messages.length" class="ChatPanel__empty">
-        No messages yet
-      </div>
+      <div class="ChatPanel__messages-spacer" />
       <div
         v-for="msg in messages"
         :key="msg.id"
         :class="['ChatPanel__message', `ChatPanel__message_${msg.author}`]"
       >
-        <div class="ChatPanel__message-author">{{ authorLabel(msg.author) }}</div>
-        <div class="ChatPanel__message-body" v-html="msg.html" />
+        <div class="ChatPanel__message-body" v-html="msg.html || msg.content || msg.body || ''" />
       </div>
     </div>
     <div class="ChatPanel__input-area">
-      <textarea
+      <input
+        type="text"
         class="ChatPanel__input"
         v-model="inputText"
-        placeholder="Improve this design..."
-        :disabled="sending"
-        @keydown.enter.ctrl.prevent="send"
+        placeholder="Type a message..."
+        :disabled="sending || generating"
+        @keydown="onKeydown"
       />
       <div
         class="ChatPanel__send"
-        :class="{ 'ChatPanel__send_disabled': !inputText.trim() || sending }"
+        :class="{ 'ChatPanel__send_disabled': !canSend }"
         @click="send"
       >
-        Send
+        <svg class="ChatPanel__send-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M1 13L13 7L1 1V5.5L8 7L1 8.5V13Z" fill="currentColor"/>
+        </svg>
       </div>
     </div>
   </div>
@@ -45,6 +44,10 @@ export default {
   props: {
     messages: Array,
     designId: String,
+    generating: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["sent"],
   data() {
@@ -53,20 +56,25 @@ export default {
       sending: false,
     };
   },
+  computed: {
+    canSend() {
+      return this.inputText.trim().length > 0 && !this.sending && !this.generating;
+    },
+  },
   methods: {
     async getToken() {
       return this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
     },
-    authorLabel(author) {
-      if (author === "user") return "You";
-      if (author === "designer") return "Designer";
-      if (author === "art_director") return "Art Director";
-      return author;
+    onKeydown(e) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.send();
+      }
     },
     async send() {
-      if (!this.inputText.trim() || this.sending) return;
+      if (!this.canSend) return;
       this.sending = true;
       const comment = this.inputText.trim();
       this.inputText = "";
@@ -101,22 +109,15 @@ export default {
 
 <style lang="scss">
 .ChatPanel {
-  background: white;
-  border-radius: 24px;
-  padding: 24px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
   display: flex;
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  gap: 16px;
-
-  &__label {
-    font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    flex-shrink: 0;
-  }
+  gap: 0;
+  overflow: hidden;
 
   &__messages {
     flex: 1;
@@ -125,75 +126,83 @@ export default {
     flex-direction: column;
     gap: 12px;
     min-height: 0;
+    padding-bottom: var(--sp-3);
 
     &::-webkit-scrollbar {
       display: none;
     }
   }
 
-  &__empty {
-    font: var(--font-text-m);
-    color: var(--gray);
-    text-align: center;
-    padding-top: 24px;
+  /* Spacer pushes messages to bottom (gravity-anchored) */
+  &__messages-spacer {
+    flex: 1 1 auto;
   }
 
   &__message {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    flex-shrink: 0;
 
+    /* CRITICAL: User = LEFT, plain text, no bubble */
     &_user {
-      align-items: flex-end;
+      align-items: flex-start;
 
       .ChatPanel__message-body {
-        background: var(--orange);
-        color: white;
+        background: transparent;
+        color: var(--text-primary);
+        padding: 0;
+        border-radius: 0;
+        font: var(--font-text-m);
       }
     }
 
+    /* AI/designer = RIGHT, gray bubble */
     &_designer,
     &_art_director {
-      align-items: flex-start;
+      align-items: flex-end;
+
+      .ChatPanel__message-body {
+        background: var(--bg-bubble-user);
+        color: var(--text-primary);
+        border-radius: var(--radius-md);
+        padding: var(--sp-2) var(--sp-3);
+      }
     }
   }
 
-  &__message-author {
-    font: var(--font-text-s);
-    color: var(--gray);
-    padding: 0 4px;
-  }
-
   &__message-body {
-    background: var(--superlightgray);
-    border-radius: 12px;
-    padding: 10px 14px;
     font: var(--font-text-m);
     max-width: 85%;
     line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
+  /* Input bar: pill-shaped, light gray bg */
   &__input-area {
     flex-shrink: 0;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    background: var(--bg-chip-active);
+    border-radius: var(--radius-pill);
+    height: 44px;
+    padding: 0 6px 0 var(--sp-3);
+    gap: var(--sp-2);
   }
 
   &__input {
-    border: 1px solid var(--lightgray);
-    border-radius: 12px;
-    padding: 12px;
+    flex: 1;
+    border: none;
+    background: transparent;
     font: var(--font-text-m);
-    resize: none;
-    height: 72px;
-    width: 100%;
-    box-sizing: border-box;
     outline: none;
-    transition: border-color 150ms ease;
+    height: 100%;
+    padding: 0;
+    color: var(--text-primary);
+    min-width: 0;
 
-    &:focus {
-      border-color: var(--orange);
+    &::placeholder {
+      color: var(--text-secondary);
     }
 
     &:disabled {
@@ -201,25 +210,33 @@ export default {
     }
   }
 
+  /* Send button: solid black circle */
   &__send {
-    background: var(--orange);
-    color: white;
-    border-radius: 32px;
-    padding: 12px 24px;
-    font: var(--font-text-m);
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    text-align: center;
-    transition: transform 150ms ease;
+    transition: transform 100ms ease, opacity 100ms ease;
+    flex-shrink: 0;
 
     &:active {
-      transform: scale(0.95);
+      transform: scale(0.9);
     }
 
     &_disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: default;
       pointer-events: none;
     }
+  }
+
+  &__send-icon {
+    color: var(--text-on-dark);
   }
 }
 </style>

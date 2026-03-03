@@ -2,24 +2,26 @@ import { mount } from "@vue/test-utils";
 import AIEngineSelector from "./AIEngineSelector.vue";
 
 describe("AIEngineSelector", () => {
-  it("displays the AI ENGINE label", () => {
+  it("displays the ai engine label", () => {
     const wrapper = mount(AIEngineSelector);
-    expect(wrapper.find(".AIEngineSelector__label").text()).toBe("AI ENGINE");
+    expect(wrapper.find(".AIEngineSelector__label").text()).toBe("ai engine");
   });
 
   it("displays the model name", () => {
     const wrapper = mount(AIEngineSelector);
-    expect(wrapper.find(".AIEngineSelector__model").text()).toBe("Qwen 325B");
+    expect(wrapper.find(".AIEngineSelector__model").text()).toBe("ChatGPT");
   });
 
-  it("emits generate when Generate button is clicked", async () => {
+  it("emits generate when generate button is clicked", async () => {
     const wrapper = mount(AIEngineSelector);
     await wrapper.find(".AIEngineSelector__generate").trigger("click");
     expect(wrapper.emitted("generate")).toHaveLength(1);
   });
 
-  it("renders the NDA toggle", () => {
+  it("displays the subtitle", () => {
     const wrapper = mount(AIEngineSelector);
-    expect(wrapper.find(".AIEngineSelector__toggle-text").text()).toBe("NDA");
+    expect(wrapper.find(".AIEngineSelector__subtitle").text()).toBe(
+      "don't share nda for now",
+    );
   });
 });

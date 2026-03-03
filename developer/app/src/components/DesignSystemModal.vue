@@ -537,12 +537,12 @@ export default {
 .DesignSystemModal {
   position: fixed;
   inset: 0;
-  background: #edece8;
-  padding: 32px;
+  background: var(--bg-modal-overlay);
+  padding: var(--sp-5);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-3);
   z-index: 200;
 
   &__top-bar {
@@ -550,17 +550,17 @@ export default {
   }
 
   &__close {
-    width: 44px;
-    height: 44px;
-    background: white;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-panel);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
-    color: var(--black);
+    color: var(--text-primary);
     transition: transform 150ms ease;
 
     &:active {
@@ -570,12 +570,13 @@ export default {
 
   &__box {
     flex: 1;
-    background: white;
-    border-radius: 24px;
+    background: var(--bg-panel);
+    border-radius: var(--radius-lg);
     padding: 40px;
     box-sizing: border-box;
     overflow-y: auto;
     min-height: 0;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 
     &::-webkit-scrollbar {
       display: none;
@@ -653,9 +654,9 @@ export default {
   &__do-import {
     display: inline-flex;
     padding: 14px 36px;
-    background: var(--orange);
-    color: white;
-    border-radius: 32px;
+    background: var(--accent-primary);
+    color: var(--text-on-dark);
+    border-radius: var(--radius-pill);
     font: var(--font-text-m);
     cursor: pointer;
     transition: transform 200ms ease;
@@ -734,9 +735,9 @@ export default {
 
   &__menu-subtitle {
     font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0;
     padding: 16px 10px 6px;
   }
 
@@ -936,9 +937,9 @@ export default {
 
     > span {
       font: var(--font-text-s);
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      text-transform: none;
+      letter-spacing: 0;
       padding: 6px 12px 6px 0;
       border-bottom: 1px solid var(--superlightgray);
     }
@@ -1112,9 +1113,9 @@ export default {
   &__save-btn {
     display: inline-flex;
     padding: 14px 36px;
-    background: var(--orange);
-    color: white;
-    border-radius: 32px;
+    background: var(--accent-primary);
+    color: var(--text-on-dark);
+    border-radius: var(--radius-pill);
     font: var(--font-text-m);
     cursor: pointer;
     margin-top: 24px;

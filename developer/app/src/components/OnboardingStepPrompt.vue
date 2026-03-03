@@ -29,9 +29,9 @@ export default {
 
 <style lang="scss">
 .OnboardingStepPrompt {
-  background: white;
-  border-radius: 24px;
-  padding: 40px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
 
   &__title {
     font: var(--font-header-m);

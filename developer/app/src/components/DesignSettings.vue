@@ -189,8 +189,8 @@ export default {
 
 <style lang="scss">
 .DesignSettings {
-  background: white;
-  border-radius: 24px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
   height: 100%;
   box-sizing: border-box;
   display: grid;
@@ -209,9 +209,9 @@ export default {
 
   &__menu-subtitle {
     font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0;
     padding: 16px 10px 6px;
 
     &:first-child {

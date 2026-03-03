@@ -1,15 +1,14 @@
 <template>
   <div class="AIEngineSelector">
-    <div class="AIEngineSelector__label">AI ENGINE</div>
+    <div class="AIEngineSelector__label">ai engine</div>
     <div class="AIEngineSelector__content">
-      <div class="AIEngineSelector__toggle">
-        <div class="AIEngineSelector__toggle-switch"></div>
-        <div class="AIEngineSelector__toggle-text">NDA</div>
+      <div class="AIEngineSelector__info">
+        <div class="AIEngineSelector__model">ChatGPT</div>
+        <div class="AIEngineSelector__subtitle">don't share nda for now</div>
       </div>
-      <div class="AIEngineSelector__model">Qwen 325B</div>
       <div class="AIEngineSelector__spacer"></div>
       <div class="AIEngineSelector__generate" @click="$emit('generate')">
-        Generate
+        generate
       </div>
     </div>
   </div>
@@ -24,17 +23,17 @@ export default {
 
 <style lang="scss">
 .AIEngineSelector {
-  background: white;
-  border-radius: 24px;
-  padding: 24px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
   box-sizing: border-box;
 
   &__label {
     font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 16px;
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: var(--sp-2);
   }
 
   &__content {
@@ -43,41 +42,20 @@ export default {
     gap: 12px;
   }
 
-  &__toggle {
+  &__info {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: default;
-    opacity: 0.5;
-
-    &-switch {
-      width: 36px;
-      height: 20px;
-      border-radius: 10px;
-      background: var(--lightgray);
-      position: relative;
-      flex-shrink: 0;
-
-      &::after {
-        content: "";
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: white;
-        position: absolute;
-        top: 2px;
-        left: 2px;
-      }
-    }
-
-    &-text {
-      font: var(--font-text-m);
-    }
+    flex-direction: column;
+    gap: 2px;
   }
 
   &__model {
+    font: var(--font-bold-m);
+    color: var(--text-primary);
+  }
+
+  &__subtitle {
     font: var(--font-text-m);
-    color: var(--gray);
+    color: var(--text-secondary);
   }
 
   &__spacer {
@@ -85,10 +63,10 @@ export default {
   }
 
   &__generate {
-    background: var(--black);
-    color: white;
+    background: var(--accent-primary);
+    color: var(--text-on-dark);
     padding: 12px 32px;
-    border-radius: 32px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
     font: var(--font-text-m);
     transition: transform ease-in-out 200ms;

@@ -8,6 +8,9 @@ Feature: Preview Rendering
   /api/design-systems/:id/renderer, or /api/iterations/:id/renderer.
   The renderer sends a "ready" message; the frontend responds with
   { type: "render", jsx: "..." }. Babel compiles JSX at runtime.
+  UI reference: designer/07-shared-components.md (preview frame #8),
+  designer/05-design-page.md (phone/desktop preview contexts),
+  designer/02-layout-structures.md (layout-dependent preview positioning)
 
   Background:
     Given a component library exists with compiled React components
@@ -30,6 +33,42 @@ Feature: Preview Rendering
     And render the component tree inside the #root element
     And the rendered content should contain "Hello"
 
+  # --- Phone Frame ---
+
+  @happy-path
+  Scenario: Phone frame preview styling
+    Given the Preview component is rendered with layout "mobile"
+    Then the preview frame should have a 2px solid black border
+    And the border-radius should be 72px (--radius-phone, simulating phone bezel)
+    And the background should be white (--bg-panel)
+    And the frame should maintain approximately 9:16 portrait aspect ratio
+    And the frame should be centered horizontally and vertically in its column
+    And the iframe content should scroll internally (not the frame itself)
+
+  @happy-path
+  Scenario: Phone frame notch indicator
+    Given the Preview component is rendered with layout "mobile" inside a two-column layout
+    Then a small horizontal notch line should extend from the left edge of the phone frame to the column divider
+
+  # --- Desktop Frame ---
+
+  @happy-path
+  Scenario: Desktop frame preview styling
+    Given the Preview component is rendered with layout "desktop"
+    Then the preview frame should have a 2px solid black border
+    And the border-radius should be 24px (--radius-lg)
+    And the background should be white (--bg-panel)
+    And the frame should fill the available width and height of the preview area
+
+  # --- Placeholder State ---
+
+  @happy-path
+  Scenario: Preview placeholder state before design is rendered
+    Given no design JSX has been sent to the preview iframe
+    Then the preview frame should display "preview" centered in secondary text color (--text-secondary)
+
+  # --- Rendering Behavior ---
+
   @happy-path
   Scenario: Design system renderer combines multiple libraries
     Given a design system has 2 component libraries
@@ -50,15 +89,7 @@ Feature: Preview Rendering
     Then a new postMessage should be sent to the iframe with the updated JSX
     And the iframe should re-render with the new content
 
-  @happy-path
-  Scenario: Mobile layout applies rounded iframe styling
-    Given the Preview component is rendered with layout "mobile"
-    Then the iframe should have border-radius of 72px (mobile phone shape)
-
-  @happy-path
-  Scenario: Desktop layout applies standard iframe styling
-    Given the Preview component is rendered with layout "desktop"
-    Then the iframe should have border-radius of 24px (standard card)
+  # --- Edge Cases ---
 
   @edge-case
   Scenario: Renderer handles missing component gracefully

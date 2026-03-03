@@ -6,9 +6,9 @@ set -euo pipefail
 #
 # Usage:
 #   bash qa/run-tests.sh              # Run all tests (includes slow Figma import)
-#   bash qa/run-tests.sh fast         # Run fast tests only (API, auth, health)
+#   bash qa/run-tests.sh fast         # Run fast tests only (API, auth, health, UI layout)
 #   bash qa/run-tests.sh render       # Run component rendering validation only
-#   bash qa/run-tests.sh workflow     # Run full design workflow tests only
+#   bash qa/run-tests.sh workflow     # Run full design workflow tests only (includes UI layout)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"

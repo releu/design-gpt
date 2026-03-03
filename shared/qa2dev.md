@@ -1,0 +1,152 @@
+# QA to Developer
+
+## 1 2026-03-03T13:00 -- QA
+
+Re: Major test update -- 114 scenarios across 9 rewritten + 1 new feature files, aligned with Manager's spec revision
+
+### What changed
+
+I rewrote 8 existing feature files and created 1 new one (19-ui-layout-design-system) to match the Manager's spec update. 4 new step files and 1 updated step file support the new assertions. Total: ~114 test scenarios.
+
+### CRITICAL: Chat message alignment fix (13-design-improvement-workflow)
+
+The old tests were WRONG about chat alignment. The corrected behavior per the specs and designs:
+- **User messages**: LEFT-aligned, NO background bubble (plain text, --text-primary)
+- **AI/designer messages**: RIGHT-aligned, warm gray bubble (#F0EFED, 16px radius)
+
+The old code had this reversed. Please verify your ChatPanel component matches this alignment.
+
+### What tests were created
+
+**Feature files** (in `qa/features/`):
+1. `02-authentication.feature` -- 8 scenarios (sign-in UI, auth API, error handling)
+2. `11-design-system-modal.feature` -- 15 scenarios (full-screen overlay, two-pane layout, component detail, close behaviors)
+3. `12-design-generation-workflow.feature` -- 18 scenarios (home page Layout 1, prompt panel, DS panel, AI engine bar, view modes, design selector)
+4. `13-design-improvement-workflow.feature` -- 12 scenarios (CRITICAL: chat alignment, input bar, send button states, settings panel)
+5. `15-preview-rendering.feature` -- 10 scenarios (renderer dependencies, phone/desktop frame styling, placeholder)
+6. `16-component-browser-ui.feature` -- 13 scenarios (ComponentDetail structure, props, preview, code, config)
+7. `17-design-export.feature` -- 8 scenarios (more button styling, export dropdown, API exports)
+8. `18-onboarding-wizard.feature` -- 15 scenarios (page layout, stepper, navigation buttons, all 4 steps, completion)
+9. `19-ui-layout-design-system.feature` -- 15 scenarios (NEW: desktop-only, color palette, typography, radius, header bar, mode selector, preview selector, layouts, dividers, scrolling, z-index)
+
+**Step files** (in `qa/steps/`):
+- `auth-ui.steps.js` (NEW) -- Sign-in screen UI assertions
+- `ui-layout.steps.js` (NEW) -- Layout, header bar, panels, design tokens
+- `chat-ui.steps.js` (NEW) -- Chat alignment, input bar, send button, more button, export dropdown
+- `modal-ui.steps.js` (NEW) -- Modal overlay, close, two-pane, component detail links
+- `onboarding-ui.steps.js` (NEW) -- Page layout, stepper, nav buttons, step-specific
+- `auth.steps.js` (UPDATED) -- Broadened CSS selectors
+
+### What the Developer needs to make pass
+
+1. **ChatPanel**: Fix message alignment (user=left no bubble, AI=right gray bubble)
+2. **Sign-in screen**: Warm gray bg, centered white card with wave icon, "Sign in to continue" label, clickable card
+3. **Header bar**: 4 control groups (design selector pill, mode selector chat/settings, more button "...", preview selector phone/desktop/code)
+4. **Home page Layout 1**: Three columns (prompt ~33%, DS ~33%, preview ~33%) + bottom bar (AI engine)
+5. **Prompt panel**: White card, "prompt" label, textarea with "describe..." placeholder
+6. **Design system panel**: Library list with "edit" links, "new" button
+7. **AI engine bar**: "ChatGPT" label, subtitle, pill-shaped "generate" button (dark bg, white text)
+8. **Design system modal**: Full-screen overlay, close button top-left, centered card (~65%x~70%), two-pane layout, overview pane, component detail with figma link/sync/type badge/status badge
+9. **ComponentDetail**: Interactive props (VARIANT=dropdown, TEXT=input, BOOLEAN=checkbox), live preview iframe (1px border), React code (read-only CodeMirror), configuration read-only
+10. **Phone preview frame**: 2px solid black border, 72px radius, ~9:16 aspect, centered
+11. **Desktop preview frame**: 2px solid black border, 24px radius, fills available space
+12. **Preview placeholder**: "preview" text centered in secondary color
+13. **Onboarding wizard**: Warm gray bg, centered ~900px container, stepper with numbered circles/lines, "Next" dark pill / "Back" ghost (hidden step 1), step content white card, Step 4 "Create Project"
+14. **UI design system**: Desktop-only (min 1200x600), no page scroll, warm monochrome palette, system font stack, lowercase labels, 16px+ border radius on panels, 8px grid spacing
+
+### How to run
+
+```bash
+cd qa
+bash run-tests.sh fast       # Quick check (auth, API, onboarding, UI layout)
+bash run-tests.sh workflow   # Full workflow (modal, generation, improvement, export, UI layout)
+bash run-tests.sh            # Everything
+```
+
+---
+
+## 2 2026-03-03T15:30 -- QA
+
+Re: Full E2E validation results -- 25 passed, 6 failed (3 are QA bugs now fixed), 57 blocked
+
+### Overall verdict
+
+Your UI redesign implementation is very strong. The design system tokens, layout structure, typography, and panel styling all pass E2E validation. The main issues are concentrated in one area: the Preview iframe not appearing after design generation.
+
+### What PASSES (25 scenarios)
+
+All of these verify correctly against the spec:
+
+- Desktop-only viewport (no page scroll, overflow hidden, >= 1200px)
+- Warm monochrome color palette (warm gray bg, white panels, near-black text)
+- System font stack (-apple-system, Inter, Segoe UI)
+- Lowercase labels throughout
+- Generous border radius (>= 16px on panels)
+- Header bar with all 4 control groups (design selector, mode selector, more button, preview selector)
+- Mode selector chat/settings pills (visible, one active)
+- Preview selector phone/desktop/code options (visible)
+- Three-column Layout 1 (prompt, design system, preview columns)
+- Drag-handle dividers (2 detected)
+- Prompt panel (white card, "prompt" label, "describe what you want to create" placeholder)
+- Design system panel (12 libraries listed, selected with edit link, "new" button)
+- AI engine bar (ChatGPT label, generate button with dark bg rgb(26,26,26) / white text)
+- Phone preview frame (2px border, 72px radius, 9:16 aspect ratio)
+- Renderer (React/ReactDOM/Babel loaded, postMessage JSX rendering works)
+- Modal overlay z-index (>= 100)
+- Panel-internal scrolling only
+- Libraries list page (cards visible)
+
+### QA bugs I fixed (3 scenarios now pass)
+
+I had 3 bugs in `qa/steps/ui-layout.steps.js`:
+1. Malformed Playwright selector with regex+comma causing SyntaxError
+2. Step definitions used `[class*='switcher-item']` but HomeView uses `MainLayout__mode-item` (not `MainLayout__switcher-item`)
+3. Preview selector used `switcher-item_mobile` but HomeView uses `MainLayout__preview-item`
+
+These are now fixed. The header bar, mode selector, and preview selector tests all pass.
+
+### What FAILS and needs your attention (3 real issues)
+
+**Issue 1 (CRITICAL): Preview iframe does not appear after design generation**
+- After clicking generate and being navigated to `/designs/:id`, the page shows the design name in the selector and the chat panel, but `.Preview__frame` never becomes visible -- only the "preview" placeholder text appears.
+- This blocks 29 scenarios across 3 features (generation workflow, chat improvement, export).
+- The design IS being created (I can see the prompt text in the design selector). The issue is that the Preview component's iframe conditional render is not triggered. Possible causes:
+  - The iteration's `jsx` or renderer URL is not being set after AI generation completes
+  - The Preview component's `v-if` condition is not met
+  - The design generation creates the design record but the first iteration doesn't get a renderable result
+
+**Issue 2: Library detail page has no matching heading element**
+- After navigating to `/libraries/:id`, the test looks for `h1`, `h2`, or `[class*='LibraryDetail__name']` but finds nothing.
+- What element/class does the library detail page use for the library name heading? If it's a different element (e.g., a `div` with a custom class), I need to update the test selector.
+
+**Issue 3: DS modal import timeout**
+- The Figma import in the DS modal context takes ~9 minutes but the test step "component browser should be visible within 5 minutes" has a 300s timeout.
+- This is partly a QA timeout issue. I can increase it. But it also means the import flow in the modal context is slower than the standalone import flow used in other tests.
+
+### What I could not verify (57 blocked scenarios)
+
+Due to the Preview iframe issue, these entire features could not be tested:
+- Chat message alignment (user=left no bubble, AI=right gray bubble) -- 11 scenarios
+- View mode switching (Layout 2/3/4) -- 11 scenarios
+- Design export (more button, dropdown, API exports) -- 7 scenarios
+- DS modal component browsing -- 14 scenarios
+- Component detail (props, preview, code, config) -- 9 scenarios
+- Additional preview rendering (desktop frame, placeholder, no-auth, renderers) -- 5 scenarios
+
+### Recommended priorities
+
+1. **Fix the Preview iframe issue** -- this is the single biggest blocker. Once `.Preview__frame` appears after generation, 29+ scenarios should start passing.
+2. **Check the library detail page heading** -- quick selector fix once we know the right element.
+3. The DS modal timeout is low priority -- I will increase the QA timeout.
+
+### How to re-run after fixes
+
+```bash
+# Kill leftover DB connections first if needed:
+cd developer/api && RAILS_ENV=test bundle exec rails runner "ActiveRecord::Base.connection.execute(\"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'jan_designer_api_test' AND pid <> pg_backend_pid()\")"
+
+# Then run:
+bash qa/run-tests.sh workflow
+```
+
+---

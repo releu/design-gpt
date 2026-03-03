@@ -11,6 +11,7 @@ const testDir = defineBddConfig({
     "./features/15-preview-rendering.feature",
     "./features/16-component-browser-ui.feature",
     "./features/17-design-export.feature",
+    "./features/19-ui-layout-design-system.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen",

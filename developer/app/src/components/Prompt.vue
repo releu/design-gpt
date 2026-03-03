@@ -1,11 +1,11 @@
 <template>
   <div class="Prompt">
-    <div class="Prompt__label">PROMPT</div>
+    <div class="Prompt__label">prompt</div>
     <textarea
       class="Prompt__field"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
-      placeholder="enter prompt"
+      placeholder="describe what you want to create"
       autofocus
     />
   </div>
@@ -23,9 +23,9 @@ export default {
 
 <style lang="scss">
 .Prompt {
-  background: white;
-  border-radius: 24px;
-  padding: 24px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -33,10 +33,10 @@ export default {
 
   &__label {
     font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 16px;
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: var(--sp-2);
     flex-shrink: 0;
   }
 
@@ -48,6 +48,11 @@ export default {
     outline: none;
     width: 100%;
     box-sizing: border-box;
+    color: var(--text-primary);
+
+    &::placeholder {
+      color: var(--text-secondary);
+    }
   }
 }
 </style>

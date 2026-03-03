@@ -6,6 +6,7 @@
 
 <script>
 export default {
+  name: "Preview",
   props: {
     code: String,
     renderer: String,
@@ -42,7 +43,7 @@ export default {
     });
   },
   watch: {
-    code(newValue, oldValue) {
+    code() {
       this.renderCode();
     },
   },
@@ -51,6 +52,9 @@ export default {
 
 <style lang="scss">
 .Preview {
+  width: 100%;
+  height: 100%;
+
   &_mobile &__frame {
     border: 0;
     margin: 0;
@@ -58,8 +62,8 @@ export default {
     height: 100%;
     box-sizing: border-box;
     overflow: auto;
-    background: white;
-    border-radius: 72px;
+    background: var(--bg-panel);
+    border-radius: 0;
 
     &::-webkit-scrollbar {
       display: none;
@@ -73,8 +77,8 @@ export default {
     height: 100%;
     box-sizing: border-box;
     overflow: auto;
-    background: white;
-    border-radius: 24px;
+    background: var(--bg-panel);
+    border-radius: 0;
 
     &::-webkit-scrollbar {
       display: none;

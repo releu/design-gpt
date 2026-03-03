@@ -1,6 +1,6 @@
 <template>
   <div class="LibrarySelector">
-    <div class="LibrarySelector__label">DESIGN SYSTEM</div>
+    <div class="LibrarySelector__label">design system</div>
     <div class="LibrarySelector__list">
       <div
         :class="['LibrarySelector__item', { 'LibrarySelector__item_selected': modelValue === lib.id }]"
@@ -9,10 +9,10 @@
         @click="$emit('update:modelValue', lib.id)"
       >
         <div class="LibrarySelector__item-name">{{ lib.name || 'Unnamed' }}</div>
-        <div class="LibrarySelector__item-browse" @click.stop="openDesignSystem(lib)">Browse</div>
+        <div class="LibrarySelector__item-browse" @click.stop="openDesignSystem(lib)">edit</div>
       </div>
     </div>
-    <div class="LibrarySelector__new-ds" @click="showModal = true">New design system</div>
+    <div class="LibrarySelector__new-ds" @click="showModal = true">new</div>
 
     <DesignSystemModal v-if="showModal" :designSystem="editingDS" @close="showModal = false; editingDS = null" @saved="onSaved" />
   </div>
@@ -53,9 +53,9 @@ export default {
 
 <style lang="scss">
 .LibrarySelector {
-  background: white;
-  border-radius: 24px;
-  padding: 24px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -63,10 +63,10 @@ export default {
 
   &__label {
     font: var(--font-text-s);
-    color: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 16px;
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: var(--sp-2);
     flex-shrink: 0;
   }
 
@@ -91,11 +91,11 @@ export default {
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--bg-chip-active);
     }
 
     &_selected {
-      background: var(--superlightgray);
+      background: var(--bg-chip-active);
     }
 
     &-name {
@@ -105,13 +105,13 @@ export default {
 
     &-browse {
       font: var(--font-text-s);
-      color: var(--gray);
+      color: var(--text-secondary);
       cursor: pointer;
       opacity: 0;
       transition: opacity 150ms ease;
 
       &:hover {
-        color: var(--orange);
+        color: var(--text-primary);
       }
     }
 
@@ -122,19 +122,21 @@ export default {
 
   &__new-ds {
     margin-top: auto;
-    padding: 12px 0;
+    padding: 10px 24px;
     text-align: center;
-    border: 1px dashed var(--lightgray);
-    border-radius: 20px;
-    color: var(--black);
+    background: var(--bg-panel);
+    border: none;
+    border-radius: var(--radius-pill);
+    color: var(--text-primary);
     font: var(--font-text-m);
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 150ms ease, border-color 150ms ease;
+    align-self: flex-start;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: background 150ms ease;
 
     &:hover {
-      background: var(--superlightgray);
-      border-color: var(--gray);
+      background: var(--bg-chip-active);
     }
   }
 }

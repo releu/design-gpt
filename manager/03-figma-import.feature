@@ -6,6 +6,7 @@ Feature: Figma Component Library Import
   Technical: Figma API via Client, pipeline: Importer -> AssetExtractor ->
   ReactFactory -> VisualDiff. Sync is async via ComponentLibrarySyncJob.
   Status flow: pending -> discovering -> importing -> converting -> comparing -> ready | error.
+  UI reference: designer/06-design-system-modal.md (overview pane, add file input)
 
   Background:
     Given the user is logged in as "alice@example.com"
@@ -47,6 +48,14 @@ Feature: Figma Component Library Import
     And the progress updates as the pipeline advances through stages
 
   @happy-path
+  Scenario: Import progress is visible in the design system modal
+    Given the design system modal is open on the overview pane
+    And a library sync is in progress
+    Then the overview area should show a progress bar or step indicator
+    And progress should display "step N/4" with a descriptive message (e.g. "Discovering components...")
+    And the left sidebar may start showing components as they are discovered
+
+  @happy-path
   Scenario: Duplicate Figma URL returns existing library
     Given a component library already exists with url "https://www.figma.com/design/abc123/my-design-system"
     When the user sends POST /api/component-libraries with the same url
@@ -69,12 +78,40 @@ Feature: Figma Component Library Import
     And each library should have an "is_own" flag
 
   @happy-path
+  Scenario: Add a Figma file via the modal overview pane
+    Given the design system modal is open on the overview pane
+    When the user enters a Figma URL in the "add figma file" text input
+    And clicks the "add" button next to the input
+    Then a POST request should create a new component library linked to this design system
+    And the library sync should begin automatically
+    And a progress indicator should replace the "add" button while importing
+    And when the sync completes the new file should appear in the figma files list
+    And the left sidebar should update to show the newly discovered components
+
+  @happy-path
+  Scenario: Open and remove Figma files from the modal overview
+    Given the design system modal is open with 2 linked Figma files
+    Then each file row should show the file name, an "open" link, and a "remove" link
+    When the user clicks "open" on a file
+    Then the Figma file should open in a new browser tab
+    When the user clicks "remove" on a file
+    Then the library should be removed from this design system (with confirmation)
+
+  @happy-path
   Scenario: Re-sync an existing library from Figma
     Given a component library exists with status "ready"
     When the user sends POST /api/component-libraries/:id/sync
     Then the library status should reset to "pending"
     And a new sync job should be enqueued
     And existing components should be updated rather than duplicated
+
+  @happy-path
+  Scenario: Sync with Figma via the modal overview actions
+    Given the design system modal is open on the overview pane
+    When the user clicks "sync with figma" in the actions section
+    Then a re-sync should be triggered for all linked libraries
+    And the overview should show sync progress information
+    And when syncing completes the component browser should refresh with updated components
 
   @happy-path
   Scenario: Figma conventions auto-detect root components
@@ -118,6 +155,13 @@ Feature: Figma Component Library Import
     When the sync pipeline runs
     Then the library status should be "error"
     And the progress should contain an "error" message describing the failure
+
+  @error-handling
+  Scenario: Sync failure shows error in the modal overview
+    Given the design system modal is open on the overview pane
+    And a sync fails for a linked library
+    Then the overview should display an error message describing the failure
+    And individual components that failed code generation should show a "no code" status badge in the left sidebar
 
   @error-handling
   Scenario: Re-import a single component

@@ -3,6 +3,8 @@ Feature: Design Management
   Users can list, view, rename, duplicate, delete, and export their designs.
   Technical: All routes scoped under /api/designs. Designs belong to User.
   Exports: PNG image, React project zip, Figma JSON tree.
+  UI reference: designer/05-design-page.md (export menu, design selector dropdown),
+  designer/07-shared-components.md (design selector #2, more button #5)
 
   Background:
     Given the user is logged in as "alice@example.com"
@@ -23,11 +25,27 @@ Feature: Design Management
     And the response should contain 3 chat messages in order
 
   @happy-path
-  Scenario: Design list appears in the home page dropdown
+  Scenario: Design selector dropdown on the header bar
     Given the user has designs "Design A", "Design B"
-    When the user visits the home page
-    Then the design dropdown in the top bar should list "Design A" and "Design B"
-    And the option "(+) new design" should be present
+    When the user visits any page
+    Then the design selector should be a pill-shaped element in the header bar (left position)
+    And it should show the current design name (or "new design" on the home page)
+    And a small downward caret/chevron should appear to the right of the text
+    And the selector should be ~160px minimum width, ~36px height
+    When the user clicks the design selector
+    Then a dropdown card should appear below (white, 16px border-radius, subtle shadow)
+    And "(+) new design" should always be the first item
+    And all user designs should be listed below, ordered by most recent
+    And each item should be 14px text, ~36px row height, full-width hover highlight
+
+  @happy-path
+  Scenario: Selecting a design from the dropdown navigates to it
+    Given the user is on a design page
+    And the design selector dropdown is open
+    When the user selects "Design A" from the dropdown
+    Then the page should navigate to the Design A page
+    When the user reopens the dropdown and selects "(+) new design"
+    Then the user should be redirected to the home page
 
   @happy-path
   Scenario: Rename a design
@@ -79,11 +97,15 @@ Feature: Design Management
     And the response should include design_id, name, tree, jsx, and component_library_ids
 
   @happy-path
-  Scenario: Export menu is accessible from the design page
+  Scenario: Export menu accessible via the more button
     Given the user is on a design page with a completed design
-    Then a "..." button should be visible next to the phone/desktop/code view switcher
+    Then a "..." more button should be visible in the header bar (center-right position)
+    And the more button should display as three dots in primary text color with no background or border
+    And the clickable area should be ~36x36px (larger than visible text)
     When the user clicks the "..." button
-    Then a dropdown menu should appear with the following actions:
+    Then a dropdown menu should appear anchored below the button
+    And the dropdown should be a white card with 16px border-radius and subtle shadow
+    And it should contain the following items (14px text, hover = light gray background):
       | action                  |
       | Download React project  |
       | Download image          |

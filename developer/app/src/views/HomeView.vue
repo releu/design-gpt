@@ -1,7 +1,7 @@
 <template>
-  <MainLayout>
-    <template #top-bar-left>
-      <div class="MainLayout__history">
+  <MainLayout layout="home">
+    <template #design-selector>
+      <div class="MainLayout__design-selector">
         new design
         <select value="new" @change="onDesignSelect">
           <option value="new">(+) new design</option>
@@ -9,6 +9,34 @@
             {{ d.name || `design #${d.id}` }}
           </option>
         </select>
+      </div>
+    </template>
+
+    <template #mode-selector>
+      <div class="MainLayout__mode-selector">
+        <div class="MainLayout__mode-item MainLayout__mode-item_active">chat</div>
+        <div class="MainLayout__mode-item">settings</div>
+      </div>
+    </template>
+
+    <template #more-button>
+      <button class="MainLayout__more-button MainLayout__more-btn">...</button>
+    </template>
+
+    <template #preview-selector>
+      <div class="MainLayout__preview-selector">
+        <div
+          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'phone' }]"
+          @click="previewMode = 'phone'"
+        >phone</div>
+        <div
+          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'desktop' }]"
+          @click="previewMode = 'desktop'"
+        >desktop</div>
+        <div
+          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'code' }]"
+          @click="previewMode = 'code'"
+        >code</div>
       </div>
     </template>
 
@@ -22,6 +50,14 @@
 
     <template #ai-engine>
       <AIEngineSelector @generate="generateView" />
+    </template>
+
+    <template #preview>
+      <div :class="previewPanelClass">
+        <div class="MainLayout__preview-empty">
+          <div class="MainLayout__preview-empty-text">preview</div>
+        </div>
+      </div>
     </template>
 
     <template #overlay>
@@ -67,7 +103,14 @@ export default {
       importFigmaFileUrl: "",
       showFigmaImport: false,
       designSystems: [],
+      previewMode: "phone",
     };
+  },
+  computed: {
+    previewPanelClass() {
+      if (this.previewMode === "desktop") return "MainLayout__preview-panel MainLayout__preview-panel_desktop";
+      return "MainLayout__preview-panel MainLayout__preview-panel_mobile";
+    },
   },
   methods: {
     onDesignSelect(e) {

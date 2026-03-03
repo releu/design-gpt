@@ -4,10 +4,13 @@
       <RouterView />
     </template>
 
-    <template v-else>
-      <div class="App__signin App__login">
-        <a href="#" @click.prevent="handleLogin"></a>
-        <button class="App__login-btn" @click.prevent="handleLogin">Log In</button>
+    <template v-else-if="authorized === false">
+      <div class="App__sign-in">
+        <div class="App__sign-in-card" @click="handleLogin">
+          <img class="App__sign-in-icon" src="./assets/hand.png" alt="wave" />
+        </div>
+        <div class="App__sign-in-label">Sign in to continue</div>
+        <div v-if="authError" class="App__sign-in-error">{{ authError.message || 'Authentication error' }}</div>
       </div>
     </template>
   </div>
@@ -121,26 +124,62 @@ export default {
 
 <style lang="scss">
 .App {
+  height: 100%;
+
   &__signin {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-page);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
 
-    a {
-      display: block;
-      height: 160px;
-      width: 160px;
-      background: url("./assets/hand.png") no-repeat center;
-      background-size: contain;
-      cursor: grab;
-      transition: transform ease-in-out 200ms;
-      border-radius: 16px;
+  &__signin-card {
+    width: 120px;
+    height: 120px;
+    background: var(--bg-panel);
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 200ms ease;
 
-      &:active {
-        transform: scale(0.9);
-      }
+    &:hover {
+      transform: scale(1.03);
     }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  &__signin-icon {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  &__signin-label {
+    margin-top: var(--sp-3);
+    font: var(--font-text-m);
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  &__signin-error {
+    margin-top: var(--sp-2);
+    font: 400 12px/16px var(--ff-text);
+    color: #991b1b;
+    text-align: center;
+    max-width: 300px;
   }
 }
 </style>

@@ -1,7 +1,8 @@
 <template>
-  <MainLayout :viewMode="viewMode" :leftWide="panelMode === 'settings'">
-    <template #top-bar-left>
-      <div class="MainLayout__history" v-if="design">
+  <MainLayout :layout="effectiveLayout">
+    <!-- Design selector -->
+    <template #design-selector>
+      <div class="MainLayout__design-selector MainLayout__history" v-if="design">
         {{ design.name || `design #${id}` }}
         <select :value="id" @change="onDesignSelect">
           <option value="new">(+) new design</option>
@@ -10,31 +11,59 @@
           </option>
         </select>
       </div>
-      <div class="MainLayout__panel-switcher">
+    </template>
+
+    <!-- Mode selector (chat / settings) -->
+    <template #mode-selector>
+      <div class="MainLayout__mode-selector MainLayout__panel-switcher">
         <div
-          :class="['MainLayout__switcher-item', { 'MainLayout__switcher-item_active': panelMode === 'chat' }]"
+          :class="['MainLayout__mode-item MainLayout__switcher-item', { 'MainLayout__mode-item_active MainLayout__switcher-item_active': panelMode === 'chat' }]"
           @click="panelMode = 'chat'"
-        >Chat</div>
+        >chat</div>
         <div
-          :class="['MainLayout__switcher-item', { 'MainLayout__switcher-item_active': panelMode === 'settings' }]"
+          :class="['MainLayout__mode-item MainLayout__switcher-item', { 'MainLayout__mode-item_active MainLayout__switcher-item_active': panelMode === 'settings' }]"
           @click="panelMode = 'settings'"
-        >Settings</div>
+        >settings</div>
       </div>
     </template>
 
-    <template #top-bar-right>
-      <div class="MainLayout__switcher">
-        <div :class="switcherClasses('code')" @click="viewMode = 'code'">&lt;/&gt;</div>
-        <div :class="switcherClasses('mobile')" @click="viewMode = 'mobile'"></div>
-        <div :class="switcherClasses('desktop')" @click="viewMode = 'desktop'"></div>
+    <!-- More button -->
+    <template #more-button>
+      <button class="MainLayout__more-button MainLayout__more-btn" @click.stop="showExportMenu = !showExportMenu">
+        ...
+        <div v-if="showExportMenu" class="MainLayout__export-dropdown">
+          <div class="MainLayout__export-item" @click="exportReact">Download React project</div>
+          <div class="MainLayout__export-item" @click="exportImage">Download image</div>
+          <div class="MainLayout__export-item" @click="exportFigma">Figma (alpha)</div>
+        </div>
+      </button>
+    </template>
+
+    <!-- Preview selector -->
+    <template #preview-selector>
+      <div class="MainLayout__preview-selector MainLayout__switcher">
+        <div
+          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'mobile' }]"
+          @click="viewMode = 'mobile'"
+        >phone</div>
+        <div
+          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'desktop' }]"
+          @click="viewMode = 'desktop'"
+        >desktop</div>
+        <div
+          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'code' }]"
+          @click="viewMode = 'code'"
+        >code</div>
       </div>
     </template>
 
-    <template #prompt>
+    <!-- Left panel (chat or settings) -->
+    <template #left-panel>
       <ChatPanel
         v-if="panelMode === 'chat'"
         :messages="design ? design.chat : []"
         :designId="id"
+        :generating="design && design.status === 'generating'"
         @sent="fetchDesign"
       />
       <DesignSettings
@@ -43,16 +72,36 @@
       />
     </template>
 
-    <template #preview>
-      <div class="MainLayout__preview-panel" v-if="viewMode === 'code'">
-        <CodeField v-model="code" language="jsx" />
+    <!-- Legacy prompt slot (used by home layout; provide empty) -->
+    <template #prompt>
+      <ChatPanel
+        v-if="panelMode === 'chat'"
+        :messages="design ? design.chat : []"
+        :designId="id"
+        :generating="design && design.status === 'generating'"
+        @sent="fetchDesign"
+      />
+      <DesignSettings
+        v-else-if="panelMode === 'settings' && design"
+        :componentLibraryIds="design.component_library_ids"
+      />
+    </template>
+
+    <!-- Code editor (for code layout) -->
+    <template #code-editor>
+      <div class="MainLayout__preview-panel" style="height: 100%;">
+        <CodeField v-model="code" language="javascript" @change="onCodeChange" />
       </div>
+    </template>
+
+    <!-- Preview -->
+    <template #preview>
       <div
+        v-if="viewMode === 'mobile' || viewMode === 'code'"
         class="MainLayout__preview-panel MainLayout__preview-panel_mobile"
-        v-else-if="viewMode === 'mobile'"
       >
         <div class="MainLayout__preview-empty" v-if="!code">
-          <div class="MainLayout__preview-empty-text">Generated design will appear here</div>
+          <div class="MainLayout__preview-empty-text">preview</div>
         </div>
         <Preview
           v-else
@@ -62,11 +111,11 @@
         />
       </div>
       <div
-        class="MainLayout__preview-panel MainLayout__preview-panel_desktop"
         v-else
+        class="MainLayout__preview-panel MainLayout__preview-panel_desktop"
       >
         <div class="MainLayout__preview-empty" v-if="!code">
-          <div class="MainLayout__preview-empty-text">Generated design will appear here</div>
+          <div class="MainLayout__preview-empty-text">preview</div>
         </div>
         <Preview
           v-else
@@ -106,9 +155,16 @@ export default {
       panelMode: "chat",
       currentIterationId: null,
       pollTimer: null,
+      showExportMenu: false,
     };
   },
   computed: {
+    effectiveLayout() {
+      if (this.viewMode === "mobile") return "phone";
+      if (this.viewMode === "desktop") return "desktop";
+      if (this.viewMode === "code") return "code";
+      return "phone";
+    },
     previewRenderer() {
       if (this.currentIterationId) {
         return `/api/iterations/${this.currentIterationId}/renderer`;
@@ -137,13 +193,6 @@ export default {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) this.allDesigns = await res.json();
-    },
-    switcherClasses(name) {
-      return {
-        "MainLayout__switcher-item": true,
-        [`MainLayout__switcher-item_${name}`]: true,
-        "MainLayout__switcher-item_active": this.viewMode === name,
-      };
     },
     async fetchDesign() {
       const token = await this.getAccessTokenSilently({
@@ -192,11 +241,33 @@ export default {
         this.pollTimer = null;
       }
     },
+    onCodeChange() {
+      // auto-save could go here
+    },
+    async exportReact() {
+      this.showExportMenu = false;
+      const token = await this.getAccessTokenSilently({
+        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
+      });
+      window.open(`/api/designs/${this.id}/export_react?token=${token}`);
+    },
+    async exportImage() {
+      this.showExportMenu = false;
+      const token = await this.getAccessTokenSilently({
+        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
+      });
+      window.open(`/api/designs/${this.id}/export_image?token=${token}`);
+    },
+    exportFigma() {
+      this.showExportMenu = false;
+      // Figma plugin pairing
+    },
   },
   mounted() {
     this.fetchDesign();
     this.fetchAllDesigns();
     this.startPolling();
+    document.addEventListener("click", () => { this.showExportMenu = false; });
   },
   beforeUnmount() {
     this.stopPolling();

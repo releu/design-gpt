@@ -43,10 +43,8 @@ describe("LibrarySelector", () => {
     expect(wrapper.findAll(".LibrarySelector__item")).toHaveLength(0);
   });
 
-  it("shows the New design system button", () => {
+  it("shows the new button", () => {
     const wrapper = mount(LibrarySelector);
-    expect(wrapper.find(".LibrarySelector__new-ds").text()).toBe(
-      "New design system",
-    );
+    expect(wrapper.find(".LibrarySelector__new-ds").text()).toBe("new");
   });
 });

@@ -4,25 +4,44 @@ Feature: Design System Management
   Design systems serve as the component palette for AI design generation.
   Technical: DesignSystem has_many ComponentLibraries through DesignSystemLibraries.
   Configuration (is_root, allowed_children) is set automatically from Figma conventions.
+  UI reference: designer/06-design-system-modal.md (full-screen modal),
+  designer/04-home-new-design.md (design system panel on home page)
 
   Background:
     Given the user is logged in as "alice@example.com"
 
   @critical @happy-path
+  Scenario: Design system modal opens as full-screen overlay
+    Given the user is on the home page
+    When the user clicks "new" in the design system panel
+    Then a full-screen overlay should appear with background matching --bg-modal-overlay
+    And a close button (x) should be visible in the top-left corner of the overlay (~36px circle, white bg, black x)
+    And a centered modal card should appear (~65% viewport width, ~70% viewport height)
+    And the modal card should have white background, 24px border-radius, subtle shadow, and 24px padding
+
+  @critical @happy-path
+  Scenario: Design system modal has two-pane layout
+    Given the design system modal is open
+    Then the modal should have a left navigation sidebar (~35% width)
+    And a right content area (~65% width)
+    And the left sidebar should show a "general" section header with "overview" item below it
+    And clicking "overview" should highlight it with a light gray background
+
+  @critical @happy-path
   Scenario: Create a new design system via the modal
     Given the user has imported a Figma component library that is "ready"
-    When the user clicks "New design system" on the home page
-    Then the design system modal should appear
-    When the user adds a Figma URL and clicks "Import"
-    Then the import progress bar should be visible
+    When the user clicks "new" in the design system panel on the home page
+    Then the design system modal should appear with the overview pane active
+    And the right panel should show a name text input field
+    When the user enters "My Design System" in the name input
+    And adds a Figma URL in the "add figma file" input and clicks "add"
+    Then the import progress should be visible in the overview area
     When the import completes
-    Then the component browser should appear with a left menu listing all components
-    And the right panel should show the "Overview" with a name input field
-    When the user enters "My Design System" as the name
-    And clicks "Save"
+    Then the left sidebar should list components grouped by Figma file name
+    And the name should be saved automatically (on blur or modal close -- no explicit Save button)
+    When the user closes the modal
     Then a DesignSystem should be created with name "My Design System"
     And the DesignSystem should be linked to the imported component libraries
-    And the modal should close
     And the design system should appear in the library selector on the home page
 
   @critical @happy-path
@@ -40,22 +59,59 @@ Feature: Design System Management
     And each should include id, name, component_library_ids, and libraries array
 
   @happy-path
-  Scenario: Browse an existing design system
-    Given the user has a design system "Example" with components
-    When the user clicks "Browse" next to the "Example" design system
-    Then the design system modal should open showing all components
-    And the Overview should display the design system name and library file counts
-    And each component should be selectable from the left menu
+  Scenario: Modal overview pane shows design system details
+    Given the user has a design system "Example" with 2 linked Figma files
+    When the user clicks "edit" next to the "Example" design system on the home page
+    Then the design system modal should open with the overview pane active
+    And the right panel should show the label "design system" in bold
+    And a text input should contain the name "Example"
+    And the "figma files" section should list 2 files as bullet items
+    And each file item should show: file name (linked), "open" link, "remove" link
+    And below the file list there should be an "add figma file" input with an "add" button
+    And an "actions:" section should contain a "sync with figma" link
 
   @happy-path
-  Scenario: View component detail in the browser
+  Scenario: Browse components in the left sidebar organized by Figma file
+    Given the design system modal is open with components from 2 Figma files
+    Then the left sidebar should show:
+      | section              | items                                  |
+      | general              | overview                               |
+      | figma-file-1-name    | ComponentA, ComponentB, ComponentC     |
+      | figma-file-2-name    | ComponentD, ComponentE                 |
+    And file names should appear as gray section headers (13px, secondary text)
+    And component names should be indented (~16px left padding) in primary text (14px)
+    And the sidebar should scroll independently if the component list overflows
+
+  @happy-path
+  Scenario: View component detail in the modal
     Given the design system modal is open with imported components
-    When the user clicks on a component "Button" in the left menu
-    Then the right panel should show the ComponentDetail view
-    And the component name "Button" should be displayed
-    And the component type badge should show "Component Set"
-    And the props section should list all available props with their types
-    And the preview iframe should render the component with default props
+    When the user clicks on a component "Button" in the left sidebar
+    Then the selected component should get a light gray highlight background
+    And the right panel should show the ComponentDetail view
+    And the component name "Button" should be displayed (16px, bold)
+    And a "link to figma" link should open the Figma component in a new tab
+    And a "sync with figma" link should trigger re-import of this specific component
+    And the component type badge should show "Component Set" (pill-shaped)
+    And the status badge should indicate the import status ("ready", "importing", or "no code")
+
+  @happy-path
+  Scenario: Component detail shows props with type-dependent controls
+    Given the user is viewing a component "Button" in the modal
+    Then the "props" section should list each prop with an interactive control:
+      | prop_type | control                                  |
+      | VARIANT   | Dropdown/select with all variant values   |
+      | TEXT      | Text input field                          |
+      | BOOLEAN   | Checkbox                                  |
+    And changing any prop value should send a postMessage to the live preview iframe with updated JSX
+
+  @happy-path
+  Scenario: Component detail shows live preview
+    Given the user is viewing a component "Button" in the modal
+    Then a "live preview" section should show a bordered iframe (1px solid border)
+    And the iframe should render the component with the current prop values
+    And the iframe should take full width of the right pane (~200-300px height)
+    When the user changes a prop value
+    Then the preview should update in real-time
 
   @happy-path
   Scenario: Interactive prop editing updates preview
@@ -63,6 +119,13 @@ Feature: Design System Management
     When the user selects "hover" from the "State" dropdown
     Then the preview iframe should re-render the component with the "hover" state
     And the generated JSX should include the updated prop value
+
+  @happy-path
+  Scenario: Component detail shows React code section
+    Given the user is viewing a component "Button" that has generated React code
+    Then an expandable/collapsible "React code" section should be present
+    And expanding it should show a read-only CodeMirror editor with the component's React source code
+    And the editor should use monospace font with JSX syntax highlighting
 
   @happy-path
   Scenario: View AI Schema shows component tree reachable from root
@@ -73,13 +136,6 @@ Feature: Design System Management
     And the subtitle should explain "Components reachable from root"
 
   @happy-path
-  Scenario: Update component library from Figma
-    Given the design system modal is open with an imported library
-    When the user clicks "Update from Figma" in the Overview
-    Then the modal should show the importing progress
-    And when the sync completes, the component browser should refresh with updated components
-
-  @happy-path
   Scenario: Component configuration is read-only (set by Figma conventions)
     Given the user is viewing a component "Page" that is marked as root
     And "Page" has allowed_children ["Title", "Button"]
@@ -87,6 +143,20 @@ Feature: Design System Management
     Then the root badge should show "yes"
     And the allowed children should list "Title" and "Button"
     And these fields should not be editable in the UI
+
+  @happy-path
+  Scenario: Close modal via close button
+    Given the design system modal is open
+    When the user clicks the close button (x) in the top-left of the overlay
+    Then the modal should close
+    And the underlying page should be revealed
+
+  @happy-path
+  Scenario: Close modal by clicking overlay background
+    Given the design system modal is open
+    When the user clicks the overlay background (outside the modal card)
+    Then the modal should close
+    And any name changes should be auto-saved
 
   @edge-case
   Scenario: Design system with no root components shows empty AI Schema

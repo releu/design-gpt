@@ -6,7 +6,7 @@ describe("Prompt", () => {
     const wrapper = mount(Prompt, {
       props: { modelValue: "" },
     });
-    expect(wrapper.find(".Prompt__label").text()).toBe("PROMPT");
+    expect(wrapper.find(".Prompt__label").text()).toBe("prompt");
   });
 
   it("displays the modelValue in the textarea", () => {
@@ -29,7 +29,7 @@ describe("Prompt", () => {
       props: { modelValue: "" },
     });
     expect(wrapper.find("textarea").attributes("placeholder")).toBe(
-      "enter prompt",
+      "describe what you want to create",
     );
   });
 });
