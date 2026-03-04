@@ -5,8 +5,8 @@
     </template>
 
     <template v-else-if="authorized === false">
-      <div class="App__signin">
-        <div class="App__signin-card" @click="handleLogin">
+      <div class="App__signin sign-in">
+        <div class="App__signin-card sign-in-card" @click="handleLogin">
           <img class="App__signin-icon" src="./assets/hand.png" alt="wave" />
         </div>
         <div class="App__signin-label">Sign in to continue</div>

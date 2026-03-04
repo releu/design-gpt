@@ -373,15 +373,13 @@ Then(
 // ---------------------------------------------------------------------------
 
 When("I navigate to the home page without auth", async ({ page }) => {
-  // Clear any stored auth state, visit as unauthenticated user
-  await page.goto("/");
+  // Navigate with ?unauth=1 so mock-auth0.js starts unauthenticated
+  await page.goto("/?unauth=1");
 });
 
 Then("the sign-in prompt should be visible", async ({ page }) => {
-  // Auth0 login button or sign-in message should be visible
-  const signIn = page.locator(
-    "[class*='login'], [class*='sign-in'], [class*='auth'], [class*='Login'], [class*='SignIn'], button:has-text('Log In'), button:has-text('Sign In')",
-  );
+  // App.vue: <div class="App__signin-card sign-in-card">
+  const signIn = page.locator("[class*='sign-in-card'], [class*='App__signin']");
   await expect(signIn.first()).toBeVisible({ timeout: 15_000 });
 });
 

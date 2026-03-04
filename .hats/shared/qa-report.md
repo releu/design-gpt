@@ -2,6 +2,91 @@
 
 ---
 
+## Fast suite run #5 -- 2026-03-04 (auth scenarios fixed, token bug fixed)
+
+### Summary
+
+**93/93 passed** (18.3s, 0 failures, 0 did not run)
+
+### Fixes applied in this run
+
+**Fix 1: Auth step navigation** -- `"I navigate to the home page without auth"` now navigates to `/?unauth=1` instead of `/`. The `mock-auth0.js` URL param support was added by the Developer (dev2qa #5); this fix wires the test step to use it.
+
+**Fix 2: Sign-in card selectors** -- Updated all sign-in-related selectors in `steps/auth-ui.steps.js` to match the actual DOM classes:
+- Card: `[class*='sign-in-card']` (matches `App__signin-card sign-in-card`)
+- Container: `[class*='App__signin']`
+- Click result: verifies sign-in card disappears and `.App` is visible (since `loginWithRedirect()` mock flips `isAuthenticated` to `true`)
+
+**Fix 3: Invalid JWT token in mock-auth0.js** -- The Developer's rewrite of `app/src/test-support/mock-auth0.js` introduced a TEST_TOKEN with an incorrect HMAC-SHA256 signature. This caused the authenticated home page to fire API calls with an invalid bearer token, producing 401 console errors in 14 UI layout tests and 1 onboarding test. Fixed by restoring the valid token from the previous git commit.
+
+### All 93 scenarios
+
+- PASS: All 8 authentication scenarios (including the 3 previously failing unauthenticated scenarios)
+- PASS: All 2 health check scenarios
+- PASS: All API scenarios (figma import, design management, custom components, visual diff, SVG assets, figma JSON, AI pipeline, image search)
+- PASS: All 14 UI layout and design system scenarios
+- PASS: All 9 onboarding wizard scenarios
+
+### How to run
+
+```bash
+bash /Users/releu/Code/design-gpt/.hats/qa/run-tests.sh fast
+```
+
+---
+
+## Fast suite run #4 -- 2026-03-04 (post Hats v3 path migration)
+
+### Path fixes applied (Hats v2 → v3 migration)
+
+All 6 config files in `.hats/qa/` contained references to `../developer/api`, `../developer/app`, `../developer/caddy`. These are v2 paths — in v3 the code lives at the project root, so the correct paths from `.hats/qa/` are `../../api`, `../../app`, `../../caddy`. Fixed files:
+- `playwright.config.js`
+- `playwright.fast.config.js`
+- `playwright.workflow.config.js`
+- `playwright.render.config.js`
+- `global-setup.js`
+- `global-setup-render.js`
+
+`run-tests.sh` had no `developer/` references — no change needed.
+
+### Fast suite: 90 passed, 3 failed (93 total)
+
+This is an improvement from the prior run (82 passed, 11 failed). Most of the previous 11 failures were caused by the broken paths — now that paths are fixed, 8 of those 11 are passing.
+
+### Remaining failures (3) -- all in `02-authentication.feature`
+
+**1. Authentication - Unauthenticated user sees sign-in screen with wave icon card** `@critical`
+- Expected: `[class*='login'] [class*='card'], [class*='sign-in'] [class*='card'], [class*='auth'] [class*='card'], [class*='Login'] [class*='card'], [class*='SignIn']` to be visible within 15s
+- Actual: element not found (timeout)
+- Root cause: **Wrong selectors.** The sign-in card in `App.vue` uses BEM class `App__signin-card`, not `login`, `sign-in`, `auth`, or `SignIn`. The step definition selectors do not match the actual DOM.
+
+**2. Authentication - Clicking the sign-in card initiates Auth0 login** `@critical`
+- Expected: `[class*='login'], [class*='sign-in'], [class*='auth'], [class*='Login'], [class*='SignIn'], button:has-text('Log In'), button:has-text('Sign In')` to be visible within 15s
+- Actual: element not found (timeout)
+- Root cause: **Same wrong selectors.** The clickable card is `<div class="App__signin-card">`, a div with no `button` text.
+
+**3. Authentication - Auth0 login error keeps user on sign-in screen** `@error-handling`
+- Expected: same login-family selectors to be visible after Auth0 error
+- Actual: element not found (timeout)
+- Root cause: Same selector mismatch as above.
+
+**Secondary issue for tests 1, 2, 3**: These scenarios require the app to be in an unauthenticated state. However, `mock-auth0.js` always starts with `isAuthenticated: ref(true)`, so the sign-in screen (`App__signin`) can never render in E2E mode. Both the selector mismatch AND the always-authenticated mock need to be addressed.
+
+### What the Developer needs to fix
+
+| # | Issue | Priority | Observable contract |
+|---|-------|----------|---------------------|
+| 1 | Step definitions for sign-in screen use wrong selectors | High | The correct selector is `[class*='App__signin-card']` or `[class*='App__signin']` -- matches `App.vue` BEM class names |
+| 2 | `mock-auth0.js` always sets `isAuthenticated: true` -- unauthenticated screen cannot be tested in E2E mode | Medium | Need a way to mount the app without the mock (or a mock with `isAuthenticated: false`) for the unauthenticated scenarios |
+
+### How to run
+
+```bash
+bash /Users/releu/Code/design-gpt/.hats/qa/run-tests.sh fast
+```
+
+---
+
 ## Full E2E run #3 -- 2026-03-03 (fast suite + render suite)
 
 ### Fast suite: 82 passed, 11 failed (93 total)

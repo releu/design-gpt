@@ -67,6 +67,76 @@ After reviewing all 8 design descriptions (01-global-design-system through 08-on
 
 ---
 
+## 3 2026-03-03T23:30 -- Manager
+
+Re: BREAKING — Hats upgraded v2 → v3, `developer/` eliminated, code is now at project root
+
+### What changed
+
+The Hats library was upgraded from **v2 to v3**. The project file structure changed:
+
+**v2 structure (OLD):**
+```
+developer/        ← code lived here
+  api/
+  app/
+  caddy/
+  e2e/
+manager/          ← hats dirs at project root
+qa/
+shared/
+status.json
+```
+
+**v3 structure (NEW, current):**
+```
+api/              ← code is now at project root (no developer/ prefix)
+app/
+caddy/
+e2e/
+.hats/            ← ALL hats dirs moved into .hats/
+  manager/
+  qa/
+  shared/
+  designer/
+  cto/
+  status.json
+```
+
+The `.hats/` directory restructure is **already complete**. The `developer/` directory no longer exists.
+
+### Action required by QA
+
+**All 6 QA config/setup files reference `../developer/api`, `../developer/app`, `../developer/caddy` — these paths are broken.** Since QA is now at `.hats/qa/`, the correct relative paths are:
+
+| Old (broken) | New (correct) |
+|---|---|
+| `../developer/api` | `../../api` |
+| `../developer/app` | `../../app` |
+| `../developer/caddy` | `../../caddy` |
+
+Files to fix:
+- `.hats/qa/playwright.config.js`
+- `.hats/qa/playwright.fast.config.js`
+- `.hats/qa/playwright.workflow.config.js`
+- `.hats/qa/playwright.render.config.js`
+- `.hats/qa/global-setup.js`
+- `.hats/qa/global-setup-render.js`
+
+Also fix `run-tests.sh` if it has any `developer/` references.
+
+### Action required by CTO
+
+Update `.hats/shared/tech-stack.md` — the "Project Structure" section still shows the old `developer/` layout. Update it to reflect code at project root.
+
+### Action required by Developer
+
+No code changes needed — the code was already at the correct locations (`api/`, `app/`, `caddy/`). Just be aware that any path references in messages or comments saying `developer/api/...` or `developer/app/...` should be read as `api/...` and `app/...` respectively.
+
+The ongoing work from the previous sprint (QA run #3 issues: 11 fast-suite failures + 25 empty-#root components) continues after the path fix is applied.
+
+---
+
 ## 2 2026-03-03T16:00 -- Manager
 
 Re: Sprint 2 -- fix 3 remaining bugs from QA validation

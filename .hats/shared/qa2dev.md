@@ -1,5 +1,89 @@
 # QA to Developer
 
+## 7 2026-03-04T12:00 -- QA
+
+Re: Fast suite run #5 -- 93/93 passing. Authentication scenarios fixed. Token bug found and fixed.
+
+### What was done
+
+Applied the Developer's sign-in screen fixes (dev2qa #5):
+
+1. **`steps/auth.steps.js`** -- `"I navigate to the home page without auth"` now navigates to `/?unauth=1` so the mock-auth0.js URL param triggers the unauthenticated state.
+
+2. **`steps/auth-ui.steps.js`** -- updated all sign-in card selectors to use `[class*='sign-in-card']` (matches `App__signin-card sign-in-card`) and sign-in container selectors to use `[class*='App__signin']`. Clicking the card now verifies the sign-in screen disappears and `.App` renders (since `loginWithRedirect()` in the mock flips `isAuthenticated` to true).
+
+3. **`app/src/test-support/mock-auth0.js`** -- fixed a broken TEST_TOKEN. The Developer's rewrite of the file introduced a new token with an invalid HMAC signature (the signature did not verify against `e2e-test-secret-key`). This caused 14 UI layout tests and 1 onboarding test to fail with `401` console errors. The fix restores the valid token from the previous git commit (same payload, correct signature).
+
+### Test results
+
+**Fast suite: 93/93 passed** (18.3s)
+
+No failures. No tests did not run (serial chains completed fully).
+
+### Notes for the Developer
+
+The mock-auth0.js token must have a valid HMAC-SHA256 signature matching `e2e-test-secret-key`. When rewriting that file in the future, the token must be re-signed. The QA `support/auth.js` file can generate a valid token: `node -e "const jwt=require('jsonwebtoken'); const fs=require('fs'); fs.writeFileSync('/tmp/tok.txt', jwt.sign({sub:'auth0|alice123',nickname:'alice',email:'alice@example.com'}, 'e2e-test-secret-key', {algorithm:'HS256',expiresIn:'100y'}));"` then read `/tmp/tok.txt`.
+
+---
+
+## 6 2026-03-04 -- QA
+
+Re: Hats v3 path migration complete -- fast suite now 90/93 passing
+
+### Path fixes (Hats v2 → v3 migration)
+
+All config files in `.hats/qa/` referenced `../developer/api`, `../developer/app`, `../developer/caddy`. These paths were from v2 when QA lived inside `developer/qa/`. In v3 QA is at `.hats/qa/`, so the correct relative paths are `../../api`, `../../app`, `../../caddy`.
+
+Fixed files (all in `/Users/releu/Code/design-gpt/.hats/qa/`):
+- `playwright.config.js`
+- `playwright.fast.config.js`
+- `playwright.workflow.config.js`
+- `playwright.render.config.js`
+- `global-setup.js`
+- `global-setup-render.js`
+
+`run-tests.sh` had no `developer/` references -- no change needed.
+
+### Test results after fix
+
+Fast suite: **90 passed, 3 failed** (93 total). Up from 82/93 before the fix.
+
+### 3 remaining failures -- all in authentication feature, need Developer attention
+
+**Failures 1 & 2: Sign-in card not found (unauthenticated scenarios)**
+
+Tests for "Unauthenticated user sees sign-in screen" and "Clicking the sign-in card initiates Auth0 login" fail with:
+
+```
+Error: expect(locator).toBeVisible() failed
+Locator: locator('[class*=\'login\'] [class*=\'card\'], [class*=\'sign-in\'] [class*=\'card\'], [class*=\'auth\'] [class*=\'card\'], [class*=\'Login\'] [class*=\'card\'], [class*=\'SignIn\']').first()
+Expected: visible
+Timeout: 15000ms
+Error: element(s) not found
+```
+
+The step definitions look for elements with classes containing `login`, `sign-in`, `auth`, `Login`, or `SignIn`. The actual class in `App.vue` is `App__signin-card` (BEM). The correct selector is `[class*='App__signin-card']` or `[class*='App__signin']`.
+
+Additionally: `mock-auth0.js` always sets `isAuthenticated: ref(true)`, so in E2E mode the app never shows the sign-in screen. To test the unauthenticated flow we need either: (a) a flag or query param that causes `VITE_E2E_TEST=true` mode to start unauthenticated, or (b) a separate test-support mock file with `isAuthenticated: false`.
+
+**Failure 3: Auth0 login error keeps user on sign-in screen**
+
+Same selector problem -- looks for `[class*='SignIn']` but the element is `App__signin`. Same fix as above.
+
+### Action needed from Developer
+
+1. **Update `auth-ui.steps.js` selectors** (or confirm the correct class name):
+   - Card: use `[class*='App__signin-card']` or `[class*='signin-card']`
+   - Sign-in container: use `[class*='App__signin']` or `[class*='signin']`
+
+2. **Provide a way to test the unauthenticated state in E2E mode** -- either a URL param `?auth=off`, or a second mock that sets `isAuthenticated: false`. Without this the sign-in screen tests can never pass.
+
+### Full report
+
+See `/Users/releu/Code/design-gpt/.hats/shared/qa-report.md` -- "Fast suite run #4" section at the top.
+
+---
+
 ## 5 2026-03-03 -- QA
 
 Re: Full E2E run #3 results -- fast suite 82/93 pass, render suite 130/155 components OK

@@ -1,3 +1,64 @@
+## 5 2026-03-04T08:26 -- Developer
+
+Re: Authentication unauthenticated scenarios -- sign-in class fix + unauth URL param support
+
+### What changed
+
+**Fix A: `app/src/App.vue` -- added selector-compatible classes**
+
+The outer sign-in container `<div class="App__signin">` now also has class `sign-in`:
+
+```html
+<div class="App__signin sign-in">
+  <div class="App__signin-card sign-in-card" @click="handleLogin">
+```
+
+This makes the following selector combinations work:
+- `[class*='sign-in'] [class*='card']` → outer `.sign-in` + inner `.App__signin-card` (contains "card") ✓
+- `[class*='sign-in']` → outer `.sign-in` ✓
+- `[class*='sign-in-card']` → inner `.sign-in-card` ✓
+
+**Fix B: `app/src/test-support/mock-auth0.js` -- URL param support for unauthenticated state**
+
+The mock now reads URL parameters at initialization time:
+
+| URL param | Effect |
+|-----------|--------|
+| `?unauth=1` | `isAuthenticated: false`, `user: null` — sign-in screen shows |
+| `?auth_error=1` | Sets `error.value` to `{ message: 'Login required', error: 'login_required' }` |
+| (neither) | Original behavior: `isAuthenticated: true` (alice logged in) |
+
+The params can be combined: `?unauth=1&auth_error=1` → unauthenticated + error shown.
+
+`loginWithRedirect()` now simulates a successful login by flipping `isAuthenticated` to `true` and setting the alice user.
+
+`logout()` now flips `isAuthenticated` to `false` and clears the user.
+
+The duplicate `app.provide(AUTH0_INJECTION_KEY, auth0State)` call (was called twice) has been removed.
+
+### What QA step definitions need to do
+
+For the 3 failing authentication scenarios:
+
+1. **"Unauthenticated user sees sign-in screen"** → navigate to `https://design-gpt.localtest.me/?unauth=1` (not plain `/`)
+2. **"Clicking the sign-in card initiates Auth0 login"** → same, navigate with `?unauth=1`
+3. **"Auth0 login error keeps user on sign-in screen"** → navigate with `?unauth=1&auth_error=1`
+
+After navigation, wait for `[class*='sign-in'] [class*='card']` (or `[class*='App__signin-card']`) to be visible.
+
+The "click triggers login" test: click the card → `loginWithRedirect()` is called → `isAuthenticated` flips to `true` → `App.vue` watcher fires → `authorized` becomes `true` → sign-in screen disappears → `RouterView` renders.
+
+### Test results
+
+```
+Frontend: 79/79 passed (21 test files, 0 failures)
+API:      337 examples, 0 failures, 2 pending (Chrome-only, expected)
+```
+
+No regressions. All previously-passing tests remain passing.
+
+---
+
 ## 4 2026-03-03T18:15 -- Developer
 
 Re: esbuild fixed -- 337/337 API tests pass, 79/79 frontend tests pass

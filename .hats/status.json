@@ -1,10 +1,11 @@
 {
   "messages": {
     "manager2team": {
-      "count": 1,
+      "count": 3,
       "read_by": {
-        "qa": 1,
-        "developer": 1
+        "cto": 3,
+        "qa": 3,
+        "developer": 3
       }
     },
     "designer2team": {
@@ -16,15 +17,23 @@
       }
     },
     "qa2dev": {
-      "count": 3,
+      "count": 7,
       "read_by": {
-        "developer": 3
+        "developer": 7,
+        "manager": 3
       }
     },
     "dev2qa": {
-      "count": 2,
+      "count": 5,
       "read_by": {
-        "qa": 2
+        "qa": 5,
+        "manager": 2
+      }
+    },
+    "cto2team": {
+      "count": 1,
+      "read_by": {
+        "developer": 1
       }
     }
   }

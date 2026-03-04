@@ -10,28 +10,28 @@ export default async function globalSetup() {
       { stdio: "pipe", cwd: import.meta.dirname },
     );
     execSync(
-      "cd ../developer/api && RAILS_ENV=test bundle exec rails db:test:prepare",
+      "cd ../../api && RAILS_ENV=test bundle exec rails db:test:prepare",
       { stdio: "inherit", cwd: import.meta.dirname },
     );
     execSync(
-      "cd ../developer/api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails e2e:setup",
+      "cd ../../api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails e2e:setup",
       { stdio: "inherit", cwd: import.meta.dirname },
     );
   } else {
     console.log("[qa-render] Reusing existing DB (set FORCE=1 to reset).");
     try {
       execSync(
-        "cd ../developer/api && RAILS_ENV=test bundle exec rails db:migrate:status",
+        "cd ../../api && RAILS_ENV=test bundle exec rails db:migrate:status",
         { stdio: "pipe", cwd: import.meta.dirname },
       );
     } catch {
       console.log("[qa-render] DB not ready, running setup...");
       execSync(
-        "cd ../developer/api && RAILS_ENV=test bundle exec rails db:test:prepare",
+        "cd ../../api && RAILS_ENV=test bundle exec rails db:test:prepare",
         { stdio: "inherit", cwd: import.meta.dirname },
       );
       execSync(
-        "cd ../developer/api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails e2e:setup",
+        "cd ../../api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails e2e:setup",
         { stdio: "inherit", cwd: import.meta.dirname },
       );
     }
