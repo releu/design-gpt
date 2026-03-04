@@ -305,7 +305,7 @@ When the user clicks the "..." button in the header:
 |------------------------|--------------------------------------------------------------|
 | Download React project | GET /api/designs/:id/export_react -- triggers zip download   |
 | Download image         | GET /api/designs/:id/export_image -- triggers PNG download   |
-| Figma (alpha)          | Opens a popup with a pairing code for Figma plugin integration |
+| Figma (alpha)          | Opens a popup with a pairing code for Figma plugin integration (see `13-figma-export-popup.md`) |
 
 ---
 

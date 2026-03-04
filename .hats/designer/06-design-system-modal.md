@@ -57,6 +57,7 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 +------------------------------------------------+
 | general          | [right panel content]        |
 |   [overview]     |                              |
+|   ai schema      |                              |
 | figma file name  |                              |
 |   component name |                              |
 |   component name |                              |
@@ -74,6 +75,7 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 - **Sections**:
   - **"general"**: Section header in `--text-secondary`, 13px
     - **"overview"**: Clickable item. When active, has `--bg-chip-active` background with `--radius-sm` rounding
+    - **"ai schema"**: Clickable item. Shows the component tree reachable from root components. See `11-ai-schema-view.md` for full specification.
   - **Figma file sections**: Each imported Figma file is a section
     - **File name**: Shown as a section header in `--text-secondary`, 13px (e.g., "figma file name")
     - **Component names**: Listed below, indented slightly (~16px left padding)
@@ -213,6 +215,13 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 - **Allowed children**: Lists child component names -- read-only
 - These values are set by Figma conventions (e.g., `#root` suffix, `INSTANCE_SWAP` properties) and cannot be edited in the UI
 
+#### Visual diff section
+
+- **Expandable/collapsible section**
+- Shows Figma screenshot, React screenshot, and diff image side by side
+- Match percentage badge with color coding
+- See `12-visual-diff-overlay.md` for full specification
+
 #### React code section (from specs)
 
 - **Expandable/collapsible section**
@@ -282,6 +291,6 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 ## Spec Coverage
 
-- `04-design-system-management.feature`: Create via modal, browse components, component detail, interactive props, AI Schema, configuration read-only
+- `04-design-system-management.feature`: Create via modal, browse components, component detail, interactive props, AI Schema (see `11-ai-schema-view.md`), configuration read-only
 - `03-figma-import.feature`: Create library from URL, sync progress, duplicate URL handling
 - `08-component-library-browser.feature`: Component detail with props, preview, React code, configuration

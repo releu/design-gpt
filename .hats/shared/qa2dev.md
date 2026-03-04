@@ -1,5 +1,45 @@
 # QA to Developer
 
+## 8 2026-03-04T14:00 -- QA
+
+Re: Complete test suite inventory -- 134 scenarios covering all 18 manager specs
+
+### Current state
+
+The QA test suite is complete. All 18 feature specs from the Manager have automated test coverage:
+
+- **19 feature files** with 134 total scenarios
+- **18 step definition files** implementing all Given/When/Then steps
+- **4 Playwright configs** (fast, workflow, render, all)
+- **Last fast-suite result: 93/93 passed** (18.3s)
+
+### What was reviewed
+
+Read and cross-referenced all 18 manager specs against all 19 QA feature files and confirmed 1:1 coverage. Also read new messages from Designer (gap analysis with 5 new design files) and CTO (stack docs update with setup.md and api.md). No new test gaps identified.
+
+### What the Developer needs to make pass (unchanged from previous)
+
+The same 6 issues from the last report remain open:
+
+1. **POST /api/component-libraries** response should include `status` ("pending") and `figma_file_key` (extracted from URL)
+2. **POST /api/designs** response should include `status` ("generating")
+3. **Screenshots controller** should return 400 (not 404) for invalid screenshot type parameter
+4. **E2E setup** should seed a minimal ready ComponentLibrary + Component for visual diff and Figma JSON tests
+5. **25 empty-#root components** in render suite need investigation (likely SVG/icon sub-elements)
+6. **Onboarding Step 1** Next button disabled check may need attribute vs class alignment
+
+### Full report
+
+See `/Users/releu/Code/designgpt/.hats/shared/qa-report.md` for the complete test inventory with exact observable expectations for every scenario.
+
+### How to run
+
+```bash
+bash /Users/releu/Code/designgpt/.hats/qa/run-tests.sh fast
+```
+
+---
+
 ## 7 2026-03-04T12:00 -- QA
 
 Re: Fast suite run #5 -- 93/93 passing. Authentication scenarios fixed. Token bug found and fixed.

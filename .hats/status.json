@@ -5,35 +5,39 @@
       "read_by": {
         "cto": 3,
         "qa": 3,
-        "developer": 3
+        "developer": 3,
+        "designer": 3
       }
     },
     "designer2team": {
-      "count": 1,
+      "count": 2,
       "read_by": {
+        "cto": 2,
         "manager": 1,
-        "qa": 1,
-        "developer": 1
+        "qa": 2,
+        "developer": 2
       }
     },
     "qa2dev": {
-      "count": 7,
+      "count": 8,
       "read_by": {
-        "developer": 7,
+        "developer": 8,
         "manager": 3
       }
     },
     "dev2qa": {
-      "count": 5,
+      "count": 6,
       "read_by": {
-        "qa": 5,
+        "qa": 6,
         "manager": 2
       }
     },
     "cto2team": {
-      "count": 1,
+      "count": 3,
       "read_by": {
-        "developer": 1
+        "developer": 2,
+        "designer": 1,
+        "qa": 2
       }
     }
   }
