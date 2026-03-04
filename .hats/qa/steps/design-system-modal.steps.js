@@ -14,7 +14,7 @@ const CUBES_FIGMA_URL =
 
 When(
   "I ensure the QA design system {string} is imported from Cubes",
-  async ({ page }, dsName) => {
+  async ({ page, request }, dsName) => {
     // Check if design system already exists in the sidebar
     const dsLocator = page.locator(".LibrarySelector__item-name", {
       hasText: dsName,
@@ -80,13 +80,101 @@ When(
       await page.waitForTimeout(5_000);
     }
 
-    // Name and save
+    // -----------------------------------------------------------------------
+    // Upload custom root components for design generation.
+    // The Cubes Figma file has no #root markers, so all 127 component sets
+    // have is_root=false. DesignGenerator requires at least one root component
+    // with TEXT props to build the AI schema. Upload Page (root) + Card
+    // (child) custom components so the generation flow works end-to-end.
+    // -----------------------------------------------------------------------
+
+    // Name and save the design system first, so the backend links it to the
+    // correct library. Then find that library via API and upload root components.
     await page.fill(".DesignSystemModal__overview-name-input", dsName);
     await page.click(".DesignSystemModal__save-btn");
     await expect(page.locator(".DesignSystemModal")).not.toBeVisible({
       timeout: 5_000,
     });
     console.log(`[qa] Design system "${dsName}" saved.`);
+
+    const token = createTestToken();
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+
+    // Find the design system we just saved and get its linked library ID
+    const dsRes = await request.get("/api/design-systems", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const designSystems = await dsRes.json();
+    const ds = designSystems.find((d) => d.name === dsName);
+    const libId = ds?.component_library_ids?.[0] || ds?.libraries?.[0]?.id;
+    const cubesLib = libId ? { id: libId } : null;
+    console.log(
+      `[qa] Design system "${dsName}" library lookup: ds=${ds?.id}, libId=${libId}`,
+    );
+
+    if (cubesLib) {
+      console.log(
+        `[qa] Uploading root components to library ${cubesLib.id}...`,
+      );
+
+      const pageRes = await request.post("/api/custom-components", {
+        headers: authHeaders,
+        data: {
+          name: "Page",
+          description:
+            "Root page layout that wraps child cards in a vertical list",
+          react_code: [
+            "function Page(props) {",
+            "  return React.createElement('div',",
+            "    {style: {padding: '24px', fontFamily: 'sans-serif'}},",
+            "    React.createElement('h1',",
+            "      {style: {fontSize: '24px', marginBottom: '16px'}},",
+            "      props.title),",
+            "    props.children",
+            "  );",
+            "}",
+          ].join("\n"),
+          component_library_id: cubesLib.id,
+          is_root: true,
+          allowed_children: ["Card"],
+          prop_types: { title: "string" },
+        },
+      });
+      console.log(`[qa] Page component upload: ${pageRes.status()}`);
+
+      const cardRes = await request.post("/api/custom-components", {
+        headers: authHeaders,
+        data: {
+          name: "Card",
+          description:
+            "Content card displaying a title and description text",
+          react_code: [
+            "function Card(props) {",
+            "  return React.createElement('div',",
+            "    {style: {border: '1px solid #ddd', borderRadius: '8px',",
+            "             padding: '16px', marginBottom: '12px'}},",
+            "    React.createElement('h2',",
+            "      {style: {fontSize: '18px', margin: '0 0 8px'}},",
+            "      props.title),",
+            "    React.createElement('p',",
+            "      {style: {margin: 0, color: '#666'}},",
+            "      props.description)",
+            "  );",
+            "}",
+          ].join("\n"),
+          component_library_id: cubesLib.id,
+          prop_types: { title: "string", description: "string" },
+        },
+      });
+      console.log(`[qa] Card component upload: ${cardRes.status()}`);
+    } else {
+      console.warn(
+        `[qa] Could not find library for design system "${dsName}" — root components not uploaded`,
+      );
+    }
   },
 );
 

@@ -571,7 +571,7 @@ export default {
   &__box {
     flex: 1;
     background: var(--bg-panel);
-    border-radius: var(--radius-lg);
+    border-radius: 24px;
     padding: 40px;
     box-sizing: border-box;
     overflow-y: auto;

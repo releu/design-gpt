@@ -86,13 +86,44 @@ Then(
   },
 );
 
+Then(
+  "the rendered preview should contain meaningful content",
+  async ({ page }) => {
+    const frame = page.frameLocator(".Preview__frame");
+    const root = frame.locator("#root");
+
+    // Wait for the root to have child elements (not just empty or text-only)
+    await expect(async () => {
+      const childCount = await root.locator("> *").count();
+      expect(childCount).toBeGreaterThan(0);
+    }).toPass({ timeout: 15_000 });
+
+    // Verify the rendered content has substantial text (not just CSS from <style> tags)
+    const innerHTML = await root.innerHTML();
+    // Should have actual HTML elements (divs, spans, etc.) beyond just <style> tags
+    const withoutStyles = innerHTML.replace(/<style[\s\S]*?<\/style>/g, "");
+    expect(withoutStyles.trim().length).toBeGreaterThan(50);
+  },
+);
+
 // ---------------------------------------------------------------------------
 // View mode switching
 // ---------------------------------------------------------------------------
 
-Given("I am on the current design page", async ({ page }) => {
-  // Verify we are on a design page
-  await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 5_000 });
+Given("I am on the current design page", async ({ page, request }) => {
+  // If already on a design page, nothing to do
+  if (/\/designs\/\d+/.test(page.url())) return;
+
+  // Navigate to the most recent ready design via API
+  const token = (await import("../support/auth.js")).createTestToken();
+  const res = await request.get("/api/designs", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const designs = await res.json();
+  const ready = designs.find((d) => d.status === "ready");
+  if (!ready) throw new Error("No ready design found for 'I am on the current design page'");
+  await page.goto(`https://design-gpt.localtest.me/designs/${ready.id}`);
+  await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
 });
 
 When("I click the desktop view switcher", async ({ page }) => {

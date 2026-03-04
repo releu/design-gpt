@@ -124,7 +124,7 @@ export default {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     min-height: 0;
     padding-bottom: var(--sp-3);
 
@@ -146,13 +146,15 @@ export default {
     /* CRITICAL: User = LEFT, plain text, no bubble */
     &_user {
       align-items: flex-start;
+      text-align: left;
 
       .ChatPanel__message-body {
-        background: transparent;
+        background-color: transparent;
         color: var(--text-primary);
         padding: 0;
         border-radius: 0;
         font: var(--font-text-m);
+        text-align: left;
       }
     }
 
@@ -160,19 +162,21 @@ export default {
     &_designer,
     &_art_director {
       align-items: flex-end;
+      text-align: right;
 
       .ChatPanel__message-body {
-        background: var(--bg-bubble-user);
+        background-color: #F0EFED;
         color: var(--text-primary);
-        border-radius: var(--radius-md);
-        padding: var(--sp-2) var(--sp-3);
+        border-radius: 16px;
+        padding: 8px 16px;
+        text-align: left;
       }
     }
   }
 
   &__message-body {
     font: var(--font-text-m);
-    max-width: 85%;
+    max-width: 75%;
     line-height: 1.5;
     word-wrap: break-word;
     overflow-wrap: break-word;

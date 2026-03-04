@@ -88,13 +88,13 @@
         </div>
         <div v-if="comp.allowed_children && comp.allowed_children.length" class="ComponentDetail__config-row">
           <span class="ComponentDetail__config-key">Allowed children</span>
-          <span class="ComponentDetail__prop-info">
+          <div class="ComponentDetail__children-list">
             <span
               v-for="child in comp.allowed_children"
               :key="child"
-              class="ComponentDetail__prop-value"
+              class="ComponentDetail__children-item ComponentDetail__prop-value"
             >{{ child }}</span>
-          </span>
+          </div>
         </div>
       </div>
     </div>
@@ -530,6 +530,20 @@ export default {
       background: #ede9fe;
       color: #5b21b6;
     }
+  }
+
+  &__children-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__children-item {
+    font: var(--font-text-s);
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: var(--superlightgray);
+    color: var(--superdarkgray);
   }
 
   // React Code

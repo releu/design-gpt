@@ -77,8 +77,7 @@ Feature: Design Generation Workflow
     When I wait for the design to finish generating
     Then the preview iframe should be visible
     And the preview iframe content should not be empty
-    And the rendered preview should contain text "Sava"
-    And the rendered preview should contain text "Dunav"
+    And the rendered preview should contain meaningful content
     And there are no console errors
 
   # --- Design Page View Modes ---

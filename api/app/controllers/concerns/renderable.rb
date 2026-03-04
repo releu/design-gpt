@@ -10,12 +10,25 @@ module Renderable
     loaded_react_names = Set.new
     container_names = Set.new
 
+    # Load custom (upload) components first so they are defined early,
+    # before potentially large Figma-generated code blocks.
+    libraries.each do |cl|
+      cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
+        react_name = to_component_name(comp.name)
+        next if loaded_react_names.include?(react_name)
+        browser_code_parts << comp.react_code_compiled
+        loaded_react_names << react_name
+        container_names << react_name if comp.allowed_children.present? && comp.allowed_children.any?
+      end
+    end
+
     libraries.each do |cl|
       cl.component_sets.includes(:variants).each do |cs|
         variant = cs.default_variant
         next unless variant&.react_code_compiled.present?
-        browser_code_parts << variant.react_code_compiled
         react_name = to_component_name(cs.name)
+        next if loaded_react_names.include?(react_name)
+        browser_code_parts << variant.react_code_compiled
         loaded_react_names << react_name
         container_names << react_name if cs.allowed_children.present? && cs.allowed_children.any?
       end
@@ -33,9 +46,15 @@ module Renderable
       end
     end
 
-    all_browser_code = browser_code_parts.join("\n\n")
     all_css = css_parts.join("\n")
     container_names_json = container_names.to_a.to_json
+
+    # Each component gets its own <script> tag so a syntax error in one
+    # AI-generated component cannot prevent other components from loading.
+    component_scripts = browser_code_parts.map { |code|
+      safe_code = code.gsub("</script>", '<\\/script>')
+      "<script>#{safe_code}</script>"
+    }.join("\n")
 
     <<~HTML
       <!DOCTYPE html>
@@ -50,9 +69,7 @@ module Renderable
       </head>
       <body>
         <div id="root"></div>
-        <script>
-          #{all_browser_code}
-        </script>
+        #{component_scripts}
         <script>
           // Wrap container components to forward props.children
           var _containers = #{container_names_json};
@@ -80,10 +97,19 @@ module Renderable
               var element = new Function('React', 'return (' + compiled + ')')(React);
               root.render(element);
             } catch (err) {
+              console.error('[renderer] Render error:', String(err));
+              console.error('[renderer] Card defined:', typeof window.Card, 'Page defined:', typeof window.Page);
               root.render(React.createElement('pre', {style: {color: 'red'}}, String(err)));
             }
           });
 
+          // Debug: log loaded component names
+          var _loaded = #{loaded_react_names.to_a.to_json};
+          var _missing = _loaded.filter(function(n) { return typeof window[n] === 'undefined'; });
+          if (_missing.length > 0) {
+            console.error('[renderer] Missing components:', _missing.join(', '));
+          }
+          console.log('[renderer] Components loaded:', _loaded.length, 'missing:', _missing.length);
           window.parent.postMessage({ type: 'ready' }, '*');
         </script>
       </body>
