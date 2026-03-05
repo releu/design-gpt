@@ -100,24 +100,38 @@ module Figma
 
       return if variant_to_set.empty?
 
+      mutex = Mutex.new
+
       variant_to_set.keys.each_slice(100) do |batch_node_ids|
         begin
           response = @figma.export_svg(file_key, batch_node_ids)
           images = response["images"] || {}
 
+          threads = []
           batch_node_ids.each do |variant_node_id|
             component_set = variant_to_set[variant_node_id]
             svg_url = images[variant_node_id]
             next if svg_url.blank?
 
-            begin
-              svg_content = @figma.fetch_svg_content(svg_url)
-              save_component_set_asset(component_set, svg_content)
-              puts "[AssetExtractor] Saved SVG for component set: #{component_set.name}"
-            rescue => e
-              puts "[AssetExtractor] Failed to fetch SVG for #{component_set.name}: #{e.message}"
+            threads << Thread.new(component_set, svg_url) do |cs, url|
+              begin
+                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                mutex.synchronize do
+                  save_component_set_asset(cs, svg_content)
+                  puts "[AssetExtractor] Saved SVG for component set: #{cs.name}"
+                end
+              rescue => e
+                puts "[AssetExtractor] Failed to fetch SVG for #{cs.name}: #{e.message}"
+              end
+            end
+
+            if threads.size >= 10
+              threads.each(&:join)
+              threads.clear
             end
           end
+
+          threads.each(&:join)
         rescue => e
           puts "[AssetExtractor] Batch request failed: #{e.message}"
         end
@@ -127,6 +141,8 @@ module Figma
     def fetch_and_save_component_svgs(file_key, components)
       return if components.empty?
 
+      mutex = Mutex.new
+
       components.each_slice(100) do |batch|
         node_ids = batch.map(&:node_id)
 
@@ -134,18 +150,30 @@ module Figma
           response = @figma.export_svg(file_key, node_ids)
           images = response["images"] || {}
 
+          threads = []
           batch.each do |component|
             svg_url = images[component.node_id]
             next if svg_url.blank?
 
-            begin
-              svg_content = @figma.fetch_svg_content(svg_url)
-              save_component_asset(component, svg_content)
-              puts "[AssetExtractor] Saved SVG for component: #{component.name}"
-            rescue => e
-              puts "[AssetExtractor] Failed to fetch SVG for #{component.name}: #{e.message}"
+            threads << Thread.new(component, svg_url) do |comp, url|
+              begin
+                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                mutex.synchronize do
+                  save_component_asset(comp, svg_content)
+                  puts "[AssetExtractor] Saved SVG for component: #{comp.name}"
+                end
+              rescue => e
+                puts "[AssetExtractor] Failed to fetch SVG for #{comp.name}: #{e.message}"
+              end
+            end
+
+            if threads.size >= 10
+              threads.each(&:join)
+              threads.clear
             end
           end
+
+          threads.each(&:join)
         rescue => e
           puts "[AssetExtractor] Batch request failed: #{e.message}"
         end
@@ -215,6 +243,7 @@ module Figma
 
       saved_count = 0
       total_batches = (node_ids.size / 100.0).ceil
+      mutex = Mutex.new
 
       node_ids.each_slice(100).with_index do |batch, batch_idx|
         puts "[AssetExtractor]     Batch #{batch_idx + 1}/#{total_batches} (#{saved_count} saved so far)"
@@ -223,18 +252,32 @@ module Figma
           response = @figma.export_svg(file_key, batch)
           images = response["images"] || {}
 
+          # Fetch SVG content in parallel (up to 10 threads)
+          threads = []
           batch.each do |node_id|
             svg_url = images[node_id]
             next if svg_url.blank?
 
-            begin
-              svg_content = @figma.fetch_svg_content(svg_url)
-              save_inline_svg(node_id, svg_content)
-              saved_count += 1
-            rescue => e
-              puts "[AssetExtractor] Failed to fetch inline SVG for #{node_id}: #{e.message}"
+            threads << Thread.new(node_id, svg_url) do |nid, url|
+              begin
+                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                mutex.synchronize do
+                  save_inline_svg(nid, svg_content)
+                  saved_count += 1
+                end
+              rescue => e
+                puts "[AssetExtractor] Failed to fetch inline SVG for #{nid}: #{e.message}"
+              end
+            end
+
+            # Limit concurrency to 10 parallel fetches
+            if threads.size >= 10
+              threads.each(&:join)
+              threads.clear
             end
           end
+
+          threads.each(&:join)
         rescue => e
           puts "[AssetExtractor] Batch request failed: #{e.message}"
         end

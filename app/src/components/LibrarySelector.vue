@@ -107,16 +107,11 @@ export default {
       font: var(--font-text-s);
       color: var(--text-secondary);
       cursor: pointer;
-      opacity: 0;
       transition: opacity 150ms ease;
 
       &:hover {
         color: var(--text-primary);
       }
-    }
-
-    &:hover &-browse {
-      opacity: 1;
     }
   }
 

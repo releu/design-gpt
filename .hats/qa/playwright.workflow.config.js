@@ -14,7 +14,7 @@ const testDir = defineBddConfig({
     "./features/19-ui-layout-design-system.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
-  outputDir: "./.features-gen",
+  outputDir: "./.features-gen-workflow",
 });
 
 export default defineConfig({

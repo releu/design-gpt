@@ -60,6 +60,9 @@ class ComponentLibrary < ApplicationRecord
   end
 
   def sync_async
+    # Skip if actively syncing — avoid duplicate concurrent imports
+    return if %w[importing converting comparing].include?(status)
+
     update!(status: "pending", progress: { "started_at" => Time.current.iso8601 })
     ComponentLibrarySyncJob.perform_later(id)
   end

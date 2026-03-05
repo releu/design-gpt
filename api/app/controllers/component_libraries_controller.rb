@@ -36,6 +36,14 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def create
+    # De-duplicate: reuse existing library with the same Figma URL for this user
+    cl = current_user.component_libraries.find_by(figma_url: params[:url])
+    if cl
+      # Update name if provided and library has no name yet
+      cl.update!(name: params[:name]) if params[:name].present? && cl.name.blank?
+      return render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :ok
+    end
+
     attrs = { figma_url: params[:url], name: params[:name] }
     cl = current_user.component_libraries.create!(attrs)
 

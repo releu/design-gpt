@@ -5,3 +5,4 @@ blob-report/
 .features-gen/
 .features-gen-fast/
 .features-gen-debug/
+.features-gen-workflow/

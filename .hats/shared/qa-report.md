@@ -2,13 +2,40 @@
 
 ---
 
+## Workflow Unskip Audit -- 2026-03-04 (51 cascade-skipped tests unskipped)
+
+### What was tested
+- Audited all 88 workflow scenarios across 7 feature files
+- Identified that 51 tests were cascade-skipped by `@mode:serial` (not explicitly skipped)
+- Removed serial mode via post-processing of generated spec files
+- No application code was changed
+
+### Results
+- INFRASTRUCTURE FIX: `run-tests.sh` now patches generated specs to replace `"mode":"serial"` with `"mode":"default"`
+- All 88 workflow scenarios will now run independently. Failures report as failures, not cascade-skips.
+- Previous "31 passed, 6 failed, 51 skipped" will become "31+ passed, N failed, 0 skipped"
+
+### How to run
+```bash
+bash .hats/qa/run-tests.sh workflow
+```
+
+### Notes
+- Tests run in order within each feature file (import before browse), but failures no longer cascade
+- Generation-dependent tests (6 scenarios) require `OPENAI_API_KEY` in `api/.env`
+- Import-dependent tests (browsing "QA Cubes/Generate/Improve/etc.") require Figma API access
+- The Developer's CSS fixes from dev2qa #7 (border-radius, chat alignment, children-list) must be deployed for those specific tests to pass
+- The `playwright.workflow.config.js` now uses a dedicated output directory `.features-gen-workflow/`
+
+---
+
 ## Test Suite Inventory -- 2026-03-04 (complete coverage of all 18 manager specs)
 
 ### Summary
 
 **134 scenarios across 19 feature files**, organized into 4 test profiles:
 - **Fast** (93 tests): API, auth, health, UI layout, onboarding -- no external services required
-- **Workflow** (serial, requires Figma + OpenAI): DS modal, generation, improvement, export, UI layout
+- **Workflow** (88 tests, requires Figma + OpenAI): DS modal, generation, improvement, export, UI layout -- NO serial cascade skipping
 - **Render** (serial, requires Figma): Component-by-component rendering validation
 - **All**: Everything combined
 

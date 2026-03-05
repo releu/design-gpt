@@ -131,7 +131,7 @@ When("I click the desktop view switcher", async ({ page }) => {
 });
 
 When("I click the code view switcher", async ({ page }) => {
-  await page.locator(".MainLayout__switcher-item", { hasText: "</>" }).click();
+  await page.locator(".MainLayout__switcher-item_code").click();
 });
 
 When("I click the mobile view switcher", async ({ page }) => {

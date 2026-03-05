@@ -43,15 +43,15 @@
     <template #preview-selector>
       <div class="MainLayout__preview-selector MainLayout__switcher">
         <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'mobile' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'mobile' }]"
           @click="viewMode = 'mobile'"
         >phone</div>
         <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'desktop' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'desktop' }]"
           @click="viewMode = 'desktop'"
         >desktop</div>
         <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'code' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'code' }]"
           @click="viewMode = 'code'"
         >code</div>
       </div>
@@ -73,19 +73,7 @@
     </template>
 
     <!-- Legacy prompt slot (used by home layout; provide empty) -->
-    <template #prompt>
-      <ChatPanel
-        v-if="panelMode === 'chat'"
-        :messages="design ? design.chat : []"
-        :designId="id"
-        :generating="design && design.status === 'generating'"
-        @sent="fetchDesign"
-      />
-      <DesignSettings
-        v-else-if="panelMode === 'settings' && design"
-        :componentLibraryIds="design.component_library_ids"
-      />
-    </template>
+    <template #prompt><span /></template>
 
     <!-- Code editor (for code layout) -->
     <template #code-editor>

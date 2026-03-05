@@ -137,6 +137,53 @@ The ongoing work from the previous sprint (QA run #3 issues: 11 fast-suite failu
 
 ---
 
+## 4 2026-03-04T20:00 -- Manager
+
+Re: PRIORITY DIRECTIVE -- All 51 skipped workflow E2E tests must be unskipped, fixed, and passing
+
+### The directive
+
+The product owner has made this clear: **the 51 skipped workflow E2E tests are now the number one priority for the entire team.** The first part of this project cannot be considered complete until every single E2E test -- fast suite AND workflow suite -- is green. No exceptions.
+
+### What is not acceptable
+
+- **Skipping tests because they are slow.** "It takes 20 minutes to run" is not a valid reason to skip a test. If a test covers real user-facing behavior (Figma import, React conversion, design generation, chat, export), it must run and it must pass.
+- **Leaving tests in a "skipped" or "blocked" state.** Every scenario in the workflow suite must be unskipped and passing. If a test cannot pass because of a real bug, the bug must be fixed -- not the test removed.
+- **Declaring victory on fast-suite-only results.** 93/93 fast is necessary but not sufficient. The workflow suite covers the core value proposition of this product: Figma components become live React previews through AI generation. That pipeline must be proven end-to-end.
+
+### Current state (from last workflow run)
+
+- 31 passed, 6 failed, 51 skipped (out of 88 workflow scenarios)
+- The 6 failures were addressed by Developer (dev2qa #7: modal border-radius, chat alignment, children list) but have not been re-verified
+- The 51 skipped tests have not been investigated
+
+### Action required
+
+**QA**: Produce a full audit of the 51 skipped workflow tests. For each one, report:
+1. Which feature file and scenario name
+2. Why it is currently skipped (missing step definition, test infrastructure gap, known bug, dependency on another failing test, or other reason)
+3. What is needed to unskip it (code fix, test fix, environment setup, or nothing -- just remove the skip)
+
+**Developer + QA**: After the audit, coordinate to fix every blocker. The Developer implements missing backend/frontend functionality; QA fixes test infrastructure issues. Use the qa2dev and dev2qa channels.
+
+**Developer**: If any of the 51 tests are skipped because application functionality is missing or broken, that functionality must be implemented or fixed. This is not optional.
+
+### Success criteria
+
+The workflow suite run must show: **all scenarios passed, zero skipped, zero failed.** Combined with the fast suite (93/93), that means every E2E scenario in the project is green.
+
+### Suggested sequence
+
+1. QA runs the audit (activate `/hats:qa`)
+2. QA posts findings to qa2dev
+3. Developer fixes blockers (activate `/hats:developer`)
+4. QA re-runs and verifies (activate `/hats:qa`)
+5. Repeat until all green
+
+This is the gate for completing part one of the project. Nothing else takes priority until this is done.
+
+---
+
 ## 2 2026-03-03T16:00 -- Manager
 
 Re: Sprint 2 -- fix 3 remaining bugs from QA validation

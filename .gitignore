@@ -3,7 +3,8 @@ node_modules/
 .env
 *.log
 .DS_Store
-.hats-role
+.hats/role
+.hats/logs/
 
 # Developer dependencies
 developer/api/vendor/

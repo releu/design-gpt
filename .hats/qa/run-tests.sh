@@ -36,11 +36,17 @@ case "$MODE" in
   workflow)
     echo "[qa] Running full design workflow tests..."
     npx bddgen --config playwright.workflow.config.js
+    # Remove serial mode from generated specs so failures don't cascade-skip
+    # subsequent tests. Each scenario is self-contained (navigates from scratch).
+    echo "[qa] Patching generated specs: removing serial mode..."
+    find .features-gen-workflow -name '*.spec.js' -exec sed -i '' 's/"mode":"serial"/"mode":"default"/g' {} +
     npx playwright test --config playwright.workflow.config.js
     ;;
   all)
     echo "[qa] Running ALL tests..."
     npx bddgen
+    # Remove serial mode from generated specs so failures don't cascade-skip
+    find .features-gen -name '*.spec.js' -exec sed -i '' 's/"mode":"serial"/"mode":"default"/g' {} +
     npx playwright test
     ;;
   *)

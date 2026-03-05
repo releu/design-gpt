@@ -24,17 +24,17 @@
     </template>
 
     <template #preview-selector>
-      <div class="MainLayout__preview-selector">
+      <div class="MainLayout__preview-selector MainLayout__switcher">
         <div
-          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'phone' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'phone' }]"
           @click="previewMode = 'phone'"
         >phone</div>
         <div
-          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'desktop' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'desktop' }]"
           @click="previewMode = 'desktop'"
         >desktop</div>
         <div
-          :class="['MainLayout__preview-item', { 'MainLayout__preview-item_active': previewMode === 'code' }]"
+          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'code' }]"
           @click="previewMode = 'code'"
         >code</div>
       </div>

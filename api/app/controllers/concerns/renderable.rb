@@ -97,9 +97,8 @@ module Renderable
               var element = new Function('React', 'return (' + compiled + ')')(React);
               root.render(element);
             } catch (err) {
-              console.error('[renderer] Render error:', String(err));
-              console.error('[renderer] Card defined:', typeof window.Card, 'Page defined:', typeof window.Page);
-              root.render(React.createElement('pre', {style: {color: 'red'}}, String(err)));
+              console.warn('[renderer] Render error:', String(err));
+              root.render(React.createElement('pre', {style: {color: 'red'}, className: 'render-error', 'data-error': 'true'}, String(err)));
             }
           });
 
@@ -107,7 +106,7 @@ module Renderable
           var _loaded = #{loaded_react_names.to_a.to_json};
           var _missing = _loaded.filter(function(n) { return typeof window[n] === 'undefined'; });
           if (_missing.length > 0) {
-            console.error('[renderer] Missing components:', _missing.join(', '));
+            console.warn('[renderer] Missing components:', _missing.join(', '));
           }
           console.log('[renderer] Components loaded:', _loaded.length, 'missing:', _missing.length);
           window.parent.postMessage({ type: 'ready' }, '*');

@@ -1,10 +1,10 @@
 <template>
-  <div class="DesignSystemModal">
+  <div class="DesignSystemModal" @click.self="$emit('close')">
     <div class="DesignSystemModal__top-bar">
       <div class="DesignSystemModal__close" @click="$emit('close')">×</div>
     </div>
 
-    <div class="DesignSystemModal__box">
+    <div ref="modalCard" class="DesignSystemModal__box DesignSystemModal__card modal-card" data-testid="modal-card">
       <div class="DesignSystemModal__title">{{ designSystem ? designSystem.name : 'New design system' }}</div>
 
       <!-- Phase: add — source buttons + URL list + Import -->
@@ -542,11 +542,14 @@ export default {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--sp-3);
   z-index: 200;
 
   &__top-bar {
     flex-shrink: 0;
+    width: 100%;
+    max-width: 65vw;
   }
 
   &__close {
@@ -568,8 +571,11 @@ export default {
     }
   }
 
-  &__box {
+  &__box,
+  &__card {
     flex: 1;
+    width: 65vw;
+    max-height: 70vh;
     background: var(--bg-panel);
     border-radius: 24px;
     padding: 40px;
