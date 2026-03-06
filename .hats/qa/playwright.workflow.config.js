@@ -5,13 +5,13 @@ import { defineBddConfig } from "playwright-bdd";
 // Requires Figma import + OpenAI API. Long timeouts.
 const testDir = defineBddConfig({
   features: [
-    "./features/11-design-system-modal.feature",
-    "./features/12-design-generation-workflow.feature",
-    "./features/13-design-improvement-workflow.feature",
-    "./features/15-preview-rendering.feature",
-    "./features/16-component-browser-ui.feature",
-    "./features/17-design-export.feature",
-    "./features/19-ui-layout-design-system.feature",
+    ".hats-manager/03-figma-import.feature",
+    ".hats-manager/04-design-system-management.feature",
+    ".hats-manager/05-design-generation.feature",
+    ".hats-manager/06-design-improvement.feature",
+    ".hats-manager/07-design-management.feature",
+    ".hats-manager/08-component-library-browser.feature",
+    ".hats-manager/09-visual-diff.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen-workflow",

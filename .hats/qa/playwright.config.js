@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 import { defineBddConfig } from "playwright-bdd";
 
 const testDir = defineBddConfig({
-  features: "./features/**/*.feature",
+  features: ".hats-manager/**/*.feature",
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen",
 });

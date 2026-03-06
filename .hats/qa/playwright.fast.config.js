@@ -5,18 +5,8 @@ import { defineBddConfig } from "playwright-bdd";
 // Suitable for quick regression checks during development.
 const testDir = defineBddConfig({
   features: [
-    "./features/01-health-check.feature",
-    "./features/02-authentication.feature",
-    "./features/03-api-design-management.feature",
-    "./features/04-api-figma-import.feature",
-    "./features/05-api-custom-components.feature",
-    "./features/06-api-visual-diff.feature",
-    "./features/07-api-svg-assets.feature",
-    "./features/08-api-figma-json.feature",
-    "./features/09-api-ai-pipeline.feature",
-    "./features/10-api-image-search.feature",
-    "./features/18-onboarding-wizard.feature",
-    "./features/19-ui-layout-design-system.feature",
+    ".hats-manager/01-authentication.feature",
+    ".hats-manager/02-health-check.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen-fast",

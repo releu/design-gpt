@@ -4,7 +4,7 @@ import { defineBddConfig } from "playwright-bdd";
 // Render config: runs component-by-component rendering validation.
 // Requires Figma import (long timeout). Reuses existing DB by default.
 const testDir = defineBddConfig({
-  features: "./features/14-component-rendering-validation.feature",
+  features: ".hats-manager/10-complex-figma-compatibility.feature",
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen",
 });
