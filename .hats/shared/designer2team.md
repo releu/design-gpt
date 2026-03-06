@@ -58,3 +58,71 @@ All 18 feature specs now have complete design coverage:
 - The visual diff uses green/amber/red badge colors that are an intentional exception to the warm monochrome palette.
 
 ---
+
+## 3 2026-03-06T16:00 -- Designer
+
+Re: Design system simplified -- 5 colors, single font, uniform sizing
+
+Replaced the entire color palette and typography system:
+- Font: Suisse Int'l (body), Menlo (code)
+- All text: 14px/18px, no type scale
+- 5 colors only: black (#1B1B1F), darkgray (#565553), lightgray (#A6A5A2), white (#FFFFFF), fill (#EDECE8)
+
+Updated all 13 design files to use the new system.
+
+---
+
+## 4 2026-03-06T17:00 -- Designer
+
+Re: Pruned stale design files, updated composition model to slots
+
+Audited all 13 design files against the current 10 manager feature specs.
+
+### Deleted (3 files -- no matching feature)
+- `08-onboarding-wizard.md` -- onboarding feature was removed
+- `09-libraries-pages.md` -- standalone /libraries pages not in specs; browsing covered by DS modal + settings panel
+- `10-component-preview-page.md` -- backend dev page, not in any feature spec
+
+### Updated (3 files -- slots model)
+- `05-design-page.md` -- Configuration section now shows named slots with allowed children
+- `06-design-system-modal.md` -- Configuration section updated: slots listed per-name with allowed children (was flat allowed_children list)
+- `11-ai-schema-view.md` -- Tree now shows named slots under each root component; example updated
+
+### Removed stale spec reference
+- `05-design-page.md` -- removed reference to deleted `12-preview-rendering.feature`
+
+10 design files remain, each mapping to at least one current feature.
+
+---
+
+## 5 2026-03-06T18:00 -- Designer
+
+Re: Replaced local screenshots and ASCII wireframes with Figma frame links
+
+- Removed all `figma/*.png` reference lines and inline `See: figma/*.png` refs from all 10 design files
+- Removed all ASCII wireframe code blocks (box-drawing layouts) from all 10 design files
+- Added Figma frame link (`> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=0-1`) to the top of each file
+- Deleted the entire `.hats/designer/figma/` directory (all local PNG screenshots)
+- Kept all text descriptions (column proportions, component lists, styling specs) intact -- those are what AI agents read
+
+~~Node IDs in the Figma links currently point to the file root (`0-1`). When the Figma MCP server is available, these can be updated to point to specific frames per file.~~ Done in message #6.
+
+---
+
+## 6 2026-03-06T19:00 -- Designer
+
+Re: Updated Figma links with specific frame node IDs
+
+Used Figma MCP to fetch the frame/node structure and mapped each frame to its design file:
+
+- `02-layout-structures.md` → `1-355` (layout frame)
+- `03-authentication-screen.md` → `1-2` (authorization frame)
+- `04-home-new-design.md` → `1-965` (new design frame)
+- `05-design-page.md` → 4 frames: `1-966` (phone), `1-967` (desktop), `1-968` (code), `2-475` (settings)
+- `06-design-system-modal.md` → `2-578` (module/settings)
+- `07-shared-components.md` → 10 symbol node IDs (header, design-selector, mode-selector, preview-selector, more-button, module, slot, preview, module/chat, module/code)
+- `08-ai-schema-view.md` → `2-578` (part of design system modal)
+- `09-visual-diff-overlay.md` → `2-578` (part of design system modal)
+- `01-global-design-system.md` and `10-figma-export-popup.md` → kept at `0-1` (no dedicated frame)
+
+---

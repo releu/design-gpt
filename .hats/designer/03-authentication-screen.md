@@ -1,6 +1,6 @@
 # Authentication Screen
 
-> Reference mockup: `figma/authorization.png`
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-2
 
 ---
 
@@ -12,29 +12,10 @@ This is the screen shown to unauthenticated users when they visit the applicatio
 
 ## Layout
 
-```
-+--------------------------------------------------------------+
-|                                                              |
-|                                                              |
-|                                                              |
-|                                                              |
-|                     +------------+                           |
-|                     |            |                           |
-|                     |   wave     |                           |
-|                     |   icon     |                           |
-|                     |            |                           |
-|                     +------------+                           |
-|                                                              |
-|                                                              |
-|                                                              |
-|                                                              |
-+--------------------------------------------------------------+
-```
-
 ### Structure
 
 - Full viewport, centered both horizontally and vertically
-- Background: `--bg-page` (warm light gray, `#EBEBEA`)
+- Background: fill
 - A single card/icon centered on screen
 
 ---
@@ -47,7 +28,7 @@ This is the screen shown to unauthenticated users when they visit the applicatio
 - **Appearance**: A large hand-wave icon displayed on a white rounded-rectangle card
 - **Card size**: Approximately 120px x 120px
 - **Card styling**:
-  - Background: `--bg-panel` (white)
+  - Background: white
   - Border-radius: `--radius-md` (16px)
   - Subtle shadow: `0 2px 12px rgba(0,0,0,0.06)`
 - **Icon**: Hand wave image/emoji, roughly 80px, centered inside the card
@@ -58,10 +39,10 @@ This is the screen shown to unauthenticated users when they visit the applicatio
 The mockup shows only the wave icon, but the feature spec (`01-authentication.feature`) states the user should see a "sign-in prompt." Developers should include:
 
 - A text label below the card: **"Sign in to continue"** or similar
-  - Font: 14px, `--text-secondary`, centered
+  - Font: darkgray, centered
   - Margin-top from card: `--sp-3` (16px)
 - Optionally, a "Sign in" button below the label
-  - Pill-shaped, `--accent-primary` background, white text
+  - Pill-shaped, black background, white text
   - Same style as the "generate" button
 
 ---

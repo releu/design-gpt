@@ -1,6 +1,6 @@
 # Global Design System
 
-> Reference mockups: all files under `figma/`
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=0-1
 
 ## Platform Constraints
 
@@ -14,63 +14,42 @@
 
 ## Color Palette
 
-### Backgrounds
+Five colors total. No tokens, no aliases -- use these names directly.
 
-| Token                  | Value (approx.)  | Usage                                                        |
-|------------------------|------------------|--------------------------------------------------------------|
-| `--bg-page`            | `#EBEBEA` / warm light gray | Page-level background behind all panels          |
-| `--bg-panel`           | `#FFFFFF`        | Card / panel surfaces (prompt area, chat, settings, etc.)    |
-| `--bg-input`           | `#FFFFFF`        | Text inputs, textareas                                       |
-| `--bg-bubble-user`     | `#F0EFED` / light warm gray | Chat bubbles from the AI / "designer" role      |
-| `--bg-bubble-ai`       | transparent / none | User messages have no distinct bubble background -- they are left-aligned plain text |
-| `--bg-chip-inactive`   | transparent      | Unselected pill / chip in selectors                          |
-| `--bg-chip-active`     | `#EBEBEA` / light gray | Selected pill / chip in selectors                     |
-| `--bg-modal-overlay`   | `#EBEBEA`        | Full-screen overlay behind the design-system modal           |
-
-### Foreground / Text
-
-| Token                  | Value            | Usage                                                        |
-|------------------------|------------------|--------------------------------------------------------------|
-| `--text-primary`       | `#1A1A1A` / near-black | All body text, labels, component names                |
-| `--text-secondary`     | `#999999` / medium gray | Placeholder text, subtitles, muted labels            |
-| `--text-on-dark`       | `#FFFFFF`        | Text on the dark "generate" / "send" button                  |
-
-### Accents
-
-| Token                  | Value            | Usage                                                        |
-|------------------------|------------------|--------------------------------------------------------------|
-| `--accent-primary`     | `#1A1A1A` / near-black | "generate" button fill, send-circle fill              |
-| `--accent-border`      | `#D4D4D4`        | Subtle 1px borders on panels and cards                       |
-| `--accent-divider`     | `#E0E0E0`        | Horizontal/vertical drag-handle divider lines                |
+| Name      | Value     | Usage                                                                    |
+|-----------|-----------|--------------------------------------------------------------------------|
+| black     | `#1B1B1F` | Primary text, dark buttons, active borders, send button fill             |
+| darkgray  | `#565553` | Secondary/muted text, placeholders, subtitles                            |
+| lightgray | `#A6A5A2` | Disabled states, subtle borders, dividers                                |
+| white     | `#FFFFFF` | Panel/card backgrounds, inputs, text on dark buttons                     |
+| fill      | `#EDECE8` | Page background, chip active fill, modal overlay, chat bubbles           |
 
 ### Observation
 
-The palette is intentionally neutral -- warm off-whites and near-blacks only. There is no brand color. The design is monochrome with warmth coming from the slightly beige page background (`#EBEBEA`).
+The palette is intentionally minimal -- five values only. No brand color. The design is monochrome with warmth coming from the slightly beige page background (fill).
 
 ---
 
 ## Typography
 
-All text in the mockups uses a single sans-serif typeface. Based on the rendering style, the font appears to be the system default or a clean geometric sans-serif such as **Inter** or **SF Pro**. Developers should use:
+### Fonts
 
-```css
-font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
-```
+- **Body font**: `Suisse Int'l` -- used for ALL text (labels, body, captions, headings, everything)
+- **Code font**: `Menlo` -- used for CodeMirror, code views, monospace contexts
 
-### Scale
+### Size
 
-| Role             | Size (approx.) | Weight   | Usage                                          |
-|------------------|----------------|----------|-------------------------------------------------|
-| Body / default   | 14px           | 400      | All standard text, list items, chat messages    |
-| Label            | 13px           | 500      | Module labels ("prompt", "design system", "ai engine"), section headers |
-| Small / caption  | 12px           | 400      | Placeholder text, secondary descriptions        |
-| Code             | 13px           | 400 mono | CodeMirror / code view (`font-family: monospace`) |
+- **Font size**: 14px for ALL text -- no type scale, no variation
+- **Line height**: 18px for ALL text -- no variation
+- **Weight**: 400 default; use 500 or 600 only where bold is semantically needed (e.g. component names, section titles)
+
+There is no type scale. Labels, captions, headings, body text, placeholders -- all 14px/18px.
 
 ### Text behavior
 
 - No uppercase or letter-spacing transforms observed anywhere
 - All labels are lowercase (e.g. "new design", "chat", "settings", "phone", "desktop", "code")
-- Placeholder text uses `--text-secondary` color
+- Placeholder text uses darkgray
 
 ---
 
@@ -113,7 +92,7 @@ All corners are generously rounded. The design avoids sharp corners entirely.
 
 Shadows are extremely subtle or absent:
 
-- **Panels**: No visible box-shadow. Elevation is conveyed purely by the white panel sitting on the gray page background.
+- **Panels**: No visible box-shadow. Elevation is conveyed purely by the white panel sitting on the fill page background.
 - **Modal**: A slight shadow is visible around the design-system modal card, suggesting `box-shadow: 0 4px 24px rgba(0,0,0,0.08)`.
 - **Buttons**: No shadow on the "generate" / send button.
 
@@ -121,46 +100,34 @@ Shadows are extremely subtle or absent:
 
 ## Borders
 
-- Most panels have **no visible border** -- they rely on background-color contrast against `--bg-page`
+- Most panels have **no visible border** -- they rely on background-color contrast against the fill page background
 - The preview frame (phone/desktop) has a **2px solid black** border to simulate a device outline
-- Drag-handle dividers between resizable columns are thin **1px** lines with small bar indicators
 
 ---
 
 ## Iconography
 
-Minimal iconography is used:
+No icon library. Use Apple emoji everywhere:
 
-- **Close button (x)**: Circular, small, top-left of modal overlays
-- **Send button**: Solid black circle (~32px diameter) inside the chat input bar; contains a right-arrow or send icon in white
-- **More button (...)**: Three horizontal dots, displayed as plain text -- not a styled icon
+- **Close button**: ❎
+- **More button**: 🔽
+- **Sign-in**: Custom illustration -- hand with 8 fingers
+- **Sync**: 🔄
+- **Error/warning**: ⚠️
+- **Success**: ✅
+- **Phone**: 📱
+- **Desktop**: 🖥️
+- **Code**: ✏️
 
-No icon library is visibly in use. Icons are likely inline SVGs or text characters.
-
----
-
-## Interactive States (inferred)
-
-Since the mockups are static, interactive states are inferred from standard patterns:
-
-| Element          | Hover                          | Active / Selected                        | Disabled                     |
-|------------------|--------------------------------|------------------------------------------|------------------------------|
-| Pill / chip      | Slight background darken       | `--bg-chip-active` fill                  | Reduced opacity (0.5)        |
-| Button (dark)    | Slight lighten (e.g. `#333`)   | Press: slight scale-down                 | Gray fill, no pointer cursor |
-| Text input       | No change                      | Subtle border or outline                 | Grayed out text, no cursor   |
-| Component name   | Background highlight           | `--bg-chip-active` highlight             | --                           |
-| Link text ("edit", "open", "remove") | Underline on hover | --                               | --                           |
+Apple emoji is the only icon set. No SVGs, no icon font, no custom icons.
 
 ---
 
-## Animation and Transitions
+## Interactive States
 
-No animations are specified in the static mockups. Recommended defaults:
-
-- Panel transitions: `150ms ease` for opacity and transform
-- Chip/toggle selection: `100ms ease` for background-color
-- Modal open/close: `200ms ease` for opacity + slight scale
-- No page-transition animations (Vue Router navigations are instant)
+- **Hover**: `cursor: pointer` where needed (buttons, links, clickable items). No other visual change.
+- **Active/Selected**: Fill background for selectable items (menu items, pills, component names). For buttons: `transform: scale(0.96)` on `:active`.
+- **Disabled**: Reduced opacity (0.5), no pointer cursor.
 
 ---
 

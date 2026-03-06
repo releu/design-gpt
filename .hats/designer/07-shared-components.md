@@ -1,16 +1,15 @@
 # Shared Components
 
-> Reference mockups:
-> - `figma/header.png` (header bar)
-> - `figma/mode-selector.png` (chat/settings toggle)
-> - `figma/preview-selector.png` (phone/desktop/code toggle)
-> - `figma/design-selector.png` (design name dropdown)
-> - `figma/more-button.png` (export menu trigger)
-> - `figma/module.png` (module panel template)
-> - `figma/slot.png` (slot placeholder)
-> - `figma/preview.png` (preview frame)
-> - `figma/module/chat.png` (chat panel)
-> - `figma/module/code.png` (code editor -- reused in settings view)
+> Figma (header): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-633
+> Figma (design-selector): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-282
+> Figma (mode-selector): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=2-528
+> Figma (preview-selector): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-916
+> Figma (more-button): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=2-428
+> Figma (module): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-33
+> Figma (slot): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-82
+> Figma (preview): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-56
+> Figma (module/chat): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-971
+> Figma (module/code): https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=2-420
 
 This document describes reusable UI building blocks that appear across multiple screens.
 
@@ -18,27 +17,12 @@ This document describes reusable UI building blocks that appear across multiple 
 
 ## 1. Header Bar
 
-> Mockup: `figma/header.png`
-
-### Layout
-
-```
-+--------------------------------------------------------------+
-| new design      chat   settings       ...  phone desktop code|
-+--------------------------------------------------------------+
-```
-
-The header is a single horizontal row containing four groups of controls:
-
-```
-[DesignSelector]  [ModeSelector]       [MoreButton]  [PreviewSelector]
-     left           center-left         center-right        right
-```
+The header is a single horizontal row containing four groups: DesignSelector (left), ModeSelector (center-left), MoreButton (center-right), PreviewSelector (right).
 
 ### Specifications
 
 - **Height**: ~48px
-- **Background**: transparent (the page background shows through) -- or optionally `--bg-page`
+- **Background**: transparent (the page background shows through) -- or optionally fill
 - **Padding**: `--sp-3` (16px) horizontal
 - **Alignment**: All groups are vertically centered; distributed with space-between on the horizontal axis
 - **No border or shadow** on the header bar itself; it blends into the page
@@ -54,20 +38,12 @@ The header is a single horizontal row containing four groups of controls:
 
 ## 2. Design Selector
 
-> Mockup: `figma/design-selector.png`
-
 ### Appearance
 
-```
-+---------------------+
-|    new design   \/   |
-+---------------------+
-```
-
 - **Shape**: Pill/rounded rectangle
-- **Background**: `--bg-panel` (white) or `--bg-chip-inactive` (transparent with subtle border)
+- **Background**: white or transparent
 - **Border-radius**: `--radius-pill`
-- **Text**: Current design name (e.g., "new design", "design #12"), `--text-primary`, 14px, centered
+- **Text**: Current design name (e.g., "new design", "design #12"), black, centered
 - **Dropdown indicator**: A small downward caret/chevron to the right of the text (implied by the dropdown behavior)
 - **Width**: Auto-fit to text content, minimum ~160px
 - **Height**: ~36px
@@ -76,19 +52,8 @@ The header is a single horizontal row containing four groups of controls:
 
 When clicked, a dropdown appears below:
 
-```
-+---------------------+
-|    new design   \/   |
-+---------------------+
-| (+) new design       |
-| design #12           |
-| My Travel App        |
-| Dashboard v2         |
-+---------------------+
-```
-
 - **Dropdown card**: White, `--radius-md` border-radius, subtle shadow
-- **Items**: 14px `--text-primary`, ~36px row height, full-width hover highlight
+- **Items**: black, ~36px row height, full-width hover highlight
 - **"(+) new design"**: Always first item; navigates to home page
 - **Other designs**: Listed by name, ordered by most recent
 - Selecting an item navigates to that design's page (or home for "new design")
@@ -97,23 +62,14 @@ When clicked, a dropdown appears below:
 
 ## 3. Mode Selector
 
-> Mockup: `figma/mode-selector.png`
-
 ### Appearance
-
-```
-+-------+   +-----------+          +-------+   +-----------+
-| chat  |   | settings  |          | chat  |   | settings  |
-+-------+   +-----------+          +-------+   +-----------+
-  active      inactive               inactive     active
-```
 
 - **Container**: Horizontal row of two pill-shaped toggles
 - **Each pill**:
-  - Background (active): `--bg-chip-active` (light gray fill)
+  - Background (active): fill (light gray fill)
   - Background (inactive): transparent
   - Border-radius: `--radius-pill`
-  - Text: 14px, `--text-primary`
+  - Text: black
   - Padding: ~8px 16px
   - Height: ~36px
 - **Gap between pills**: `--sp-1` (4px)
@@ -124,38 +80,23 @@ When clicked, a dropdown appears below:
 
 | Pill      | Active                           | Inactive                    |
 |-----------|----------------------------------|-----------------------------|
-| chat      | `--bg-chip-active`, bold weight  | transparent, normal weight  |
-| settings  | `--bg-chip-active`, bold weight  | transparent, normal weight  |
+| chat      | fill, bold weight  | transparent, normal weight  |
+| settings  | fill, bold weight  | transparent, normal weight  |
 
 ---
 
 ## 4. Preview Selector
 
-> Mockup: `figma/preview-selector.png`
-
 ### Appearance
 
-```
-+---------+   +-----------+   +--------+
-|  phone  |   |  desktop  |   |  code  |
-+---------+   +-----------+   +--------+
-  active        inactive       inactive
-```
-
-Three variants shown in the mockup:
-
-```
-Row 1:  [phone*]   desktop    code       <-- phone active
-Row 2:   phone    [desktop*]  code       <-- desktop active
-Row 3:   phone     desktop   [code*]     <-- code active
-```
+Three pills: "phone", "desktop", "code". One active at a time.
 
 - **Container**: Horizontal row of three pill-shaped toggles
 - **Each pill**: Same styling as Mode Selector pills
-  - Active: `--bg-chip-active`
+  - Active: fill
   - Inactive: transparent
   - Border-radius: `--radius-pill`
-  - Text: 14px, `--text-primary`
+  - Text: black
 - **Gap between pills**: `--sp-1` (4px)
 - **Behavior**: Mutually exclusive toggle
 - **Default**: "phone" is active
@@ -172,16 +113,9 @@ Row 3:   phone     desktop   [code*]     <-- code active
 
 ## 5. More Button
 
-> Mockup: `figma/more-button.png`
-
 ### Appearance
 
-```
-...
-```
-
-- **Text**: "..." (three dots / ellipsis), `--text-primary`, 14px
-- **No background, no border** -- just the text characters
+- **Text**: "..." (three dots / ellipsis), black- **No background, no border** -- just the text characters
 - **Clickable area**: ~36px x 36px (larger than visible text for easy clicking)
 - **Cursor**: pointer on hover
 
@@ -193,34 +127,18 @@ See `05-design-page.md` for the export menu dropdown specification.
 
 ## 6. Module Panel
 
-> Mockup: `figma/module.png`
-
-### Appearance
-
-```
-+--------------------------------------+
-| label                                |
-| +----------------------------------+ |
-| |                                  | |
-| |       (content area)             | |
-| |                                  | |
-| |                                  | |
-| +----------------------------------+ |
-+--------------------------------------+
-```
-
 This is the generic container used for "prompt", "design system", "ai engine", and other content panels.
 
 ### Specifications
 
 - **Outer container**:
-  - Background: `--bg-panel` (white)
+  - Background: white
   - Border-radius: `--radius-lg` (24px)
   - Padding: `--sp-3` (16px)
   - No border, no shadow
 - **Label**:
   - Position: Top-left of the panel, outside the content area
-  - Text: `--text-primary`, 13px, weight 500
+  - Text: black, weight 500
   - Margin-bottom: `--sp-2` (8px) before content
 - **Content area**:
   - Background: slightly lighter or same as panel (in some cases a nested gray area)
@@ -230,13 +148,11 @@ This is the generic container used for "prompt", "design system", "ai engine", a
 
 ## 7. Slot Placeholder
 
-> Mockup: `figma/slot.png`
-
 ### Appearance
 
 A simple gray square placeholder used in wireframes to indicate where dynamic content will appear.
 
-- **Background**: `--bg-chip-active` (light gray)
+- **Background**: fill (light gray)
 - **Border-radius**: `--radius-sm` (8px) or none
 - **Size**: Varies based on context
 - **Purpose**: Represents a content placeholder in design compositions
@@ -247,76 +163,41 @@ This is a design-time element. In the actual implementation, slots are filled wi
 
 ## 8. Preview Frame
 
-> Mockup: `figma/preview.png`
-
 ### Phone variant
-
-```
-+------------------------------------+
-|                                    |
-|                                    |
-|                                    |
-|            preview                 |
-|                                    |
-|                                    |
-|                                    |
-+------------------------------------+
-```
 
 - **Border**: 2px solid black
 - **Border-radius**: `--radius-phone` (72px) -- creates the rounded phone-bezel shape
-- **Background**: `--bg-panel` (white)
+- **Background**: white
 - **Content**: Iframe pointed at the renderer URL
 - **Aspect ratio**: Approximately 9:16 (portrait mobile), but height adapts to fill available space
 - **Center alignment**: The phone frame is horizontally centered in its column and vertically centered
-- **Notch indicator**: A small horizontal line extends from the left edge of the frame to the column divider (visible in `figma/design/phone.png`)
 
 ### Desktop variant
 
 - **Border**: 2px solid black
 - **Border-radius**: `--radius-lg` (24px)
-- **Background**: `--bg-panel` (white)
+- **Background**: white
 - **Content**: Same iframe, rendered at full width
 - **Sizing**: Fills available width and height of the preview area
 
 ### Placeholder state
 
-- When no design is rendered yet, the text "preview" appears centered in `--text-secondary`
+- When no design is rendered yet, the text "preview" appears centered in darkgray
 
 ---
 
 ## 9. Chat Panel
 
-> Mockup: `figma/module/chat.png`
-
-### Layout
-
-```
-+--------------------------------------+
-|                                      |
-|                                      |
-|  user message                        |
-|         [ai message bubble]          |
-|                                      |
-|  user message                        |
-|         [ai message bubble]          |
-|                                      |
-|  user message                        |
-|                                      |
-| [  input text                  (o) ] |
-+--------------------------------------+
-```
-
 ### Message styling
 
 | Role       | Alignment    | Background                | Text style              |
 |------------|-------------|---------------------------|-------------------------|
-| User       | Left        | None (transparent)        | `--text-primary`, 14px  |
-| AI/Designer | Right (bubble) | `--bg-bubble-user` (warm gray) | `--text-primary`, 14px |
+| User       | Left        | None (transparent)        | black  |
+| AI/Designer | Right (bubble) | fill (warm gray) | black |
 
 - **User messages**: Plain text, left-aligned, no bubble
 - **AI messages**: Contained in a rounded bubble
-  - Background: `--bg-bubble-user`
+  - Background: fill
   - Border-radius: `--radius-md` (16px)
   - Max-width: ~75% of panel width
   - Padding: 8px 16px
@@ -326,16 +207,16 @@ This is a design-time element. In the actual implementation, slots are filled wi
 ### Input bar
 
 - **Container**: Pill-shaped bar, full width of the chat panel
-  - Background: `--bg-chip-active` (light gray)
+  - Background: fill (light gray)
   - Border-radius: `--radius-pill`
   - Height: ~44px
   - Padding: 6px 6px 6px 16px
 - **Text input**: Transparent background, no border, fills available width
-  - Font: 14px, `--text-primary`
+  - Font: black
   - Placeholder: empty or "Type a message..."
 - **Send button**: Solid circle at the right end
   - Diameter: ~32px
-  - Background: `--accent-primary` (near-black)
+  - Background: black
   - Icon: White arrow/send icon centered
   - Disabled state: lower opacity or hidden when input is empty or design is generating
 
@@ -349,14 +230,12 @@ This is a design-time element. In the actual implementation, slots are filled wi
 
 ## 10. Code Editor
 
-> Mockup: referenced in `figma/design/code.png`
-
 ### Specifications
 
 - **Library**: CodeMirror 6 (via vue-codemirror)
 - **Language mode**: JSX / HTML
-- **Font**: Monospace, 13px
-- **Background**: `--bg-panel` (white)
+- **Font**: code font
+- **Background**: white
 - **Line numbers**: Visible in the gutter
 - **Syntax highlighting**: Standard color scheme for JSX (tag names, attributes, strings, etc.)
 - **Editable**: In the design page code view, the editor is read-write; in the component detail React code view, it is read-only

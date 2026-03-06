@@ -1,6 +1,8 @@
 # Figma Export Popup
 
-> No direct Figma mockup exists for this popup. The specification comes from `07-design-management.feature`.
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=0-1
+>
+> The specification comes from `07-design-management.feature`.
 
 ---
 
@@ -18,26 +20,10 @@ The popup is triggered from the "..." more button's export dropdown on the desig
 
 ## Layout
 
-```
-+----------------------------------+
-| Figma (alpha)               (x)  |
-|                                  |
-| Use this code in the Figma       |
-| plugin to import your design.    |
-|                                  |
-| +------------------------------+ |
-| |  ABC-123-XYZ                 | |
-| +------------------------------+ |
-|                                  |
-| [Copy]                           |
-|                                  |
-+----------------------------------+
-```
-
 ### Specifications
 
 - **Container**: Small modal/popover card
-  - Background: `--bg-panel` (white)
+  - Background: white
   - Border-radius: `--radius-md` (16px)
   - Shadow: `0 4px 24px rgba(0,0,0,0.08)` (same as modal)
   - Padding: `--sp-4` (24px)
@@ -48,27 +34,27 @@ The popup is triggered from the "..." more button's export dropdown on the desig
 
 #### Title
 
-- **Text**: "Figma (alpha)" -- `--text-primary`, 16px, bold
+- **Text**: "Figma (alpha)" -- black, bold
 - **Close button**: Small "x" in the top-right corner
   - Clickable area: ~24px x 24px
-  - Color: `--text-secondary`
+  - Color: darkgray
 
 #### Description
 
-- **Text**: "Use this code in the Figma plugin to import your design." -- `--text-primary`, 14px
+- **Text**: "Use this code in the Figma plugin to import your design." -- black
 - **Margin-bottom**: `--sp-3` (16px)
 
 #### Pairing Code
 
-- **Container**: Light gray background (`--bg-chip-active`), `--radius-sm` (8px) border-radius, `--sp-2` (8px) padding
-- **Text**: The pairing code string -- monospace font, 14px, `--text-primary`
+- **Container**: Light gray background (fill), `--radius-sm` (8px) border-radius, `--sp-2` (8px) padding
+- **Text**: The pairing code string -- code font, black
 - **Width**: Full width of the popup content area
 
 #### Copy Button
 
 - **Style**: Pill-shaped button
-  - Background: `--accent-primary` (near-black)
-  - Text: "Copy" in `--text-on-dark` (white), 14px
+  - Background: black
+  - Text: "Copy" in white
   - Border-radius: `--radius-pill`
   - Padding: ~8px 20px
 - **Position**: Left-aligned below the code display

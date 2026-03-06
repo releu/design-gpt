@@ -1,6 +1,8 @@
 # Visual Diff Overlay
 
-> No direct Figma mockup exists for this view. It appears as a section within the ComponentDetail view. The specification comes from `08-component-library-browser.feature` and `10-visual-diff.feature`.
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=2-578
+>
+> Appears as a section within the ComponentDetail view. The specification comes from `08-component-library-browser.feature` and `10-visual-diff.feature`.
 
 ---
 
@@ -22,52 +24,26 @@ The visual diff appears as an expandable section within the ComponentDetail view
 
 ### Collapsed State
 
-```
-+----------------------------------------------+
-| ...other ComponentDetail sections...          |
-|                                               |
-| visual diff                    [87% match]    |
-| (click to expand)                             |
-|                                               |
-+----------------------------------------------+
-```
-
-- **Section label**: "visual diff" -- `--text-primary`, 14px
-- **Match badge**: Pill-shaped badge showing the percentage
+- **Section label**: "visual diff" -- black- **Match badge**: Pill-shaped badge showing the percentage
   - High match (80-100%): Badge with green-tinted or neutral styling
   - Medium match (50-79%): Badge with amber/yellow-tinted styling
   - Low match (0-49%): Badge with red-tinted styling
-  - No data: Badge shows "no diff" in `--text-secondary`
+  - No data: Badge shows "no diff" in darkgray
 - **Expand indicator**: Chevron or arrow indicating the section is collapsible
 
 ### Expanded State
-
-```
-+----------------------------------------------+
-| visual diff                    [87% match]    |
-|                                               |
-| +----------+  +----------+  +----------+      |
-| |          |  |          |  |          |      |
-| |  Figma   |  |  React   |  |  Diff    |      |
-| |          |  |          |  |          |      |
-| +----------+  +----------+  +----------+      |
-|   Figma          React          Diff          |
-|                                               |
-+----------------------------------------------+
-```
 
 ### Specifications
 
 - **Three-panel layout**: Horizontal row of three equally-sized image panels
 - **Panel width**: Each panel takes ~33% of the available width (within the right pane of the ComponentDetail)
 - **Panel styling**:
-  - Border: 1px solid `--accent-border`
+  - Border: 1px solid lightgray
   - Border-radius: `--radius-sm` (8px)
   - Background: white
   - Overflow: hidden (images cropped to fit)
 - **Panel labels**: Centered below each panel
-  - "Figma", "React", "Diff" -- `--text-secondary`, 12px
-- **Images**: Loaded from API endpoints:
+  - "Figma", "React", "Diff" -- darkgray- **Images**: Loaded from API endpoints:
   - Figma screenshot: `/api/components/:id/screenshots/figma`
   - React screenshot: `/api/components/:id/screenshots/react`
   - Diff image: `/api/components/:id/diff_image`
@@ -81,7 +57,7 @@ The visual diff appears as an expandable section within the ComponentDetail view
 | 80-100%    | `#E8F5E9` (light green) | `#2E7D32`      |
 | 50-79%     | `#FFF8E1` (light amber) | `#F57F17`      |
 | 0-49%      | `#FFEBEE` (light red)   | `#C62828`      |
-| No data    | `--bg-chip-active`      | `--text-secondary` |
+| No data    | fill      | darkgray |
 
 Note: These colors are an exception to the warm monochrome palette, used specifically for status indication in the visual diff context. They follow standard traffic-light conventions for quick scanning.
 

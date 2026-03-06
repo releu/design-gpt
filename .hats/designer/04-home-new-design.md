@@ -1,11 +1,6 @@
 # Home / New Design Screen
 
-> Reference mockups:
-> - `figma/new design.png` (full page)
-> - `figma/module-content/prompt.png` (prompt panel content)
-> - `figma/module-content/design-system.png` (design system panel content)
-> - `figma/module-content/ai-engine.png` (AI engine bar content)
-> - `figma/preview.png` (preview frame component)
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=1-965
 
 ---
 
@@ -20,29 +15,6 @@ This is the primary landing screen for authenticated users. It allows users to:
 This screen uses **Layout 1** (three columns + bottom bar) from `02-layout-structures.md`.
 
 ---
-
-## Layout
-
-```
-+--------------------------------------------------------------+
-| [new design \/]   [chat | settings]   [...] [phone|desk|code]|
-+-------------------+-------------------+-----------------------+
-|                   |                   |                       |
-| prompt            | design system     |                       |
-|                   |                   |                       |
-| describe what     | common/depot [ed] |                       |
-| you want to       | releu/depot       |      preview          |
-| create            | andreas/cubes     |      (phone frame)    |
-|                   |                   |                       |
-|                   |                   |                       |
-|                   |                   |                       |
-|                   |        [new]      |                       |
-+------|------------+------|------------+                       |
-| ai engine                             |                       |
-| ChatGPT                    [generate] |                       |
-| don't share nda for now               |                       |
-+---------------------------------------+-----------------------+
-```
 
 ---
 
@@ -60,20 +32,16 @@ On this screen the header contains:
 
 ### 2. Prompt Panel
 
-> Mockup: `figma/module-content/prompt.png`
-
 - **Position**: Left column, top area
-- **Label**: "prompt" -- displayed above the content area in `--text-primary`, 13px, weight 500
+- **Label**: "prompt" -- displayed above the content area in black, weight 500
 - **Content**: A large multi-line textarea
-  - Placeholder text: "describe what you want to create" in `--text-secondary`
+  - Placeholder text: "describe what you want to create" in darkgray
   - No visible border on the textarea itself -- it fills the white panel
-  - Font: 14px, `--text-primary`
+  - Font: black
   - The textarea expands to fill available vertical space
 - **Panel styling**: White card, `--radius-lg`, `--sp-3` padding
 
 ### 3. Design System Panel
-
-> Mockup: `figma/module-content/design-system.png`
 
 - **Position**: Center column, top area
 - **Label**: "design system" -- displayed above the content area
@@ -82,38 +50,34 @@ On this screen the header contains:
 #### Library list items
 
 Each item is a row:
-- **Name**: Text like "common/depot", "releu/depot", "andreas/cubes" in `--text-primary`, 14px
+- **Name**: Text like "common/depot", "releu/depot", "andreas/cubes" in black
 - **Selected indicator**: The first item ("common/depot") has a subtle background highlight and an "edit" link on the right side
-- **"edit" link**: Right-aligned text in `--text-secondary`, 13px. Clicking opens the design system modal (see `06-design-system-modal.md`)
+- **"edit" link**: Right-aligned text in darkgray. Clicking opens the design system modal (see `06-design-system-modal.md`)
 
 Items are vertically stacked with `--sp-2` (8px) gap between them.
 
 #### "new" button
 
 - **Position**: Bottom-left of the design system panel
-- **Style**: Pill-shaped button, `--bg-chip-active` background (light gray), `--text-primary` text
+- **Style**: Pill-shaped button, fill background, black text
 - **Size**: Auto-width, ~32px height
 - **Behavior**: Opens the design system modal in "create new" mode
 
 ### 4. AI Engine Bar
 
-> Mockup: `figma/module-content/ai-engine.png`
-
 - **Position**: Bottom bar spanning the left and center columns
 - **Label**: "ai engine" -- displayed above the bar content
 - **Content**:
-  - **Engine name**: "ChatGPT" in `--text-primary`, 14px, bold
-  - **Subtitle**: "don't share nda for now" in `--text-secondary`, 12px -- this is a privacy/configuration note
+  - **Engine name**: "ChatGPT" in black, bold
+  - **Subtitle**: "don't share nda for now" in darkgray -- this is a privacy/configuration note
   - **"generate" button**: Right-aligned, pill-shaped
-    - Background: `--accent-primary` (near-black)
-    - Text: "generate" in `--text-on-dark` (white), 14px
+    - Background: black
+    - Text: "generate" in white
     - Border-radius: `--radius-pill`
     - Padding: ~12px 24px
     - This is the primary call-to-action on the page
 
 ### 5. Preview Frame
-
-> Mockup: `figma/preview.png`
 
 - **Position**: Right column, full height from header to bottom
 - **Appearance**: Phone-shaped preview container

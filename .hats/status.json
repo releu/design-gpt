@@ -4,13 +4,13 @@
       "count": 7,
       "read_by": {
         "cto": 7,
-        "qa": 4,
+        "qa": 7,
         "developer": 4,
-        "designer": 3
+        "designer": 7
       }
     },
     "designer2team": {
-      "count": 2,
+      "count": 6,
       "read_by": {
         "cto": 2,
         "manager": 2,
@@ -28,7 +28,7 @@
     "dev2qa": {
       "count": 9,
       "read_by": {
-        "qa": 7,
+        "qa": 9,
         "manager": 9
       }
     },
@@ -36,8 +36,8 @@
       "count": 6,
       "read_by": {
         "developer": 3,
-        "designer": 1,
-        "qa": 3,
+        "designer": 6,
+        "qa": 6,
         "manager": 3
       }
     }

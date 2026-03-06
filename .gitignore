@@ -5,6 +5,7 @@ node_modules/
 .DS_Store
 .hats/role
 .hats/logs/
+.mcp.json
 
 # Developer dependencies
 developer/api/vendor/

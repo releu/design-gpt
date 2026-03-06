@@ -1,8 +1,6 @@
 # Design System Modal
 
-> Reference mockups:
-> - `figma/new design/new design-system.png` (full modal with overlay)
-> - `figma/module/settings.png` (settings panel detail -- shared layout)
+> Figma: https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?node-id=2-578
 
 ---
 
@@ -22,29 +20,12 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 ### Full-screen overlay
 
-```
-+--------------------------------------------------------------+
-| (x)                                                          |
-|                                                              |
-|      +------------------------------------------------+      |
-|      |                                                |      |
-|      |  [modal content -- see below]                  |      |
-|      |                                                |      |
-|      |                                                |      |
-|      |                                                |      |
-|      |                                                |      |
-|      |                                                |      |
-|      +------------------------------------------------+      |
-|                                                              |
-+--------------------------------------------------------------+
-```
-
-- **Overlay background**: `--bg-modal-overlay` (same warm gray as page, or slightly darker with opacity)
+- **Overlay background**: fill (same warm gray as page, or slightly darker with opacity)
 - **Close button (x)**: Circular button, top-left corner of the overlay (not the modal card). Approximately 36px diameter, white background, black "x" text. Positioned at roughly 32px from top and left edges.
 - **Modal card**: Centered both horizontally and vertically
   - Width: ~65% of viewport (roughly 800-900px on a 1400px screen)
   - Height: ~70% of viewport
-  - Background: `--bg-panel` (white)
+  - Background: white
   - Border-radius: `--radius-lg` (24px)
   - Shadow: `0 4px 24px rgba(0,0,0,0.08)`
   - Padding: `--sp-4` (24px)
@@ -53,34 +34,18 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 ## Modal Content: Two-Pane Layout
 
-```
-+------------------------------------------------+
-| general          | [right panel content]        |
-|   [overview]     |                              |
-|   ai schema      |                              |
-| figma file name  |                              |
-|   component name |                              |
-|   component name |                              |
-|   component name |                              |
-|   component name |                              |
-| figma file name  |                              |
-|   component name |                              |
-|   component name |                              |
-+------------------------------------------------+
-```
-
 ### Left pane: Navigation sidebar
 
 - **Width**: ~35% of the modal card width (~250px)
 - **Sections**:
-  - **"general"**: Section header in `--text-secondary`, 13px
-    - **"overview"**: Clickable item. When active, has `--bg-chip-active` background with `--radius-sm` rounding
-    - **"ai schema"**: Clickable item. Shows the component tree reachable from root components. See `11-ai-schema-view.md` for full specification.
+  - **"general"**: Section header in darkgray
+    - **"overview"**: Clickable item. When active, has fill background with `--radius-sm` rounding
+    - **"ai schema"**: Clickable item. Shows the component tree reachable from root components. See `08-ai-schema-view.md` for full specification.
   - **Figma file sections**: Each imported Figma file is a section
-    - **File name**: Shown as a section header in `--text-secondary`, 13px (e.g., "figma file name")
+    - **File name**: Shown as a section header in darkgray (e.g., "figma file name")
     - **Component names**: Listed below, indented slightly (~16px left padding)
-      - Text: `--text-primary`, 14px
-      - Clickable -- selecting highlights with `--bg-chip-active`
+      - Text: black
+      - Clickable -- selecting highlights with fill
       - The currently selected component has a distinct background highlight
 
 - **Scrolling**: The left pane scrolls independently if the component list is long
@@ -96,29 +61,11 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 > Shown when "overview" is selected in the left sidebar
 
-```
-+----------------------------------------------+
-| design system                                 |
-|                                               |
-| (input field for name)                        |
-|                                               |
-| figma files                                   |
-|   * file name. open, remove                   |
-|   * file name. open, remove                   |
-|                                               |
-| add figma file input + button add             |
-|                                               |
-| actions:                                      |
-|                                               |
-| sync with figma                               |
-+----------------------------------------------+
-```
-
 ### Components
 
 #### Design system name
 
-- **Label**: "design system" in `--text-primary`, 14px, bold
+- **Label**: "design system" in black, bold
 - **Input field**: Text input for the design system name
   - Placeholder: "(input field for name)"
   - Style: Standard text input, full width
@@ -126,7 +73,7 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 #### Figma files list
 
-- **Label**: "figma files" in `--text-primary`, 14px
+- **Label**: "figma files" in black
 - **Items**: Bulleted list of imported Figma files
   - Each item shows: **file name** (linked text) + "open" link + "remove" link
   - "open": Opens the Figma file in a new browser tab
@@ -142,7 +89,7 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 #### Actions section
 
-- **Label**: "actions:" in `--text-primary`, 14px
+- **Label**: "actions:" in black
 - **"sync with figma"**: Clickable action text/button
   - Triggers a re-sync of all linked libraries from Figma
   - While syncing, shows progress information
@@ -152,33 +99,12 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 ## Right Pane: Component Detail View
 
 > Shown when a component is selected in the left sidebar
-> Mockup reference: bottom half of `figma/module/settings.png`
-
-```
-+----------------------------------------------+
-| component name                                |
-| link to figma. sync with figma                |
-|                                               |
-| props                                         |
-|   * react prop with checkbox/input            |
-|     dependent of the type                     |
-|   * react prop with checkbox/input            |
-|     dependent of the type                     |
-|                                               |
-| live preview                                  |
-| +------------------------------------------+ |
-| |                                          | |
-| |    (iframe rendering the component)      | |
-| |                                          | |
-| +------------------------------------------+ |
-+----------------------------------------------+
-```
 
 ### Components
 
 #### Component header
 
-- **Component name**: `--text-primary`, 16px, bold
+- **Component name**: black, bold
 - **Figma link**: "link to figma" -- clickable, opens the Figma component in a new tab
 - **Sync action**: "sync with figma" -- clickable, triggers re-import of this specific component
 
@@ -189,7 +115,7 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 #### Props section
 
-- **Label**: "props" in `--text-primary`, 14px
+- **Label**: "props" in black
 - **Prop list**: Each prop is a bullet item with an interactive control:
 
 | Prop type | Control                                           | Behavior                           |
@@ -202,8 +128,8 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 #### Live preview
 
-- **Label**: "live preview" in `--text-primary`, 14px
-- **Iframe**: Bordered rectangle (`1px solid --accent-border`)
+- **Label**: "live preview" in black
+- **Iframe**: Bordered rectangle (1px solid lightgray)
   - Points to the component library renderer URL
   - Renders the selected component with the current prop values
   - Updates in real-time when props are changed
@@ -212,21 +138,21 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 #### Configuration section (for root components, from specs)
 
 - **Root badge**: Shows "yes" or "no" -- read-only
-- **Allowed children**: Lists child component names -- read-only
-- These values are set by Figma conventions (e.g., `#root` suffix, `INSTANCE_SWAP` properties) and cannot be edited in the UI
+- **Slots**: Each named slot is listed with its allowed children -- read-only. Example: `content: [Title, Text]`, `actions: [Button, Link]`
+- These values are set by Figma conventions (e.g., `#root` suffix, Figma Slots / INSTANCE_SWAP properties) and cannot be edited in the UI
 
 #### Visual diff section
 
 - **Expandable/collapsible section**
 - Shows Figma screenshot, React screenshot, and diff image side by side
 - Match percentage badge with color coding
-- See `12-visual-diff-overlay.md` for full specification
+- See `09-visual-diff-overlay.md` for full specification
 
 #### React code section (from specs)
 
 - **Expandable/collapsible section**
 - Shows the component's generated React source code in a read-only CodeMirror editor
-- Monospace font, syntax highlighting
+- Code font, syntax highlighting
 
 ---
 
@@ -291,6 +217,6 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 
 ## Spec Coverage
 
-- `04-design-system-management.feature`: Create via modal, browse components, component detail, interactive props, AI Schema (see `11-ai-schema-view.md`), configuration read-only
+- `04-design-system-management.feature`: Create via modal, browse components, component detail, interactive props, AI Schema (see `08-ai-schema-view.md`), configuration read-only
 - `03-figma-import.feature`: Create library from URL, sync progress, duplicate URL handling
 - `08-component-library-browser.feature`: Component detail with props, preview, React code, configuration
