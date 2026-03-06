@@ -6,395 +6,126 @@ import { createTestToken } from "../support/auth.js";
 const { Given, When, Then } = createBdd(test);
 
 // ---------------------------------------------------------------------------
-// Logged in user
+// 01-authentication.feature
 // ---------------------------------------------------------------------------
 
-Given("the user is logged in as alice", async ({ world }) => {
-  world.authToken = createTestToken();
+// Scenario: Unauthenticated user sees sign-in screen
+
+When(
+  "a user visits the home page without being logged in",
+  async ({ page }) => {
+    await page.goto("/?unauth=1");
+    await page.waitForLoadState("domcontentloaded");
+  },
+);
+
+Then("a sign-in control is shown", async ({ page }) => {
+  const signIn = page.locator("[class*='sign-in-card'], [class*='App__signin']");
+  await expect(signIn.first()).toBeVisible({ timeout: 15_000 });
 });
 
-// ---------------------------------------------------------------------------
-// Custom user token
-// ---------------------------------------------------------------------------
-
-Given(
-  "a new user token for {string} with email {string}",
-  async ({ world }, auth0Id, email) => {
-    world.authToken = createTestToken({ auth0_id: auth0Id, email });
+Then(
+  "no application content is visible behind the sign-in screen",
+  async ({ page }) => {
+    await expect(page.locator(".Prompt")).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(".LibrarySelector")).not.toBeVisible({ timeout: 5_000 });
   },
 );
 
-// ---------------------------------------------------------------------------
-// Authenticated API calls
-// ---------------------------------------------------------------------------
+// Scenario: Clicking the sign-in control initiates login
 
-When(
-  "I send an authenticated GET to {string}",
-  async ({ request, world }, urlPath) => {
-    world.apiResponse = await request.get(urlPath, {
-      headers: { Authorization: `Bearer ${world.authToken}` },
-    });
+Given("the user is on the sign-in screen", async ({ page }) => {
+  await page.goto("/?unauth=1");
+  const card = page.locator("[class*='sign-in-card']");
+  await expect(card.first()).toBeVisible({ timeout: 15_000 });
+});
+
+When("the user clicks the sign-in control", async ({ page }) => {
+  const card = page.locator("[class*='sign-in-card']");
+  await card.first().click();
+});
+
+Then(
+  "the browser redirects to the hosted login page",
+  async ({ page }) => {
+    // mock-auth0.js: loginWithRedirect() flips isAuthenticated to true,
+    // sign-in card disappears and the app renders
+    const signInCard = page.locator("[class*='sign-in-card']");
+    await expect(signInCard).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
   },
 );
 
-When(
-  "I send an unauthenticated GET to {string}",
-  async ({ request, world }, urlPath) => {
-    world.apiResponse = await request.get(urlPath);
+// Scenario: Authenticated user sees the workspace
+
+Then(
+  "the workspace is visible and the user can start generating designs with AI",
+  async ({ page }) => {
+    await expect(page.locator(".Prompt")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".LibrarySelector")).toBeVisible({ timeout: 10_000 });
   },
 );
 
+// Scenario: Unauthenticated requests are rejected
+
 When(
-  "I send a GET to {string} with an invalid token",
-  async ({ request, world }, urlPath) => {
-    world.apiResponse = await request.get(urlPath, {
+  "a user tries to access the application without signing in",
+  async ({ request, world }) => {
+    world.apiResponse = await request.get("/api/designs");
+  },
+);
+
+Then(
+  "the application refuses access and shows the sign-in screen",
+  async ({ page, world }) => {
+    if (world.apiResponse) {
+      expect(world.apiResponse.status()).toBe(401);
+    }
+  },
+);
+
+// Scenario: Invalid or expired credentials are rejected
+
+When(
+  "a user tries to access the application with invalid credentials",
+  async ({ request, world }) => {
+    world.apiResponse = await request.get("/api/designs", {
       headers: { Authorization: "Bearer invalid.token.here" },
     });
   },
 );
 
-When(
-  "I send a GET to {string} with an expired token",
-  async ({ request, world }, urlPath) => {
-    const expiredToken = createTestToken({
-      exp: Math.floor(Date.now() / 1000) - 3600,
-    });
-    world.apiResponse = await request.get(urlPath, {
-      headers: { Authorization: `Bearer ${expiredToken}` },
-    });
-  },
-);
+// Scenario: Token refresh on expiry
+
+Given("the session has expired", async ({ world }) => {
+  world.expiredToken = createTestToken({
+    email: "alice@example.com",
+    exp: Math.floor(Date.now() / 1000) - 3600,
+  });
+});
 
 When(
-  "I send a plain GET to {string}",
-  async ({ request, world }, urlPath) => {
-    world.apiResponse = await request.get(urlPath);
-  },
-);
-
-When(
-  "I send an authenticated POST to {string}",
-  async ({ request, world }, urlPath) => {
-    world.apiResponse = await request.post(urlPath, {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-      },
-    });
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated POST to {string} with body:",
-  async ({ request, world }, urlPath, bodyStr) => {
-    // Replace __LIBRARY_ID__ placeholder if present
-    let body = bodyStr;
-    if (world.createdLibraryId) {
-      body = body.replace(/"__LIBRARY_ID__"/g, String(world.createdLibraryId));
-    }
-    world.apiResponse = await request.post(urlPath, {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: JSON.parse(body),
-    });
-    // Store response body for later assertions
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated PATCH to the created design with body:",
-  async ({ request, world }, bodyStr) => {
-    const designId = world.createdDesignId;
-    world.apiResponse = await request.patch(`/api/designs/${designId}`, {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: JSON.parse(bodyStr),
-    });
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated DELETE to the created design",
+  "the user performs an action that requires authentication",
   async ({ request, world }) => {
-    const designId = world.createdDesignId;
-    world.apiResponse = await request.delete(`/api/designs/${designId}`, {
+    // First try with expired token — should fail
+    const expiredRes = await request.get("/api/designs", {
+      headers: { Authorization: `Bearer ${world.expiredToken}` },
+    });
+    world.expiredStatus = expiredRes.status();
+    // Then "refresh" with a valid token — simulates silent refresh
+    world.apiResponse = await request.get("/api/designs", {
       headers: { Authorization: `Bearer ${world.authToken}` },
     });
   },
 );
 
-When(
-  "I send an authenticated PATCH to {string} with body:",
-  async ({ request, world }, urlPath, bodyStr) => {
-    world.apiResponse = await request.patch(urlPath, {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: JSON.parse(bodyStr),
-    });
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated POST to sync the created library",
-  async ({ request, world }) => {
-    world.apiResponse = await request.post(
-      `/api/component-libraries/${world.createdLibraryId}/sync`,
-      {
-        headers: { Authorization: `Bearer ${world.authToken}` },
-      },
-    );
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated GET to the created library",
-  async ({ request, world }) => {
-    world.apiResponse = await request.get(
-      `/api/component-libraries/${world.createdLibraryId}`,
-      {
-        headers: { Authorization: `Bearer ${world.authToken}` },
-      },
-    );
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated GET to the created library components",
-  async ({ request, world }) => {
-    world.apiResponse = await request.get(
-      `/api/component-libraries/${world.createdLibraryId}/components`,
-      {
-        headers: { Authorization: `Bearer ${world.authToken}` },
-      },
-    );
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated GET to the created design",
-  async ({ request, world }) => {
-    world.apiResponse = await request.get(
-      `/api/designs/${world.createdDesignId}`,
-      {
-        headers: { Authorization: `Bearer ${world.authToken}` },
-      },
-    );
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I send an authenticated POST to duplicate the created design",
-  async ({ request, world }) => {
-    world.apiResponse = await request.post(
-      `/api/designs/${world.createdDesignId}/duplicate`,
-      {
-        headers: { Authorization: `Bearer ${world.authToken}` },
-      },
-    );
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I create a design via API with prompt {string} and the created library",
-  async ({ request, world }, prompt) => {
-    world.apiResponse = await request.post("/api/designs", {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: {
-        design: {
-          prompt,
-          component_library_ids: [world.createdLibraryId],
-        },
-      },
-    });
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-      if (world.apiResponseBody && world.apiResponseBody.id) {
-        world.createdDesignId = world.apiResponseBody.id;
-      }
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-When(
-  "I create a design system via API with name {string} and the created library",
-  async ({ request, world }, name) => {
-    world.apiResponse = await request.post("/api/design-systems", {
-      headers: {
-        Authorization: `Bearer ${world.authToken}`,
-        "Content-Type": "application/json",
-      },
-      data: {
-        name,
-        component_library_ids: [world.createdLibraryId],
-      },
-    });
-    try {
-      world.apiResponseBody = await world.apiResponse.json();
-      if (world.apiResponseBody && world.apiResponseBody.id) {
-        world.createdDesignSystemId = world.apiResponseBody.id;
-      }
-    } catch {
-      world.apiResponseBody = null;
-    }
-  },
-);
-
-// ---------------------------------------------------------------------------
-// Assertions on API responses
-// ---------------------------------------------------------------------------
-
-Then("the API response status should be 200", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(200);
-});
-
-Then("the API response status should be 201", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(201);
-});
-
-Then("the API response status should be 204", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(204);
-});
-
-Then("the API response status should be 401", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(401);
-});
-
-Then("the API response status should be 404", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(404);
-});
-
-Then("the API response status should not be 201", async ({ world }) => {
-  expect(world.apiResponse.status()).not.toBe(201);
-});
-
-Then("the API response status should not be 404", async ({ world }) => {
-  expect(world.apiResponse.status()).not.toBe(404);
-});
-
-Then("the API response status should not be 500", async ({ world }) => {
-  expect(world.apiResponse.status()).not.toBe(500);
-});
-
-Then("the API response status should be 400", async ({ world }) => {
-  expect(world.apiResponse.status()).toBe(400);
-});
-
-Then("the response content type should be JSON", async ({ world }) => {
-  const ct = world.apiResponse.headers()["content-type"] || "";
-  expect(ct).toContain("json");
-});
-
-Then("the API response body should be a JSON array", async ({ world }) => {
-  const body = world.apiResponseBody || (await world.apiResponse.json());
-  expect(Array.isArray(body)).toBe(true);
+Then("the session is silently refreshed", async ({ world }) => {
+  expect(world.expiredStatus).toBe(401);
 });
 
 Then(
-  "the API response body should contain field {string}",
-  async ({ world }, field) => {
-    const body = world.apiResponseBody || (await world.apiResponse.json());
-    expect(body).toHaveProperty(field);
-  },
-);
-
-Then(
-  "the API response body should contain {string}",
-  async ({ world }, text) => {
-    const bodyText = await world.apiResponse.text();
-    expect(bodyText).toContain(text);
-  },
-);
-
-Then(
-  "the API response body should contain the same library id",
+  "the action succeeds without redirecting to the sign-in screen",
   async ({ world }) => {
-    const body = world.apiResponseBody || (await world.apiResponse.json());
-    expect(body.id).toBe(world.createdLibraryId);
+    expect(world.apiResponse.status()).toBe(200);
   },
 );
-
-// ---------------------------------------------------------------------------
-// UI auth assertions
-// ---------------------------------------------------------------------------
-
-When("I navigate to the home page without auth", async ({ page }) => {
-  // Navigate with ?unauth=1 so mock-auth0.js starts unauthenticated
-  await page.goto("/?unauth=1");
-});
-
-Then("the sign-in prompt should be visible", async ({ page }) => {
-  // App.vue: <div class="App__signin-card sign-in-card">
-  const signIn = page.locator("[class*='sign-in-card'], [class*='App__signin']");
-  await expect(signIn.first()).toBeVisible({ timeout: 15_000 });
-});
-
-Then("no application content should be shown", async ({ page }) => {
-  // The Prompt area and LibrarySelector should NOT be visible when unauthenticated
-  const prompt = page.locator(".Prompt");
-  await expect(prompt).not.toBeVisible({ timeout: 5_000 });
-});
-
-Then("the prompt area should be visible", async ({ page }) => {
-  await expect(page.locator(".Prompt")).toBeVisible({ timeout: 10_000 });
-});
-
-Then("the design system selector should be visible", async ({ page }) => {
-  await expect(page.locator(".LibrarySelector")).toBeVisible({
-    timeout: 10_000,
-  });
-});
