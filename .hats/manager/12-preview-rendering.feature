@@ -1,105 +1,44 @@
 @preview-rendering
 Feature: Preview Rendering
-  The preview component renders generated JSX inside an iframe using a
-  renderer page that includes React, ReactDOM, Babel, and all compiled
-  component code. Communication happens via postMessage.
-  Technical: Preview.vue wraps an iframe pointed at the renderer URL.
-  Renderer is served by /api/component-libraries/:id/renderer,
-  /api/design-systems/:id/renderer, or /api/iterations/:id/renderer.
-  The renderer sends a "ready" message; the frontend responds with
-  { type: "render", jsx: "..." }. Babel compiles JSX at runtime.
-  UI reference: designer/07-shared-components.md (preview frame #8),
-  designer/05-design-page.md (phone/desktop preview contexts),
-  designer/02-layout-structures.md (layout-dependent preview positioning)
+  The PREVIEW renders generated JSX using components from the DESIGN_SYSTEM.
+  It updates automatically when the code changes.
 
   Background:
-    Given a component library exists with compiled React components
+    Given a DESIGN_SYSTEM exists with imported components
 
-  @critical @happy-path
-  Scenario: Renderer page loads with all dependencies
-    When the renderer page is loaded at /api/component-libraries/:id/renderer
-    Then the HTML should include React 18 UMD script
-    And the HTML should include ReactDOM 18 UMD script
-    And the HTML should include Babel standalone script
-    And all component code (react_code_compiled) should be injected into the page
-    And a postMessage listener should be set up for "render" messages
-    And a "ready" message should be sent to the parent window
+  Scenario: PREVIEW loads with all components available
+    When the PREVIEW loads for a DESIGN_SYSTEM
+    Then all components are available for rendering
 
-  @critical @happy-path
-  Scenario: Preview iframe receives and renders JSX
-    Given the preview iframe has loaded and sent the "ready" message
-    When the parent sends postMessage { type: "render", jsx: "<Page><Title text=\"Hello\" /></Page>" }
-    Then the iframe should compile the JSX via Babel
-    And render the component tree inside the #root element
-    And the rendered content should contain "Hello"
+  Scenario: PREVIEW renders JSX code
+    Given the PREVIEW is loaded
+    When JSX code is sent to the PREVIEW
+    Then the components render correctly
 
-  # --- Phone Frame ---
+  Scenario: PREVIEW updates when code changes
+    Given the PREVIEW is displaying rendered content
+    When the code changes
+    Then the PREVIEW re-renders with the new content
 
-  @happy-path
-  Scenario: Phone frame preview styling
-    Given the Preview component is rendered with layout "mobile"
-    Then the preview frame should have a 2px solid black border
-    And the border-radius should be 72px (--radius-phone, simulating phone bezel)
-    And the background should be white (--bg-panel)
-    And the frame should maintain approximately 9:16 portrait aspect ratio
-    And the frame should be centered horizontally and vertically in its column
-    And the iframe content should scroll internally (not the frame itself)
+  Scenario: PREVIEW shows placeholder when no DESIGN exists
+    Given no JSX has been sent to the PREVIEW
+    Then the PREVIEW shows a placeholder
 
-  @happy-path
-  Scenario: Phone frame notch indicator
-    Given the Preview component is rendered with layout "mobile" inside a two-column layout
-    Then a small horizontal notch line should extend from the left edge of the phone frame to the column divider
+  Scenario: DESIGN_SYSTEM renderer combines multiple FIGMA_FILEs
+    Given a DESIGN_SYSTEM has 2 FIGMA_FILEs
+    When the PREVIEW loads
+    Then components from both files are available for rendering
 
-  # --- Desktop Frame ---
+  Scenario: ITERATION renderer uses the DESIGN's FIGMA_FILEs
+    Given a DESIGN has ITERATIONs linked to a DESIGN_SYSTEM
+    When the PREVIEW loads for an ITERATION
+    Then all components from the DESIGN_SYSTEM are available
 
-  @happy-path
-  Scenario: Desktop frame preview styling
-    Given the Preview component is rendered with layout "desktop"
-    Then the preview frame should have a 2px solid black border
-    And the border-radius should be 24px (--radius-lg)
-    And the background should be white (--bg-panel)
-    And the frame should fill the available width and height of the preview area
+  Scenario: PREVIEW handles missing component gracefully
+    Given the PREVIEW is loaded
+    When JSX referencing a non-existent component is sent
+    Then the PREVIEW shows an error without crashing
 
-  # --- Placeholder State ---
-
-  @happy-path
-  Scenario: Preview placeholder state before design is rendered
-    Given no design JSX has been sent to the preview iframe
-    Then the preview frame should display "preview" centered in secondary text color (--text-secondary)
-
-  # --- Rendering Behavior ---
-
-  @happy-path
-  Scenario: Design system renderer combines multiple libraries
-    Given a design system has 2 component libraries
-    When the renderer at /api/design-systems/:id/renderer is loaded
-    Then components from both libraries should be available
-    And JSX using components from either library should render correctly
-
-  @happy-path
-  Scenario: Iteration renderer uses the design's libraries
-    Given a design has iterations linked to component libraries
-    When the renderer at /api/iterations/:id/renderer is loaded
-    Then all component code from the design's libraries should be present
-
-  @happy-path
-  Scenario: Preview component re-renders when code prop changes
-    Given the Preview component is mounted with initial JSX code
-    When the code prop changes to new JSX
-    Then a new postMessage should be sent to the iframe with the updated JSX
-    And the iframe should re-render with the new content
-
-  # --- Edge Cases ---
-
-  @edge-case
-  Scenario: Renderer handles missing component gracefully
-    Given the renderer is loaded
-    When JSX referencing a non-existent component "FooBar" is sent
-    Then the iframe should show a rendering error
-    And the error should not crash the entire renderer
-
-  @edge-case
-  Scenario: Renderer serves without authentication
-    Given the renderer URL is accessed without an Authorization header
-    Then the renderer page should still load (no auth required)
-    And all component code should be present
+  Scenario: PREVIEW is accessible without authentication
+    Given the PREVIEW URL is accessed without signing in
+    Then the PREVIEW still loads and renders

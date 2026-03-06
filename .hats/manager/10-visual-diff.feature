@@ -2,66 +2,49 @@
 Feature: Visual Diff Comparison
   After component import and React code generation, the system compares
   Figma screenshots with React-rendered screenshots to measure fidelity.
-  Technical: VisualDiffJob runs after sync completes. Compares standalone
-  components and component sets (via default variant). Results stored as
-  match_percent on component/variant records. Screenshots and diff images
-  stored as file paths.
 
   Background:
     Given the user is logged in as "alice@example.com"
-    And a component library exists with status "ready"
+    And a DESIGN_SYSTEM exists with imported components
 
-  @happy-path
-  Scenario: Visual diff results are available via API
-    Given a component "Button" has completed visual diff with 92% match
-    When the user sends GET /api/components/:id/visual_diff
-    Then the response should include:
-      | field                 | value |
-      | match_percent         | 92    |
-      | has_diff              | true  |
-      | has_figma_screenshot  | true  |
-      | has_react_screenshot  | true  |
+  Scenario: Visual diff results are available for a COMPONENT
+    Given TEXT has completed visual diff with 92% match
+    When the user views the visual diff for TEXT
+    Then the match percentage shows 92%
+    And a diff image is available
+    And both Figma and React screenshots are available
 
-  @happy-path
-  Scenario: Retrieve diff image
-    Given a component has a diff image generated
-    When the user sends GET /api/components/:id/diff_image
-    Then the response should be a PNG image
+  Scenario: View diff image for a COMPONENT
+    Given a COMPONENT has a diff image generated
+    When the user views the diff image
+    Then a comparison image is shown
 
-  @happy-path
-  Scenario: Retrieve Figma screenshot
-    Given a component has a Figma screenshot
-    When the user sends GET /api/components/:id/screenshots/figma
-    Then the response should be a PNG image
+  Scenario: View Figma screenshot for a COMPONENT
+    Given a COMPONENT has a Figma screenshot
+    When the user views the Figma screenshot
+    Then the original Figma rendering is shown
 
-  @happy-path
-  Scenario: Retrieve React screenshot
-    Given a component has a React screenshot
-    When the user sends GET /api/components/:id/screenshots/react
-    Then the response should be a PNG image
+  Scenario: View React screenshot for a COMPONENT
+    Given a COMPONENT has a React screenshot
+    When the user views the React screenshot
+    Then the React-rendered version is shown
 
-  @happy-path
   Scenario: Match percentage displayed in component detail
-    Given a component set "Card" has a default variant with 87% match
-    When the user views the component detail for "Card"
-    Then the match badge should display "87% match"
-    And the badge should have a "medium" styling (between 50% and 80%)
+    Given ICON_SET has a default VARIANT with 87% match
+    When the user views the component detail for ICON_SET
+    Then a match badge displays "87% match"
 
-  @edge-case
-  Scenario: Component without visual diff shows no match data
-    Given a component exists that has not been diffed yet
-    When the user sends GET /api/components/:id/visual_diff
-    Then match_percent should be null
-    And has_diff, has_figma_screenshot, has_react_screenshot should be false
+  Scenario: COMPONENT without visual diff shows no match data
+    Given a COMPONENT exists that has not been diffed yet
+    When the user views the visual diff
+    Then no match percentage is shown
+    And no screenshots are available
 
-  @error-handling
-  Scenario: Diff image not available returns 404
-    Given a component has no diff image file
-    When the user sends GET /api/components/:id/diff_image
-    Then the response status should be 404
+  Scenario: Diff image not available
+    Given a COMPONENT has no diff image
+    When the user tries to view the diff image
+    Then the image is not available
 
-  @error-handling
-  Scenario: Invalid screenshot type returns 400
-    When the user sends GET /api/components/:id/screenshots/invalid
-    Then the response status should be 400
-    And the response should say "Unknown screenshot type"
+  Scenario: Invalid screenshot type is rejected
+    When the user requests an invalid screenshot type
+    Then the request is rejected with an error

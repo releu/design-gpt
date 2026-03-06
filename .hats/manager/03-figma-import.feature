@@ -1,178 +1,125 @@
 @figma-import
-Feature: Figma Component Library Import
-  Users import component libraries from Figma files. The system extracts
-  component sets with variants, standalone components, icons (SVGs),
-  generates React code, and runs visual diff comparisons.
-  Technical: Figma API via Client, pipeline: Importer -> AssetExtractor ->
-  ReactFactory -> VisualDiff. Sync is async via ComponentLibrarySyncJob.
-  Status flow: pending -> discovering -> importing -> converting -> comparing -> ready | error.
-  UI reference: designer/06-design-system-modal.md (overview pane, add file input)
+Feature: Figma Import
+  Users create DESIGN_SYSTEMs by importing FIGMA_FILEs. The system discovers
+  components, generates React code, and makes them available for design generation.
 
   Background:
     Given the user is logged in as "alice@example.com"
 
-  @critical @happy-path
-  Scenario: Create a component library from a Figma URL
-    When the user sends POST /api/component-libraries with url "https://www.figma.com/design/abc123/my-design-system"
-    Then the response status should be 201
-    And the response should contain an "id" field
-    And a ComponentLibrary record should exist with status "pending"
-    And the figma_file_key should be extracted as "abc123"
-
-  @critical @happy-path
-  Scenario: Trigger async sync from Figma
-    Given a component library exists with id 1 and status "pending"
-    When the user sends POST /api/component-libraries/1/sync
-    Then the response should show status "pending"
-    And a ComponentLibrarySyncJob should be enqueued
-
-  @critical @happy-path
-  Scenario: Full sync pipeline completes successfully
-    Given a component library exists linked to a valid Figma file
-    When the sync pipeline runs to completion
-    Then the library status should be "ready"
-    And ComponentSets should be created for each Figma component set
-    And ComponentVariants should be created for each variant within component sets
-    And standalone Components should be created for non-set components
-    And SVG assets should be extracted and cached as FigmaAssets
-    And react_code should be generated for all default variants
-    And react_code_compiled should be generated for browser rendering
-    And progress should show step 4/4 as complete
+  # --- Creating a DESIGN_SYSTEM ---
 
   @happy-path
-  Scenario: Import progress is trackable via polling
-    Given a component library sync is in progress
-    When the user polls GET /api/component-libraries/:id
-    Then the response should include a "progress" object
-    And the progress should contain "step_number", "total_steps", and "message"
-    And the progress updates as the pipeline advances through stages
+  Scenario: Create a new DESIGN_SYSTEM from FIGMA_FILEs
+    Given the user is on the home page
+    When the user clicks "New design system"
+    And adds one or more FIGMA_FILE URLs
+    And clicks "import"
+    Then a progress bar appears showing the import progress
+    When the import finishes
+    Then the new DESIGN_SYSTEM opens for the user to review the imported components
+    And a success message is shown
 
-  @happy-path
-  Scenario: Import progress is visible in the design system modal
-    Given the design system modal is open on the overview pane
-    And a library sync is in progress
-    Then the overview area should show a progress bar or step indicator
-    And progress should display "step N/4" with a descriptive message (e.g. "Discovering components...")
-    And the left sidebar may start showing components as they are discovered
+  Scenario: Import finishes with errors
+    Given the user is creating a new DESIGN_SYSTEM
+    And one of the FIGMA_FILEs has components that cannot be converted
+    When the import finishes
+    Then the DESIGN_SYSTEM opens for review
+    And a list of import errors is shown so the user knows what went wrong
 
-  @happy-path
-  Scenario: Duplicate Figma URL returns existing library
-    Given a component library already exists with url "https://www.figma.com/design/abc123/my-design-system"
-    When the user sends POST /api/component-libraries with the same url
-    Then the response status should be 200
-    And the response should return the existing library's id
+  # --- Browsing DESIGN_SYSTEMs ---
 
-  @happy-path
-  Scenario: List user's component libraries
-    Given the user owns 3 component libraries
-    When the user sends GET /api/component-libraries
-    Then the response should contain 3 libraries
-    And each library should include id, name, figma_url, status, component counts
+  Scenario: Home page shows the user's DESIGN_SYSTEMs
+    Given the user owns 3 DESIGN_SYSTEMs
+    When the user is on the home page
+    Then all 3 DESIGN_SYSTEMs are shown in the list
 
-  @happy-path
-  Scenario: View available libraries (own + public)
-    Given the user owns 2 libraries
-    And another user has 1 public library
-    When the user sends GET /api/component-libraries/available
-    Then the response should contain 3 libraries
-    And each library should have an "is_own" flag
+  Scenario: Home page also shows other users' public DESIGN_SYSTEMs
+    Given the user owns 2 DESIGN_SYSTEMs
+    And another user has 1 public DESIGN_SYSTEM
+    When the user is on the home page
+    Then all 3 DESIGN_SYSTEMs are visible
+    And each one indicates whether it belongs to the current user
 
-  @happy-path
-  Scenario: Add a Figma file via the modal overview pane
-    Given the design system modal is open on the overview pane
-    When the user enters a Figma URL in the "add figma file" text input
-    And clicks the "add" button next to the input
-    Then a POST request should create a new component library linked to this design system
-    And the library sync should begin automatically
-    And a progress indicator should replace the "add" button while importing
-    And when the sync completes the new file should appear in the figma files list
-    And the left sidebar should update to show the newly discovered components
+  # --- Syncing ---
 
-  @happy-path
-  Scenario: Open and remove Figma files from the modal overview
-    Given the design system modal is open with 2 linked Figma files
-    Then each file row should show the file name, an "open" link, and a "remove" link
+  Scenario: Sync all FIGMA_FILEs in a DESIGN_SYSTEM
+    Given the user has an existing DESIGN_SYSTEM with 2 FIGMA_FILEs
+    When the user triggers a sync for the entire DESIGN_SYSTEM
+    Then a progress bar appears showing the sync progress
+    And when syncing completes the component browser refreshes with updated components
+
+  Scenario: Sync a single FIGMA_FILE in a DESIGN_SYSTEM
+    Given the user has an existing DESIGN_SYSTEM with 2 FIGMA_FILEs
+    When the user triggers a sync for one specific file
+    Then a progress bar appears for that file's sync
+    And only that file's components are re-imported
+
+  Scenario: Sync a single component
+    Given the user is viewing a component in a DESIGN_SYSTEM
+    When the user triggers a sync for that component
+    Then the component is re-imported from Figma
+    And the updated component details are shown
+
+  # --- Managing FIGMA_FILEs in a DESIGN_SYSTEM ---
+
+  Scenario: View and manage FIGMA_FILEs in a DESIGN_SYSTEM
+    Given the user opens an existing DESIGN_SYSTEM with 2 linked FIGMA_FILEs
+    Then each file is listed with its name, an "open" link, and a "remove" link
     When the user clicks "open" on a file
-    Then the Figma file should open in a new browser tab
+    Then the FIGMA_FILE opens in a new browser tab
     When the user clicks "remove" on a file
-    Then the library should be removed from this design system (with confirmation)
+    Then the file is removed from this DESIGN_SYSTEM (with confirmation)
 
-  @happy-path
-  Scenario: Re-sync an existing library from Figma
-    Given a component library exists with status "ready"
-    When the user sends POST /api/component-libraries/:id/sync
-    Then the library status should reset to "pending"
-    And a new sync job should be enqueued
-    And existing components should be updated rather than duplicated
+  Scenario: Add a FIGMA_FILE to an existing DESIGN_SYSTEM
+    Given the user is editing an existing DESIGN_SYSTEM
+    When the user adds a new FIGMA_FILE URL to the file list
+    And triggers a sync
+    Then the new file is imported alongside the existing files
+    And the component browser updates with the newly discovered components
 
-  @happy-path
-  Scenario: Sync with Figma via the modal overview actions
-    Given the design system modal is open on the overview pane
-    When the user clicks "sync with figma" in the actions section
-    Then a re-sync should be triggered for all linked libraries
-    And the overview should show sync progress information
-    And when syncing completes the component browser should refresh with updated components
+  # --- Browsing Components ---
 
-  @happy-path
-  Scenario: Figma conventions auto-detect root components
-    Given a Figma file contains a component set named "Page #root"
-    When the import pipeline completes
-    Then the "Page" component set should have is_root set to true
+  Scenario: Browse components in a DESIGN_SYSTEM
+    Given a DESIGN_SYSTEM has imported components
+    When the user opens the DESIGN_SYSTEM
+    Then COMPONENT_SETs are listed with their names, VARIANTs, and PROPs
+    And standalone COMPONENTs are listed
+    And ROOT components are indicated with their SLOTs and ALLOWED_CHILDREN
 
-  @happy-path
-  Scenario: Figma conventions auto-detect allowed children via INSTANCE_SWAP
-    Given a Figma component set has an INSTANCE_SWAP property with preferredValues ["Title", "Button"]
-    When the import pipeline completes
-    Then the component set should have allowed_children set to ["Title", "Button"]
-    And the generated React code should contain "{props.children}" at the slot position
+  # --- Figma Conventions ---
 
-  @happy-path
-  Scenario: List components for a component library shows a summary of the imported components
-    Given a component library exists with status "ready"
-    And the library contains 3 component sets and 2 standalone components
-    When the user sends GET /api/component-libraries/:id/components
-    Then the response should contain "component_sets" with 3 entries
-    And the response should contain "components" with 2 entries
-    And each component set should include name, node_id, is_root, allowed_children, variants, prop_definitions, react_name
+  Scenario: Figma conventions auto-detect ROOT components
+    Given a FIGMA_FILE contains a COMPONENT_SET named "Page #root"
+    When the import completes
+    Then the PAGE COMPONENT_SET is marked as a ROOT component
 
-  @edge-case
-  Scenario: Import handles vector/icon components
-    Given a Figma file contains a component that is purely vector-based
-    When the import pipeline completes
-    Then the component should be marked as is_vector true
-    And an SVG asset should be cached for it
+  Scenario: Figma Slots create SLOTs with ALLOWED_CHILDREN
+    Given PAGE has a SLOT named "content" with preferred values [TEXT, TITLE]
+    When the import completes
+    Then the component has a SLOT "content" with ALLOWED_CHILDREN [TEXT, TITLE]
+    And the SLOT accepts children in the generated code
 
-  @edge-case
-  Scenario: Figma list component collapses repeated slots
-    Given a Figma component set named "CardList #list" has 3 identical INSTANCE_SWAP nodes
-    When the import pipeline completes
-    Then the generated React code should contain a single "{props.children}"
-    And allowed_children should contain the single allowed item type
+  Scenario: INSTANCE_SWAP properties also create SLOTs with ALLOWED_CHILDREN
+    Given LIB_COMPONENT_WITH_INSTANCE has an INSTANCE_SWAP property with preferred values from EXAMPLE_ICONS
+    When the import completes
+    Then the preferred values become the SLOT's ALLOWED_CHILDREN
+    And the component accepts children in the generated code
 
-  @error-handling
-  Scenario: Sync fails gracefully on Figma API error
-    Given a component library exists linked to an invalid Figma file key
-    When the sync pipeline runs
-    Then the library status should be "error"
-    And the progress should contain an "error" message describing the failure
+  Scenario: Import handles VECTOR components
+    Given a FIGMA_FILE contains a component that is purely vector-based
+    When the import completes
+    Then the component is marked as a VECTOR
+    And an SVG image is available for it
 
-  @error-handling
-  Scenario: Sync failure shows error in the modal overview
-    Given the design system modal is open on the overview pane
-    And a sync fails for a linked library
-    Then the overview should display an error message describing the failure
-    And individual components that failed code generation should show a "no code" status badge in the left sidebar
+  # --- Error Handling ---
 
-  @error-handling
-  Scenario: Re-import a single component
-    Given a component exists in a ready library
-    When the user sends POST /api/components/:id/reimport
-    Then the component should be re-imported from Figma
-    And the response should include the updated component details
+  Scenario: Import fails on Figma API error
+    Given the user is importing a DESIGN_SYSTEM with an invalid FIGMA_FILE URL
+    When the import runs
+    Then the error is shown to the user with a descriptive message
 
-  @error-handling
-  Scenario: Re-import a single component set
-    Given a component set exists in a ready library
-    When the user sends POST /api/component-sets/:id/reimport
-    Then the component set should be re-imported from Figma
-    And the response should include the updated variant count
+  Scenario: Individual component errors are visible after import
+    Given the user opens a DESIGN_SYSTEM after import
+    And some components failed code generation
+    Then those components show a "no code" badge
+    And the user can trigger a re-import for individual failed components

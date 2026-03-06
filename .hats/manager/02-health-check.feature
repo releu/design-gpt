@@ -1,16 +1,12 @@
 @infrastructure
 Feature: Health Check
-  The API and frontend must be reachable through the Caddy reverse proxy.
-  Technical: Caddy on port 443 routes /api/* to Rails (port 3000),
-  everything else to Vite (port 5173). TLS is self-signed via "tls internal".
+  The API and frontend must be reachable through the reverse proxy.
 
-  @critical @happy-path
   Scenario: API health endpoint responds
-    When I send a GET request to "/api/up"
-    Then the response status should be 200
+    When the API health endpoint is checked
+    Then the API should report that it is running
 
-  @critical @happy-path
-  Scenario: Frontend loads through Caddy proxy
-    When I navigate to "https://design-gpt.localtest.me"
-    Then the HTML page should load successfully
-    And the page should contain the Vue app container element
+  Scenario: Frontend loads through the proxy
+    When a user navigates to the application URL
+    Then the frontend page loads successfully
+    And the application container is present

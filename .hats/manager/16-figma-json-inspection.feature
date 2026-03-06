@@ -1,33 +1,26 @@
 @figma-json
 Feature: Figma JSON Inspection
-  Developers can inspect the raw Figma JSON data for any component or
-  component set. This helps debug import issues and understand the
+  Users can inspect the raw Figma JSON data for any COMPONENT or
+  COMPONENT_SET. This helps debug import issues and understand the
   Figma component structure.
-  Technical: No auth required. Serves from Component#figma_json and
-  ComponentSet default variant figma_json.
 
-  @happy-path
-  Scenario: View Figma JSON for a standalone component
-    Given a component exists with stored Figma JSON data
-    When the user sends GET /api/components/:id/figma_json
-    Then the response should include id, node_id, name, and figma_json fields
-    And figma_json should contain the raw Figma API response for that component
+  Scenario: View Figma JSON for a standalone COMPONENT
+    Given a COMPONENT exists with stored Figma JSON data
+    When the user inspects the raw Figma data for the COMPONENT
+    Then the COMPONENT's name, node ID, and full Figma JSON are shown
 
-  @happy-path
-  Scenario: View Figma JSON for a component set (default variant)
-    Given a component set exists with a default variant that has Figma JSON
-    When the user sends GET /api/component-sets/:id/figma_json
-    Then the response should include the default variant's figma_json
+  Scenario: View Figma JSON for a COMPONENT_SET (default VARIANT)
+    Given a COMPONENT_SET exists with a default VARIANT that has Figma JSON
+    When the user inspects the raw Figma data for the COMPONENT_SET
+    Then the default VARIANT's Figma JSON is shown
 
-  @happy-path
-  Scenario: Figma JSON is lazy-loaded in the preview page
-    Given the component preview page is loaded
-    When the user clicks on the "Figma JSON" details section for a component
-    Then the Figma JSON should be fetched asynchronously
+  Scenario: Figma JSON is lazy-loaded in the PREVIEW page
+    Given the component PREVIEW page is loaded
+    When the user clicks on the "Figma JSON" section for a COMPONENT
+    Then the Figma JSON is fetched on demand
     And displayed in a formatted code block
 
-  @edge-case
-  Scenario: Component without Figma JSON
-    Given a component exists with no figma_json stored
-    When the user sends GET /api/components/:id/figma_json
-    Then figma_json should be null in the response
+  Scenario: COMPONENT without Figma JSON
+    Given a COMPONENT exists with no Figma JSON stored
+    When the user inspects the raw Figma data
+    Then no JSON data is shown

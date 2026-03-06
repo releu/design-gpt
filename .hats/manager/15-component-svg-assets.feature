@@ -1,49 +1,32 @@
 @assets
 Feature: Component SVG Assets
-  Vector components and icons are exported as SVGs from Figma and cached
-  as FigmaAssets. These SVGs are served via API endpoints and used inline
-  in the component preview pages.
-  Technical: FigmaAssets with asset_type "svg". Cached on first access.
-  Served by ComponentsController#svg and component_set_svg.
+  VECTOR components from Figma are available as SVG images
+  for use in component PREVIEWs.
 
   Background:
-    Given a component library exists with vector components
+    Given a DESIGN_SYSTEM exists with VECTOR components
 
-  @happy-path
-  Scenario: Serve cached SVG for a component
-    Given a component has a cached SVG asset
-    When the user sends GET /api/components/:id/svg
-    Then the response should be SVG content with content-type "image/svg+xml"
+  Scenario: View SVG for a VECTOR COMPONENT
+    Given a COMPONENT has an SVG image available
+    When the user views the COMPONENT
+    Then the SVG image is displayed
 
-  @happy-path
-  Scenario: Fetch and cache SVG from Figma on first access
-    Given a component has no cached SVG asset
-    When the user sends GET /api/components/:id/svg
-    Then the system should fetch the SVG from the Figma export API
-    And cache it as a FigmaAsset for future requests
-    And return the SVG content
+  Scenario: View SVG for a COMPONENT_SET
+    Given a COMPONENT_SET has an SVG image available
+    When the user views the COMPONENT_SET
+    Then the SVG image is displayed
 
-  @happy-path
-  Scenario: Serve SVG for a component set
-    Given a component set has a cached SVG asset
-    When the user sends GET /api/component-sets/:id/svg
-    Then the response should be SVG content
+  Scenario: SVG not available for a COMPONENT
+    Given a COMPONENT has no SVG image available
+    When the user views the COMPONENT
+    Then a placeholder is shown
 
-  @edge-case
-  Scenario: SVG not available from Figma
-    Given Figma returns no SVG URL for a component
-    When the user sends GET /api/components/:id/svg
-    Then the response should contain a placeholder SVG comment
+  Scenario: COMPONENT HTML PREVIEW
+    Given a COMPONENT has generated code
+    When the user views the COMPONENT's HTML PREVIEW
+    Then a standalone page renders the COMPONENT
 
-  @happy-path
-  Scenario: Component HTML preview
-    Given a component has HTML and CSS code
-    When the user sends GET /api/components/:id/html_preview
-    Then the response should be a standalone HTML page
-    And the page should include the component's CSS and HTML
-
-  @error-handling
-  Scenario: HTML preview not available
-    Given a component has no HTML code
-    When the user sends GET /api/components/:id/html_preview
-    Then the response status should be 404
+  Scenario: HTML PREVIEW not available
+    Given a COMPONENT has no generated code
+    When the user tries to view the HTML PREVIEW
+    Then the PREVIEW is not available

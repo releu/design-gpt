@@ -184,6 +184,143 @@ This is the gate for completing part one of the project. Nothing else takes prio
 
 ---
 
+## [6] 2026-03-06T14:00 -- Manager
+
+Re: MAJOR UPDATE — Feature specs overhauled, composition model changed, glossary introduced, clean slate directive
+
+### Summary
+
+The feature specs have been significantly reworked. The composition model has changed. A project glossary now defines all shared terms. There are no users yet — we have full freedom to delete data, drop tables, and refactor without backward compatibility concerns.
+
+### 1. Glossary — use these terms everywhere
+
+A glossary has been written at `.hats/manager/glossary.md` (needs to be moved to `.hats/shared/glossary.md`). All roles must use these terms consistently in code, tests, specs, and docs. Key terms:
+
+- **Design System** — a named collection of Figma files (created by user)
+- **Component Set** / **Component** / **Variant** — mirror Figma's structure, imported as-is
+- **Vector** — vector-only component displayed as SVG (was previously called "icon" in some places)
+- **Slot** — a named placeholder inside a component for child components. **A component can have multiple slots, each with its own allowed children list.** This is a model change.
+- **Allowed Children** — per-slot, not per-component. Detected from Figma Slots preferred values (or INSTANCE_SWAP — both are valid ways to define slots in Figma). Figma is flexible; we are strict.
+
+### 2. Composition model change: slots are now per-component, allowed children are per-slot
+
+**Old model:** a component set has one flat `allowed_children` array.
+
+**New model:** a component set has zero or more **named slots**, each slot has its own **allowed children** list.
+
+Example:
+```
+PageLayout (root)
+  └── Slot "header"    → allowed: [Title, Breadcrumb]
+  └── Slot "content"   → allowed: [Card, Text, Image]
+  └── Slot "actions"   → allowed: [Button, Link]
+```
+
+**CTO**: Design the new data model. The current `allowed_children` column on ComponentSet needs to become a slots structure. Investigate the Figma Slots REST API response — what data do we get for slots? Do slots have names? How do preferred values map?
+
+**Developer**: Refactor the importer, React factory, and AI schema generator to support multiple named slots per component. Update the database schema. **Delete old code and old data freely — we have no users. No backward compatibility needed. No legacy migrations.**
+
+### 3. Feature specs — what changed
+
+- **All 17 feature files rewritten** to human-language behavioral descriptions. No API paths, HTTP codes, CSS pixels, or implementation details.
+- **14-ai-task-pipeline.feature deleted** — internal pipeline, already covered by 05-design-generation
+- **Onboarding Step 4 removed** — no UI for editing root/allowed_children (comes from Figma only)
+- **Custom components root/children scenario removed** — root/children come from Figma only
+- **Tags simplified** — only `@happy-path` exists (7 scenarios across 4 files tracing the core user journey: sign-in → import → generate → improve). All other tags (`@critical`, `@edge-case`, `@error-handling`) removed. Dev focuses on happy path first.
+- **Import flow rewritten** (03-figma-import): user clicks "New design system" → adds Figma URLs → clicks "import" → sees progress → reviews result with success/errors
+- **"Icon" renamed to "Vector"** throughout
+
+### 4. Clean slate directive
+
+**We have no users.** This means:
+
+- Drop and recreate database tables freely
+- Delete old code, old migrations, old fixtures
+- No backward-compatibility shims, no feature flags, no deprecation warnings
+- Rename columns, restructure models, rewrite services from scratch if needed
+- The only constraint is: make the specs pass
+
+### Action required
+
+**CTO** (`/hats:cto`):
+- Move `glossary.md` from `.hats/manager/` to `.hats/shared/`
+- Design the new slots data model
+- Investigate Figma Slots REST API response
+- Update `.hats/shared/stack.md` with new conventions
+
+**Developer** (`/hats:developer`):
+- Read all updated feature files — they are the source of truth
+- Refactor importer + React factory + AI schema for multi-slot model
+- Clean up old code (delete, don't deprecate)
+- Rename "icon" to "vector" in code
+
+**QA** (`/hats:qa`):
+- Regenerate E2E test scenarios from the updated specs
+- Remove tests for onboarding Step 4, root/children editing UI
+- Update "icon" references to "vector"
+
+**Designer** (`/hats:designer`):
+- Update onboarding wizard design (4 steps, no "Organize" step)
+- Update component detail design to show multiple named slots instead of flat allowed_children
+
+---
+
+## [5] 2026-03-06T10:00 -- Manager
+
+Re: Feature specs rewritten + Figma Slots support + root/children editing removed
+
+### What changed
+
+1. **All 18 feature files rewritten** to use human-language behavioral descriptions. Removed all API paths, HTTP status codes, CSS pixel values, implementation details (jobs, pipelines, database models), and renderer internals. Every scenario now reads as a user story.
+
+2. **Figma Slots added to import spec** (03-figma-import.feature). Slots are the primary mechanism for detecting component children. Preferred values on slots become allowed_children. INSTANCE_SWAP remains as legacy fallback. @slot convention removed (deprecated).
+
+3. **Onboarding Step 4 removed** (11-onboarding-wizard.feature). The "Organize components" step that let users toggle is_root and edit allowed_children is gone. These values come exclusively from Figma (via Slots or #root convention). Wizard is now 4 steps: Name → Add Library → Configure AI → Create Project.
+
+4. **CTO action needed**: Investigate Figma's new Slots REST API response. Create a test file with Slots enabled and inspect the raw API data. We need to know if slots appear as a new property type or still come through as INSTANCE_SWAP. Update the importer accordingly.
+
+5. **QA action needed**: All E2E tests that reference the old onboarding Step 4 or root/children editing UI need to be updated or removed. Feature specs are the source of truth — regenerate test scenarios from the new specs.
+
+6. **Designer action needed**: Update the onboarding wizard design to reflect 4 steps (remove the "Organize" step).
+
+---
+
+## [7] 2026-03-06T15:00 -- Manager
+
+Re: Terminology cleanup complete + 17-image-search deleted
+
+### 1. Terminology sweep complete
+
+All "library/libraries" references in feature files have been replaced with the correct user-facing terms per the glossary:
+
+- "Libraries step" → "Figma Files step" (onboarding wizard)
+- "selects a library" → "selects a Figma file"
+- "added to the library" → "added to the design system" (custom components)
+- "libraries page" → "Figma files page" (component browser)
+- All other instances fixed across 09, 11, 13, 08
+
+### 2. 17-image-search.feature deleted
+
+Image search is not a user feature — it's internal AI pipeline logic. The AI generates text descriptions of images it needs, and the backend converts those to actual images via Yandex Search. This is an implementation detail that belongs in the CTO's architecture docs or the developer's task list, not in user-facing feature specs.
+
+**CTO/Developer**: If you need to document the image search pipeline, do it in `.hats/shared/stack.md` or similar — it's part of the AI generation internals, not a user-visible feature.
+
+### 4. CTO: move shared files
+
+Move these from `.hats/manager/` to `.hats/shared/` (Manager role can't write there):
+- `glossary.md` — project terminology (from message #6)
+- `test-figma-files.md` — describes the 3 real Figma files used in tests, their components, and what each file is for
+
+### 3. 18-ui-layout-and-design-system.feature was deleted (previous message)
+
+Entirely design descriptions — belongs in `.hats/designer/`, not feature specs.
+
+### Current feature file count: 15 files (was 18)
+
+Deleted: 14 (ai-task-pipeline), 17 (image-search), 18 (ui-layout)
+
+---
+
 ## 2 2026-03-03T16:00 -- Manager
 
 Re: Sprint 2 -- fix 3 remaining bugs from QA validation

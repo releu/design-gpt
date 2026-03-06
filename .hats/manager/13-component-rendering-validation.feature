@@ -1,47 +1,38 @@
 @component-rendering @validation
 Feature: Component Rendering Validation
   Validates that every imported component renders correctly in the
-  ComponentDetail preview iframe with all prop combinations.
-  This is a quality assurance feature ensuring the Figma-to-React
-  pipeline produces renderable components.
-  Technical: Each component's props (VARIANT, TEXT, BOOLEAN) are exercised.
-  The preview iframe receives JSX via postMessage and must render without
-  JS console errors.
+  component detail PREVIEW with all PROP combinations. This ensures
+  the Figma-to-React pipeline produces renderable components.
 
   Background:
-    Given a Figma component library has been fully imported and is "ready"
+    Given a DESIGN_SYSTEM has been fully imported
     And the user is logged in as "alice@example.com"
 
-  @critical @happy-path
-  Scenario: Every component renders with default props
-    Given the library contains N component sets and M standalone components
-    When each component is rendered in the preview iframe with default prop values
-    Then every component should render without JavaScript errors in the console
-    And the iframe #root should not be empty for any component
+  Scenario: Every component renders with default PROPs
+    Given the DESIGN_SYSTEM contains COMPONENT_SETs and standalone COMPONENTs
+    When each component is rendered in the PREVIEW with default PROP values
+    Then every component renders without errors
+    And the PREVIEW is not empty for any component
 
-  @happy-path
-  Scenario: Component renders correctly when variant prop is changed
-    Given a component "Button" has a VARIANT prop "State" with values ["default", "hover", "pressed"]
-    When the component is rendered with State="hover"
-    Then the preview should update to show the hover variant
-    And there should be no console errors
+  Scenario: COMPONENT renders correctly when VARIANT PROP is changed
+    Given TITLE has a VARIANT PROP "size" with values ["m", "l"]
+    When the component is rendered with size="l"
+    Then the PREVIEW shows the large VARIANT
+    And there are no rendering errors
 
-  @happy-path
-  Scenario: Component renders correctly with text prop
-    Given a component "Title" has a TEXT prop "text"
+  Scenario: COMPONENT renders correctly with text PROP
+    Given TITLE has a text PROP "text"
     When the component is rendered with text="Hello World"
-    Then the preview should display "Hello World"
-    And there should be no console errors
+    Then the PREVIEW displays "Hello World"
+    And there are no rendering errors
 
-  @happy-path
-  Scenario: Component renders correctly with boolean prop
-    Given a component "Toggle" has a BOOLEAN prop "isActive"
-    When the component is rendered with isActive={true}
-    Then the preview should reflect the active state
-    And there should be no console errors
+  Scenario: COMPONENT renders correctly with boolean PROP
+    Given TITLE has a boolean PROP "marker"
+    When the component is rendered with marker enabled
+    Then the PREVIEW reflects the marker state
+    And there are no rendering errors
 
-  @edge-case
-  Scenario: Vector/icon components display as SVG
-    Given a component set is marked as vector
+  Scenario: VECTOR components display as SVG
+    Given ICON_SINGLE is a VECTOR component
     When the component is viewed in the component detail
-    Then an SVG image should be displayed instead of a React preview
+    Then an SVG image is displayed instead of a React PREVIEW

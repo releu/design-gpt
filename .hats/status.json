@@ -1,7 +1,7 @@
 {
   "messages": {
     "manager2team": {
-      "count": 4,
+      "count": 7,
       "read_by": {
         "cto": 3,
         "qa": 4,
@@ -29,7 +29,7 @@
       "count": 9,
       "read_by": {
         "qa": 7,
-        "manager": 7
+        "manager": 9
       }
     },
     "cto2team": {
