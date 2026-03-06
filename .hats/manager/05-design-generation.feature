@@ -5,7 +5,7 @@ Feature: Design Generation
 
   Background:
     Given the user is logged in as "alice@example.com"
-    And a DESIGN_SYSTEM "Example" exists with ROOT component PAGE and ALLOWED_CHILDREN [TITLE, TEXT]
+    And a DESIGN_SYSTEM "Example" exists with ROOT component PAGE and ALLOWED_CHILDREN [TITLE_COMPONENT, TEXT_COMPONENT]
 
   # --- Home Page ---
 
@@ -15,28 +15,19 @@ Feature: Design Generation
     And the user can select a DESIGN_SYSTEM
     And the PREVIEW area is visible
     And a "generate" button is available
-
-  Scenario: DESIGN_SYSTEM panel shows available DESIGN_SYSTEMs
-    Given the user has DESIGN_SYSTEMs "common/depot", "releu/depot", "andreas/cubes"
-    And the user is on the home page
-    Then the available DESIGN_SYSTEMs are listed
-    And the user can select one and edit it
-    And a "new" button is available to create a new DESIGN_SYSTEM
+    And a "new design system" button is available
 
   @happy-path
-  Scenario: Generate a DESIGN from a PROMPT
+  Scenario: Generate a DESIGN from a PROMPT and see results in PREVIEW
     Given the user is on the home page
     When the user enters the PROMPT "List top 5 parks in Amsterdam"
     And selects the DESIGN_SYSTEM "Example"
     And clicks "generate"
     Then the user is taken to the design page
-    And the design page shows the chat and PREVIEW
-
-  @happy-path
-  Scenario: Design generation completes and PREVIEW renders
-    Given a DESIGN is being generated
+    And the PREVIEW shows a loading state while generating
     When the AI generation completes
     Then the PREVIEW shows the generated DESIGN
+    And the PREVIEW contains a list of parks in Amsterdam
 
   # --- Design Page ---
 
@@ -49,7 +40,7 @@ Feature: Design Generation
     Given the user has 3 DESIGNs
     When the user is on a design page
     Then the user can switch between DESIGNs via the design selector
-    And "(+) new design" takes the user back to the home page
+    And the user can create a new DESIGN
 
   # --- Generating State ---
 

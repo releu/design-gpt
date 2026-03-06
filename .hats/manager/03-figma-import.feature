@@ -94,9 +94,9 @@ Feature: Figma Import
     Then the PAGE COMPONENT_SET is marked as a ROOT component
 
   Scenario: Figma Slots create SLOTs with ALLOWED_CHILDREN
-    Given PAGE has a SLOT named "content" with preferred values [TEXT, TITLE]
+    Given PAGE has a SLOT named "content" with preferred values [TEXT_COMPONENT, TITLE_COMPONENT]
     When the import completes
-    Then the component has a SLOT "content" with ALLOWED_CHILDREN [TEXT, TITLE]
+    Then the component has a SLOT "content" with ALLOWED_CHILDREN [TEXT_COMPONENT, TITLE_COMPONENT]
     And the SLOT accepts children in the generated code
 
   Scenario: INSTANCE_SWAP properties also create SLOTs with ALLOWED_CHILDREN

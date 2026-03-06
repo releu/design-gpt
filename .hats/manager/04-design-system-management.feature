@@ -33,30 +33,32 @@ Feature: Design System Management
     Given the user has a DESIGN_SYSTEM "Example" with 2 linked FIGMA_FILEs
     When the user opens "Example" for editing
     Then the name, linked files, and components are shown
-    And changes are saved automatically
+    When the user edits the name or the list of FIGMA_FILEs
+    And clicks save
+    Then the changes are persisted
 
   Scenario: Browse components grouped by FIGMA_FILE
-    Given the user is editing a DESIGN_SYSTEM with components from 2 FIGMA_FILEs
+    Given the user is browsing a DESIGN_SYSTEM with components from 2 FIGMA_FILEs
     Then components are grouped under their FIGMA_FILE names
 
   Scenario: View component detail
-    Given the user is editing a DESIGN_SYSTEM with imported components
-    When the user selects TEXT
+    Given the user is browsing a DESIGN_SYSTEM with imported components
+    When the user selects TEXT_COMPONENT
     Then the component detail is shown with name, link to Figma, and sync action
 
   Scenario: Component detail shows interactive PROPs
-    Given the user is viewing TITLE which has PROPs "size" (VARIANT), "marker" (boolean), and "text" (string)
+    Given the user is viewing TITLE_COMPONENT which has PROPs "size" (VARIANT), "marker" (boolean), and "text" (string)
     Then each PROP has an interactive control matching its type
     And changing a PROP value updates the live PREVIEW
 
   Scenario: Component detail shows live PREVIEW
-    Given the user is viewing TEXT
+    Given the user is viewing TEXT_COMPONENT
     Then a live PREVIEW shows the component with current PROP values
     When the user changes a PROP value
     Then the PREVIEW updates
 
   Scenario: Component detail shows React code
-    Given the user is viewing TEXT that has generated React code
+    Given the user is viewing TEXT_COMPONENT that has generated React code
     Then the user can view the component's React source code
 
   Scenario: View AI Schema shows component tree reachable from ROOT

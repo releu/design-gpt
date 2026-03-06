@@ -1,38 +1,19 @@
-@component-rendering @validation
-Feature: Component Rendering Validation
-  Validates that every imported component renders correctly in the
-  component detail PREVIEW with all PROP combinations. This ensures
-  the Figma-to-React pipeline produces renderable components.
+@validation
+Feature: Complex Figma File Compatibility
+  Importing a real-world, complex Figma file (Cubes design system) must produce
+  fully working components. This is a broad validation that the full pipeline
+  holds up under real conditions.
 
-  Background:
-    Given a DESIGN_SYSTEM has been fully imported
-    And the user is logged in as "alice@example.com"
+  Scenario: All components render correctly after import
+    Given the user has imported the Cubes Figma file
+    Then every component and every VARIANT renders without errors
+    And each component and VARIANT produces different PREVIEW HTML
 
-  Scenario: Every component renders with default PROPs
-    Given the DESIGN_SYSTEM contains COMPONENT_SETs and standalone COMPONENTs
-    When each component is rendered in the PREVIEW with default PROP values
-    Then every component renders without errors
-    And the PREVIEW is not empty for any component
+  Scenario: All PROP types work for every component
+    Given the user has imported the Cubes Figma file
+    Then for every component, changing each PROP updates the PREVIEW correctly
+    And the PREVIEW HTML reflects the changed PROP value
 
-  Scenario: COMPONENT renders correctly when VARIANT PROP is changed
-    Given TITLE has a VARIANT PROP "size" with values ["m", "l"]
-    When the component is rendered with size="l"
-    Then the PREVIEW shows the large VARIANT
-    And there are no rendering errors
-
-  Scenario: COMPONENT renders correctly with text PROP
-    Given TITLE has a text PROP "text"
-    When the component is rendered with text="Hello World"
-    Then the PREVIEW displays "Hello World"
-    And there are no rendering errors
-
-  Scenario: COMPONENT renders correctly with boolean PROP
-    Given TITLE has a boolean PROP "marker"
-    When the component is rendered with marker enabled
-    Then the PREVIEW reflects the marker state
-    And there are no rendering errors
-
-  Scenario: VECTOR components display as SVG
-    Given ICON_SINGLE is a VECTOR component
-    When the component is viewed in the component detail
-    Then an SVG image is displayed instead of a React PREVIEW
+  Scenario: Visual diff passes for every default component state
+    Given the user has imported the Cubes Figma file
+    Then every component and VARIANT in its default state has a visual diff of 95% or above
