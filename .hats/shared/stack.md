@@ -12,22 +12,22 @@
 ## Database
 
 - **PostgreSQL** (latest stable, 16+)
-  - Relational domain model: users, designs, iterations, chat messages, AI tasks, design systems, component libraries, component sets, component variants, figma assets.
+  - Relational domain model: users, designs, iterations, chat messages, AI tasks, design systems, figma files (component libraries), component sets, component variants, figma assets.
   - DB names: `jan_designer_api_development` / `jan_designer_api_test`.
 
 ## Authentication
 
 - **Auth0** with RS256 JWT
-  - Frontend: `@auth0/auth0-vue` plugin. Mock plugin when `VITE_E2E_TEST=true`.
+  - Frontend: `@auth0/auth0-vue` plugin. Mock plugin (`test-support/mock-auth0.js`) loaded when `VITE_E2E_TEST=true` or `DEV` mode.
   - Backend: `Auth0Service.decode_token` decodes JWT (RS256 via JWKS). Auto-creates User on first login.
   - E2E mode: `E2E_TEST_MODE=true` accepts HS256 HMAC tokens signed with `e2e-test-secret-key`.
   - Test user: `auth0|alice123` / `alice@example.com`.
 
 ## External Services
 
-- **Figma API** -- component import pipeline (Client -> Importer -> AssetExtractor -> ReactFactory -> VisualDiff). Sync statuses: pending -> discovering -> importing -> converting -> comparing -> ready | error.
+- **Figma API** -- FigmaFile import pipeline (Client -> Importer -> AssetExtractor -> ReactFactory -> VisualDiff). Sync statuses: pending -> discovering -> importing -> converting -> comparing -> ready | error.
 - **OpenAI API** -- design generation via structured output (gpt-5, JSON Schema). AiTask model with states: pending -> completed. AiRequestJob processes tasks.
-- **Yandex Images** -- image search endpoint (GET /api/images?q=query).
+- **Yandex Images** -- internal AI pipeline only. The AI generates text descriptions of images it needs; the backend resolves them to actual image URLs via Yandex Image Search. Not a user-facing feature.
 
 ## Project Structure
 
@@ -36,89 +36,161 @@ Code lives at the project root (Hats v3 layout):
 ```
 app/                            # Vue 3 frontend
   src/
-    main.js                     # Entry, global component registration, Auth0 + router
-    App.vue                     # Root, Auth0 gate
-    assets/main.css             # Global CSS variables, @font-face, design tokens
-    components/                 # Auto-registered globally via import.meta.glob
-    views/                      # HomeView, DesignView, OnboardingView, LibrariesView, LibraryDetailView
-    router/index.js             # Routes: /, /designs/:id, /onboarding, /libraries, /libraries/:id
+    main.js                     # Entry, global component registration, Auth0 (real or mock) + router
+    App.vue                     # Root component
+    assets/
+      main.css                  # Global CSS variables, @font-face, design tokens
+    components/                 # Auto-registered globally via import.meta.glob (*.vue)
+                                # Includes: ChatPanel, ComponentDetail, ComponentDetailModal,
+                                #   DesignSettings, DesignSystemModal, FigmaUrlInput,
+                                #   Layout, LibraryCard, LibrarySelector, MainLayout,
+                                #   OnboardingLayout, OnboardingStepLibraries,
+                                #   OnboardingStepComponents, OnboardingStepPrompt,
+                                #   Preview, Prompt, PromptField, WizardStepper, ...
+    views/                      # HomeView, DesignView, OnboardingView,
+                                #   LibrariesView, LibraryDetailView
+    router/index.js             # Routes: /, /designs/:id, /onboarding,
+                                #   /libraries, /libraries/:id
+    test-support/
+      mock-auth0.js             # Mock Auth0 plugin (used in DEV mode and VITE_E2E_TEST=true)
+    __tests__/
+      setup.js                  # Vitest global setup
 api/                            # Rails 8 API-only backend
   app/
     controllers/                # All scoped under /api
-    models/                     # Domain models + DesignGenerator, ArtDirector
+                                # ApplicationController, DesignsController,
+                                #   FigmaFilesController (ComponentLibrariesController), ComponentSetsController,
+                                #   ComponentsController, CustomComponentsController,
+                                #   DesignSystemsController, ImagesController,
+                                #   IterationsController, RendersController, TasksController
+      concerns/
+        renderable.rb           # Shared renderer endpoint logic
+    models/                     # Domain models
+                                # Design, Iteration, ChatMessage, AiTask,
+                                #   FigmaFile (ComponentLibrary), ComponentSet, ComponentVariant,
+                                #   Component, FigmaAsset, DesignSystem,
+                                #   DesignSystemLibrary (join), DesignComponentLibrary (join),
+                                #   Export, Render, User, DesignGenerator, ArtDirector
+      concerns/
+        component_naming.rb     # ComponentNaming shared concern
     services/                   # Plain Ruby services
-      figma/                    # Client, Importer, ReactFactory, VisualDiff, AssetExtractor, StyleExtractor
-    jobs/                       # AiRequestJob, ScreenshotJob, ComponentLibrarySyncJob
+      figma/                    # Client, Importer, ReactFactory, VisualDiff,
+                                #   AssetExtractor, StyleExtractor, JsxCompiler,
+                                #   ComponentResolver, SingleComponentImporter,
+                                #   HtmlConverter
+      exports/
+        react_project_builder.rb
+      auth0_service.rb
+      json_to_jsx.rb
+      yandex_images.rb
+    jobs/                       # AiRequestJob, ScreenshotJob,
+                                #   FigmaFileSyncJob (ComponentLibrarySyncJob), VisualDiffJob
   config/
   db/
 caddy/                          # Reverse proxy (local dev only)
   Caddyfile
-e2e/                            # Playwright + playwright-bdd
-  features/                     # Gherkin feature files
-  steps/                        # Step definitions (createBdd from playwright-bdd)
-  fixtures/                     # Custom fixtures: consoleErrors, world
-Makefile                        # dev, test, test-api, test-app, test-e2e targets
+  certs/                        # Local TLS certificates (mkcert)
+Makefile                        # dev, clean_dev, test, test-api, test-app,
+                                #   test-e2e, test-render, test-render-fresh,
+                                #   setup, setup-e2e targets
+Procfile                        # Heroku process definitions (web, worker, release)
+                                # NOTE: currently contains stale developer/api paths --
+                                # needs updating to api/ before production deployment
 ```
 
 ## Key Domain Relationships
 
 ```
-User -> DesignSystems -> DesignSystemLibraries -> ComponentLibraries -> Components
-                                                                     -> ComponentSets -> ComponentVariants
-                                                                     -> FigmaAssets
-User -> Designs -> Iterations (JSX snapshots)
-                -> ChatMessages
-                -> DesignComponentLibraries -> ComponentLibraries
+User
+  -> DesignSystems
+       -> FigmaFiles (one per imported Figma file)
+            -> ComponentSets (slots: [{name, allowed_children}]) -> ComponentVariants
+            -> Components (slots: [{name, allowed_children}])
+            -> FigmaAssets
+
+User
+  -> Designs
+       -> linked to one DesignSystem (the component palette)
+       -> Iterations (JSX snapshots)
+       -> ChatMessages
+
 AiTask (pending -> completed) -- linked to Iteration and Design
 ```
 
-## Design Tokens (CSS Custom Properties)
+Note: `design_system_libraries` exists as a join table at the DB level linking DesignSystems to FigmaFiles, but it is not a domain concept and does not appear in user-facing specs or code logic.
 
-The designer has specified a warm monochrome design system. All tokens live in `src/assets/main.css`:
+Note: `DesignSystem` has an admin-only `is_public` field. When `true`, all users can see and use that design system. This field is set via Rails console — there is no API endpoint for it.
 
-### Colors
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--bg-page` | `#EBEBEA` | Page background |
-| `--bg-panel` | `#FFFFFF` | Card/panel surfaces |
-| `--bg-input` | `#FFFFFF` | Text inputs, textareas |
-| `--bg-bubble-user` | `#F0EFED` | AI/designer chat bubbles |
-| `--bg-chip-active` | `#EBEBEA` | Selected pills/chips |
-| `--bg-modal-overlay` | `#EBEBEA` | Modal overlay |
-| `--text-primary` | `#1A1A1A` | Body text, labels |
-| `--text-secondary` | `#999999` | Placeholder, muted text |
-| `--text-on-dark` | `#FFFFFF` | Text on dark buttons |
-| `--accent-primary` | `#1A1A1A` | Generate/send button fill |
-| `--accent-border` | `#D4D4D4` | Subtle 1px borders |
-| `--accent-divider` | `#E0E0E0` | Drag-handle divider lines |
+## Slots Data Model
 
-### Spacing (8px grid)
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--sp-1` | 4px | Tight internal padding |
-| `--sp-2` | 8px | Default padding, small gaps |
-| `--sp-3` | 16px | Panel padding, component gaps |
-| `--sp-4` | 24px | Larger section spacing |
-| `--sp-5` | 32px | Outer page margin |
-| `--sp-6` | 48px | Modal content from edges |
+The composition model uses **named slots** rather than a flat `allowed_children` array. Each component set (and standalone component) within a FigmaFile stores its slots as a JSONB array on the `slots` column. The old `allowed_children` column is removed.
 
-### Border Radius
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--radius-sm` | 8px | Chips, badges |
-| `--radius-md` | 16px | Cards, panels, inputs, buttons, bubbles |
-| `--radius-lg` | 24px | Large containers, modals, desktop preview |
-| `--radius-pill` | 9999px | Header toggles, generate button |
-| `--radius-phone` | 72px | Phone preview frame |
+### Database columns
 
-### Z-Index
-| Layer | z-index | Content |
-|-------|---------|---------|
-| Base | 0 | Page, panels |
-| Dropdown | 100 | Design selector, export menu |
-| Modal overlay | 200 | DS modal overlay |
-| Modal content | 201 | DS modal card |
-| Toast | 300 | Notifications |
+| Table | Column | Type | Description |
+|-------|--------|------|-------------|
+| `component_sets` | `slots` | `jsonb` (default: `[]`) | Named slots for this component set |
+| `components` | `slots` | `jsonb` (default: `[]`) | Named slots for this standalone component |
+
+### Slot JSON structure
+
+Each element in the `slots` array represents one named placeholder:
+
+```json
+[
+  {
+    "name": "content",
+    "allowed_children": ["Title", "Button", "Card"]
+  },
+  {
+    "name": "actions",
+    "allowed_children": ["Button", "Link"]
+  }
+]
+```
+
+A component with no slots has `slots: []`. A component with a single unnamed slot (INSTANCE_SWAP with no explicit slot name) uses `"name": "children"` by convention.
+
+### Why JSONB (not a separate table)
+
+Slots are always read and written together with their parent component set. There is no use case for querying slots independently. JSONB keeps the model simple and avoids an extra join on every schema generation request.
+
+### Detection at import time
+
+Two Figma mechanisms produce slots (both are supported):
+
+1. **Figma Slots API**: Figma exposes `slots` as a top-level property on component nodes. Each slot has a `name` and `preferredValues` listing the component keys that are valid in that slot. The importer reads these directly.
+
+2. **INSTANCE_SWAP + `preferredValues`**: An alternative mechanism. The importer scans `componentPropertyDefinitions` for `INSTANCE_SWAP` type entries. Each such entry becomes one slot; its `preferredValues` become `allowed_children`. The property key (stripped of Figma's `#N` suffix) becomes the slot `name`.
+
+### Figma Slots REST API response shape
+
+When Figma Slots are enabled on a component, the raw `/v1/files/:key` response includes a `slots` array alongside `componentPropertyDefinitions`:
+
+```json
+{
+  "componentPropertyDefinitions": { ... },
+  "slots": [
+    {
+      "name": "content",
+      "preferredValues": [
+        { "type": "COMPONENT_SET", "key": "abc123" },
+        { "type": "COMPONENT", "key": "def456" }
+      ]
+    }
+  ]
+}
+```
+
+The importer checks both `node["slots"]` and `componentPropertyDefinitions` (INSTANCE_SWAP entries) and merges the results.
+
+### `#root` marker (unchanged)
+
+Components marked with `#root` in Figma name or description have `is_root: true`. Root components are the valid top-level nodes in AI-generated designs. This mechanism is unchanged.
+
+## Design Tokens
+
+Global design tokens live in `src/assets/main.css` (`:root` CSS custom properties). See `.hats/designer/` for visual design specifications.
 
 ## Conventions
 
@@ -131,9 +203,7 @@ The designer has specified a warm monochrome design system. All tokens live in `
 - SCSS nesting via `&`: `&__element`, `&_modifier`
 - Global tokens in `src/assets/main.css` (`:root` CSS variables)
 - Font: `-apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto, sans-serif`
-- Desktop-only: min 1200x600, no mobile/tablet breakpoints
-- All labels lowercase, no uppercase transforms
-- No page scroll -- panel-internal scrolling only
+- The right panel in DesignView has two modes: chat (default) and settings/component browser. A toggle controls which is shown.
 
 ### Backend
 - Standard Rails conventions; no serializers (inline JSON rendering)
@@ -150,6 +220,7 @@ The designer has specified a warm monochrome design system. All tokens live in `
 - All scoped under `/api`; RESTful; no versioning prefix beyond `/api`
 - Renderer endpoints (no auth): `/api/component-libraries/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`
 - Task endpoints use TASKS_TOKEN for external worker auth
+- API endpoint catalog: see `.hats/shared/api.md`
 
 ### Testing
 - **API**: RSpec, fixtures (no FactoryBot), WebMock for HTTP stubs
@@ -174,7 +245,7 @@ The designer has specified a warm monochrome design system. All tokens live in `
 - vue-codemirror (CodeMirror 6 -- JSX editing, read-only code display)
 - vitest, @vue/test-utils, happy-dom (testing)
 
-### E2E (e2e/)
+### E2E (.hats/qa/)
 - @playwright/test
 - playwright-bdd
 
@@ -191,36 +262,30 @@ The designer has specified a warm monochrome design system. All tokens live in `
 
 ## Design Generation Flow
 
-### 8-Step Pipeline
+### Technical Pipeline
 
-1. **Import**: User provides Figma file URLs. The system imports all components (component sets with variants, standalone components, icons). `is_root` and `allowed_children` are set automatically from Figma conventions (`#root` marker, INSTANCE_SWAP `preferredValues`).
+1. **Import**: Components are imported from Figma (component sets with variants, standalone components, vectors). `is_root` is set from the `#root` marker. Named slots are detected from Figma Slots and/or INSTANCE_SWAP `preferredValues` — both are supported.
 
-2. **Configure**: User names the design system and groups the imported libraries into it. `is_root` and `allowed_children` are auto-set from Figma conventions at import time but remain editable in the UI -- the user can optionally adjust them.
+2. **Schema generation**: Backend builds a JSON Schema from the FigmaFiles in the selected DesignSystem — component names, props (extracted from variant names), `is_root` for top-level identification, named slots with `allowed_children` to constrain valid nesting per slot.
 
-3. **Prompt**: User writes a text prompt describing the desired design.
+3. **AI request**: The prompt + JSON Schema are sent to the AI model as a structured output format. The AI returns valid JSON matching the component tree structure.
 
-4. **Schema generation**: Backend builds a JSON Schema from the component library -- component names, their props (extracted from variant names), `is_root` to identify top-level components, `allowed_children` to constrain valid nesting.
+4. **Transform**: The returned JSON tree is transformed into JSX code via `JsonToJsx`.
 
-5. **AI request**: The prompt + JSON Schema are sent to the AI model. The schema is passed as the structured output format so the AI generates valid JSON matching the component tree structure.
+5. **Render**: The JSX is sent via `postMessage` to the renderer iframe — an HTML page with React, ReactDOM, Babel, and all compiled FigmaFile components pre-loaded. Babel compiles JSX at runtime.
 
-6. **Transform**: The returned JSON tree is transformed into JSX code using the component names and props.
-
-7. **Render**: The JSX is sent via `postMessage` to the renderer iframe -- an HTML page with React, ReactDOM, Babel, and all the library's compiled React components pre-loaded. Babel compiles the JSX at runtime, and React renders it.
-
-8. **Preview**: The rendered result appears in the preview iframe (mobile or desktop layout).
+6. **Preview**: The rendered output is displayed in the preview iframe.
 
 ### Key Files by Step
 
 | Step | Key files |
 |------|-----------|
-| 1. Import | `figma/client.rb`, `figma/importer.rb`, `figma/asset_extractor.rb`, `ComponentLibrarySyncJob` |
-| 2. Configure | `DesignSystemModal.vue`, `ComponentSetsController`, `DesignSystem` model |
-| 3. Prompt | `Prompt.vue`, `HomeView.vue`, `DesignsController#create` |
-| 4. Schema | `DesignGenerator#build_schema`, `#build_defs`, `ComponentNaming` concern |
-| 5. AI request | `AiRequestJob`, `AiTask` model, OpenAI API (`gpt-5`, structured output) |
-| 6. Transform | `JsonToJsx` service, `AiTask#jsx` |
-| 7. Render | `Renderable` concern, renderer endpoints (no auth), React + Babel in HTML |
-| 8. Preview | `Preview.vue`, `DesignView.vue` (polling + postMessage) |
+| 1. Import | `figma/client.rb`, `figma/importer.rb`, `figma/asset_extractor.rb`, `ComponentLibrarySyncJob` (FigmaFileSyncJob) |
+| 2. Schema | `DesignGenerator#build_schema`, `#build_defs`, `ComponentNaming` concern |
+| 3. AI request | `AiRequestJob`, `AiTask` model, OpenAI API (`gpt-5`, structured output) |
+| 4. Transform | `JsonToJsx` service, `AiTask#jsx` |
+| 5. Render | `Renderable` concern, renderer endpoints (no auth), React + Babel in HTML |
+| 6. Preview | `Preview.vue`, `DesignView.vue` (polling + postMessage) |
 
 ---
 
@@ -228,14 +293,20 @@ The designer has specified a warm monochrome design system. All tokens live in `
 
 Special conventions in Figma that affect import and code generation.
 
-### INSTANCE_SWAP + `preferredValues` (primary slot convention)
+### Figma Slots
 
-Components in Figma often contain a placeholder instance where child content should be inserted at runtime. `ReactFactory` detects the slot position from the Figma component definition and replaces it with `{props.children}` in the generated JSX -- at the exact position inside the layout.
+When Slots are defined on a component in Figma, the `/v1/files/:key` API response includes a `slots` array on the component node. Each slot has a `name` and `preferredValues` listing the component keys valid in that slot.
 
-Create an INSTANCE_SWAP property in Figma's component Properties panel and bind it to an instance node (the placeholder). Add `preferredValues` to the property listing the component sets that are valid children. At import time:
-- The bound instance node becomes `{props.children}` in the generated JSX.
-- `preferredValues` is resolved to component names and `allowed_children` is auto-set on the component set.
+At import time:
+- Each Figma slot becomes one entry in the `slots` JSONB array: `{ "name": "...", "allowed_children": [...] }`.
+- The slot's bound instance node becomes `{props.slotName}` (or `{props.children}` for the default/only slot) in the generated JSX at the exact position in the layout.
 - No manual configuration in the app UI is required.
+
+### INSTANCE_SWAP + `preferredValues`
+
+An alternative way to define slots. The component has an INSTANCE_SWAP property in `componentPropertyDefinitions`; each such property becomes one slot. Its `preferredValues` become `allowed_children`; the property key (stripped of Figma's `#N` suffix) becomes the slot name.
+
+Both Figma Slots and INSTANCE_SWAP + `preferredValues` are valid ways to define allowed children in Figma. The importer handles both. A component may use either mechanism — whichever the Figma file author chose.
 
 ### `#root` -- top-level component marker
 
@@ -243,24 +314,24 @@ Add `#root` anywhere in a component set's **name or description** in Figma. At i
 
 ### `#list` -- list component marker
 
-Add `#list` anywhere in a component set's **name or description** in Figma. The component is expected to have N identical INSTANCE nodes all bound to the same INSTANCE_SWAP property. `ReactFactory` collapses all of them into a single `{props.children}`. The AI schema uses a direct `$ref` (not `anyOf`) to constrain children to the single item type.
+Add `#list` anywhere in a component set's **name or description** in Figma. The component is expected to have N identical INSTANCE nodes all bound to the same slot/INSTANCE_SWAP property. `ReactFactory` collapses all of them into a single `{props.children}`. The AI schema uses a direct `$ref` (not `anyOf`) to constrain children to the single item type.
 
-Example: a `ListContainer #list` with 3 identical item placeholder instances generates JSX with one `{props.children}`; `allowed_children` is auto-set to the preferred item type.
+Example: a `ListContainer #list` with 3 identical item placeholder instances generates JSX with one `{props.children}`; the slot's `allowed_children` is auto-set to the preferred item type.
 
 ### Figma TEXT properties
 
 Text content that should be a dynamic prop must be defined as a TEXT property in Figma's component Properties panel, then bound to the text node via `componentPropertyReferences.characters`. The import reads these from `componentPropertyDefinitions` and stores them in `prop_definitions`. During code generation, any TEXT node with a `componentPropertyReferences.characters` reference is rendered as `{propName}` instead of static text. The AI schema requires these as string props.
 
-### Example: Page component with children slot
+### Example: Page component with a "content" slot
 
-Figma structure of a `Page` component with an INSTANCE_SWAP property named `Content` (preferredValues: Title, Button):
+Figma structure of a `Page` component with a Slot named `content` (preferredValues: Title, Button):
 
 ```
 Page (COMPONENT_SET)
-  Properties: Content (INSTANCE_SWAP, preferredValues: [Title, Button])
+  Slots: content (preferredValues: [Title, Button])
   Default variant (COMPONENT)
     Background (RECTANGLE)
-    content placeholder (INSTANCE, bound to Content property)
+    content placeholder (INSTANCE, bound to content slot)
 ```
 
 Generated React code:
@@ -272,18 +343,18 @@ export function Page(props) {
       <style>{styles}</style>
       <div className="root">
         <div className="background" />
-        {props.children}  {/* replaces the bound instance, inside the layout */}
+        {props.children}  {/* replaces the bound slot instance, inside the layout */}
       </div>
     </>
   );
 }
 ```
 
-Import result: `allowed_children = ["Title", "Button"]` auto-set on the Page component set.
+Import result: `slots = [{ "name": "content", "allowed_children": ["Title", "Button"] }]` auto-set on the Page component set.
 
 ---
 
-## Known Issues
+## Terminology
 
-- **ChatMessage model**: No `belongs_to :design` declared -- use `design_id` column directly in fixtures.
-- **Art director disabled**: `ScreenshotJob` no longer triggers `analyze_last_render` -- art director flow is commented out pending re-enablement.
+See `.hats/shared/glossary.md` for canonical term definitions.
+

@@ -7,7 +7,7 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 ## Authentication
 
 - All endpoints require `Authorization: Bearer <JWT>` header unless noted otherwise
-- Unauthenticated endpoints: renderer pages (`/api/component-libraries/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON inspection, component SVG/HTML endpoints
+- Unauthenticated endpoints: renderer pages (`/api/component-libraries/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON (`/api/components/:id/figma_json`, `/api/component-sets/:id/figma_json`), SVG assets (`/api/components/:id/svg`, `/api/component-sets/:id/svg`), HTML preview (`/api/components/:id/html_preview`), library preview page (`/api/component-libraries/:id/preview`)
 - Task endpoints (`/api/tasks/*`) use `TASKS_TOKEN` header auth instead of JWT
 
 ## Response Format
@@ -28,25 +28,32 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /api/design-systems | Yes | List user's design systems |
-| POST | /api/design-systems | Yes | Create (name + component_library_ids) |
+| POST | /api/design-systems | Yes | Create (name + figma_file URLs to import) |
+| GET | /api/design-systems/:id | Yes | Show single design system with its FigmaFiles _(not yet implemented)_ |
+| PATCH | /api/design-systems/:id | Yes | Update name and/or linked FigmaFiles _(not yet implemented)_ |
+| DELETE | /api/design-systems/:id | Yes | Delete design system _(not yet implemented)_ |
+| POST | /api/design-systems/:id/figma-files | Yes | Add a FigmaFile to an existing design system _(not yet implemented)_ |
+| DELETE | /api/design-systems/:id/figma-files/:figma_file_id | Yes | Remove a FigmaFile from a design system _(not yet implemented)_ |
 
-### Component Libraries
+### FigmaFiles
+_(URL paths use `/api/component-libraries/` — current code name. Domain name is FigmaFile.)_
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | /api/component-libraries | Yes | List own libraries |
-| GET | /api/component-libraries/available | Yes | Own + public libs |
+| GET | /api/component-libraries | Yes | List own FigmaFiles |
+| GET | /api/component-libraries/available | Yes | Own + public FigmaFiles |
 | POST | /api/component-libraries | Yes | Create (import from Figma URL) |
-| GET | /api/component-libraries/:id | Yes | Show with components |
-| PATCH | /api/component-libraries/:id | Yes | Update name, is_public |
+| GET | /api/component-libraries/:id | Yes | Show FigmaFile with components |
+| PATCH | /api/component-libraries/:id | Yes | Update name |
 | POST | /api/component-libraries/:id/sync | Yes | Re-sync from Figma (async) |
-| GET | /api/component-libraries/:id/components | Yes | List components |
+| GET | /api/component-libraries/:id/components | Yes | List all component sets and components |
 | GET | /api/component-libraries/:id/renderer | No | Iframe renderer HTML |
 | GET | /api/component-libraries/:id/preview | No | Preview page (all components) |
 
 ### Component Sets
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| PATCH | /api/component-sets/:id | Yes | Update is_root, allowed_children |
+| PATCH | /api/component-sets/:id | Yes | Update is_root, slots |
 | POST | /api/component-sets/:id/reimport | Yes | Re-import single component set |
 | GET | /api/component-sets/:id/figma_json | No | Raw Figma JSON |
 | GET | /api/component-sets/:id/svg | No | SVG asset |
@@ -54,6 +61,7 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 ### Components
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| PATCH | /api/components/:id | Yes | Update component fields |
 | POST | /api/components/:id/reimport | Yes | Re-import single component |
 | GET | /api/components/:id/visual_diff | Yes | Visual diff results |
 | GET | /api/components/:id/diff_image | Yes | Diff PNG |
@@ -63,6 +71,9 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 | GET | /api/components/:id/html_preview | No | Standalone HTML preview |
 
 ### Custom Components
+
+_No feature spec. Status TBD._
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | /api/custom-components | Yes | Upload custom React component |
@@ -73,15 +84,22 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | /api/designs | Yes | List user's designs |
-| POST | /api/designs | Yes | Create (prompt + design_system_id or component_library_ids) |
+| POST | /api/designs | Yes | Create (prompt + design_system_id) |
 | GET | /api/designs/:id | Yes | Show design + iterations + chat |
 | PATCH | /api/designs/:id | Yes | Update name |
 | DELETE | /api/designs/:id | Yes | Delete |
-| POST | /api/designs/:id/improve | Yes | Chat improvement (new iteration) |
+| POST | /api/designs/:id/improve | Yes | Chat improvement (new iteration); request body must include full chat history |
+| POST | /api/designs/:id/reset | Yes | Revert design to previous iteration _(not yet implemented)_ |
+| POST | /api/designs/:id/apply/:message_id | Yes | Apply art director comments (route live; feature currently disabled) |
 | POST | /api/designs/:id/duplicate | Yes | Duplicate design |
 | GET | /api/designs/:id/export_image | Yes | Export as PNG |
 | GET | /api/designs/:id/export_react | Yes | Export as React project zip |
-| GET | /api/designs/:id/export_figma | Yes | Export tree JSON for Figma |
+| GET | /api/designs/:id/export_figma | Yes | Returns a code for copy-pasting into the DesignGPT Figma plugin |
+
+### Renders
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/renders/:id | Yes | Show a stored render record |
 
 ### Renderers (no auth)
 | Method | Path | Auth | Description |
@@ -96,10 +114,10 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 | GET | /api/tasks/:id | Token | Show task details + JSX |
 | PATCH | /api/tasks/:id | Token | Complete task with result |
 
-### Images
+### Images (internal)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | /api/images | Yes | Search images (q= param) |
+| GET | /api/images | Yes | Image search used internally by AI pipeline (q= param). Not a user-facing feature. |
 
 ## Design Status Flow
 
@@ -113,15 +131,15 @@ draft -> generating -> ready
 - Frontend polls `GET /api/designs/:id` every 1s while status is `generating`
 - Polling stops when status changes to `ready` or `error`
 
-## Component Library Sync Flow
+## FigmaFile Sync Flow
 
 ```
-pending -> discovering -> importing -> converting -> comparing -> ready
-                                                              \-> error
+pending -> importing -> converting -> comparing -> ready
+                                               \-> error
 ```
 
-- `POST /api/component-libraries` creates with status `pending`
-- `POST /api/component-libraries/:id/sync` enqueues `ComponentLibrarySyncJob`
+- `POST /api/component-libraries` creates a FigmaFile record with status `pending`
+- `POST /api/component-libraries/:id/sync` enqueues `FigmaFileSyncJob` (ComponentLibrarySyncJob)
 - Frontend polls `GET /api/component-libraries/:id` for progress updates
 - Progress object: `{ step_number, total_steps, message }`
 

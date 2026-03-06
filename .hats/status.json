@@ -3,7 +3,7 @@
     "manager2team": {
       "count": 7,
       "read_by": {
-        "cto": 3,
+        "cto": 7,
         "qa": 4,
         "developer": 4,
         "designer": 3
@@ -33,7 +33,7 @@
       }
     },
     "cto2team": {
-      "count": 3,
+      "count": 6,
       "read_by": {
         "developer": 3,
         "designer": 1,
