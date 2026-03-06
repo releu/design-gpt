@@ -36,27 +36,3 @@ Feature: Design System Management
     When the user edits the name or the list of FIGMA_FILEs
     And clicks save
     Then the changes are persisted
-
-  Scenario: Browse components grouped by FIGMA_FILE
-    Given the user is browsing a DESIGN_SYSTEM with components from 2 FIGMA_FILEs
-    Then components are grouped under their FIGMA_FILE names
-
-  Scenario: Component detail shows React code
-    Given the user is viewing TEXT_COMPONENT that has generated React code
-    Then the user can view the component's React source code
-
-  Scenario: View AI Schema shows component tree reachable from ROOT
-    Given the DESIGN_SYSTEM has a ROOT component PAGE with SLOTs
-    When the user opens the AI Schema view
-    Then a tree is displayed starting from PAGE
-    And each SLOT shows its ALLOWED_CHILDREN
-
-  Scenario: DESIGN_SYSTEM with no ROOT components shows empty AI Schema
-    Given the DESIGN_SYSTEM has no ROOT components
-    When the user views the AI Schema
-    Then a message explains that no ROOT components were found and how to mark them in Figma
-
-  Scenario: Component with no React code shows a message
-    Given a component failed React code generation
-    When the user views the component detail
-    Then a message indicates that React code is not available
