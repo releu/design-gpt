@@ -58,9 +58,30 @@ class DesignsController < ApplicationController
 
   def improve
     design = find_accessible_design(params[:design_id])
-    design.improve(params[:comment])
 
+    comment = params[:comment] || params[:message]
+    if params[:messages].present?
+      # Full chat history provided — use the last user message as the improvement prompt
+      messages = Array(params[:messages])
+      comment = messages.last&.dig("content") || messages.last&.dig("message") || comment
+    end
+
+    design.improve(comment)
     render json: { id: design.id }
+  end
+
+  def reset
+    design = find_accessible_design(params[:id])
+    iterations = design.iterations.order(:id)
+
+    if iterations.count <= 1
+      return render json: { error: "No previous iteration to revert to" }, status: :unprocessable_entity
+    end
+
+    iterations.last.destroy!
+    design.update!(status: "ready")
+
+    render json: { id: design.id, status: design.status }
   end
 
   def duplicate

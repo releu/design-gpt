@@ -140,7 +140,7 @@ class ComponentsController < ApplicationController
       enabled: component.enabled,
       status: component.status,
       is_root: component.is_root,
-      allowed_children: component.allowed_children
+      slots: component.slots
     }
   end
 
@@ -200,7 +200,7 @@ class ComponentsController < ApplicationController
   private
 
   def component_params
-    params.require(:component).permit(:enabled, :status, :is_root, allowed_children: [])
+    params.require(:component).permit(:enabled, :status, :is_root, slots: [:name, allowed_children: []])
   end
 
   def serve_image(path, label)

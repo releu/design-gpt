@@ -2,7 +2,7 @@ class CustomComponentsController < ApplicationController
   before_action :require_auth
 
   # POST /api/custom-components
-  # Params: { name, description, react_code, prop_types, component_library_id, is_root, allowed_children }
+  # Params: { name, description, react_code, prop_types, component_library_id, is_root, slots }
   # Also accepts wrapped: { custom_component: { ... } }
   def create
     cp = component_params
@@ -18,7 +18,7 @@ class CustomComponentsController < ApplicationController
       status: "imported",
       enabled: true,
       is_root: cp[:is_root] || false,
-      allowed_children: cp[:allowed_children] || []
+      slots: cp[:slots] || []
     )
 
     # Compile JSX to vanilla JS for the renderer
@@ -68,15 +68,15 @@ class CustomComponentsController < ApplicationController
     # Accept both wrapped and unwrapped params
     if params[:custom_component].present?
       params.require(:custom_component).permit(:name, :description, :react_code,
-        :component_library_id, :is_root, allowed_children: [],
+        :component_library_id, :is_root, slots: [:name, allowed_children: []],
         prop_types: {})
     elsif params[:component].present?
       params.require(:component).permit(:name, :description, :react_code,
-        :component_library_id, :is_root, allowed_children: [],
+        :component_library_id, :is_root, slots: [:name, allowed_children: []],
         prop_types: {})
     else
       params.permit(:name, :description, :react_code,
-        :component_library_id, :is_root, allowed_children: [],
+        :component_library_id, :is_root, slots: [:name, allowed_children: []],
         prop_types: {})
     end
   end
@@ -84,13 +84,13 @@ class CustomComponentsController < ApplicationController
   def component_update_params
     if params[:custom_component].present?
       params.require(:custom_component).permit(:name, :description, :react_code,
-        :is_root, allowed_children: [], prop_types: {})
+        :is_root, slots: [:name, allowed_children: []], prop_types: {})
     elsif params[:component].present?
       params.require(:component).permit(:name, :description, :react_code,
-        :is_root, allowed_children: [], prop_types: {})
+        :is_root, slots: [:name, allowed_children: []], prop_types: {})
     else
       params.permit(:name, :description, :react_code,
-        :is_root, allowed_children: [], prop_types: {})
+        :is_root, slots: [:name, allowed_children: []], prop_types: {})
     end
   end
 

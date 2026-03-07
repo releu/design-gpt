@@ -33,7 +33,43 @@ class DesignSystemsController < ApplicationController
     render json: { id: ds.id, name: ds.name }, status: :created
   end
 
+  def show
+    ds = find_user_design_system(params[:id])
+    render json: {
+      id: ds.id,
+      name: ds.name,
+      component_library_ids: ds.component_library_ids,
+      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name } },
+      created_at: ds.created_at
+    }
+  end
+
+  def update
+    ds = find_user_design_system(params[:id])
+    ds.update!(ds_params.except(:component_library_ids))
+
+    if params[:component_library_ids].present? || params.dig(:design_system, :component_library_ids).present?
+      new_ids = Array(ds_params[:component_library_ids]).map(&:to_i)
+      ds.design_system_libraries.where.not(component_library_id: new_ids).destroy_all
+      new_ids.each do |lib_id|
+        ds.design_system_libraries.find_or_create_by!(component_library_id: lib_id)
+      end
+    end
+
+    render json: { id: ds.id, name: ds.name }
+  end
+
+  def destroy
+    ds = find_user_design_system(params[:id])
+    ds.destroy!
+    head :no_content
+  end
+
   private
+
+  def find_user_design_system(id)
+    current_user.design_systems.find(id)
+  end
 
   def ds_params
     # Accept both wrapped and unwrapped params

@@ -5,7 +5,7 @@
       "read_by": {
         "cto": 7,
         "qa": 7,
-        "developer": 4,
+        "developer": 7,
         "designer": 7
       }
     },
@@ -15,7 +15,7 @@
         "cto": 2,
         "manager": 2,
         "qa": 2,
-        "developer": 2
+        "developer": 6
       }
     },
     "qa2dev": {
@@ -35,7 +35,7 @@
     "cto2team": {
       "count": 6,
       "read_by": {
-        "developer": 3,
+        "developer": 6,
         "designer": 6,
         "qa": 6,
         "manager": 3

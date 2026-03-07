@@ -7,7 +7,7 @@ button_set:
   figma_file_key: 75U91YIrYa65xhYcM0olH5
   figma_file_name: example-lib
   is_root: false
-  allowed_children: []
+  slots: []
   prop_definitions:
     Size:
       type: VARIANT
@@ -25,7 +25,9 @@ vstack_set:
   figma_file_key: 75U91YIrYa65xhYcM0olH5
   figma_file_name: example-lib
   is_root: true
-  allowed_children: ["Button", "Badge"]
+  slots:
+    - name: children
+      allowed_children: ["Button", "Badge"]
   prop_definitions:
     Size:
       type: VARIANT

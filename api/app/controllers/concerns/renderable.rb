@@ -18,7 +18,7 @@ module Renderable
         next if loaded_react_names.include?(react_name)
         browser_code_parts << comp.react_code_compiled
         loaded_react_names << react_name
-        container_names << react_name if comp.allowed_children.present? && comp.allowed_children.any?
+        container_names << react_name if comp.slots.present? && comp.slots.any?
       end
     end
 
@@ -30,7 +30,7 @@ module Renderable
         next if loaded_react_names.include?(react_name)
         browser_code_parts << variant.react_code_compiled
         loaded_react_names << react_name
-        container_names << react_name if cs.allowed_children.present? && cs.allowed_children.any?
+        container_names << react_name if cs.slots.present? && cs.slots.any?
       end
 
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
@@ -38,7 +38,7 @@ module Renderable
         next if loaded_react_names.include?(react_name)
         browser_code_parts << comp.react_code_compiled
         loaded_react_names << react_name
-        container_names << react_name if comp.allowed_children.present? && comp.allowed_children.any?
+        container_names << react_name if comp.slots.present? && comp.slots.any?
       end
 
       cl.components.where.not(css_code: [nil, ""]).each do |comp|

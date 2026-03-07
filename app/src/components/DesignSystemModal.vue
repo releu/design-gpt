@@ -152,9 +152,9 @@
                     </select>
                     <div class="DesignSystemModal__children-add" @click="addChild">Add</div>
                   </div>
-                  <div class="DesignSystemModal__children-list" v-if="selectedItem.allowed_children && selectedItem.allowed_children.length">
+                  <div class="DesignSystemModal__children-list" v-if="selectedItemChildren.length">
                     <div
-                      v-for="child in selectedItem.allowed_children"
+                      v-for="child in selectedItemChildren"
                       :key="child"
                       class="DesignSystemModal__children-item"
                     >{{ child }}</div>
@@ -242,6 +242,10 @@ export default {
       if (!this.selectedLibraryId) return null;
       return `/api/component-libraries/${this.selectedLibraryId}/renderer`;
     },
+    selectedItemChildren() {
+      if (!this.selectedItem || typeof this.selectedItem === "string") return [];
+      return (this.selectedItem.slots || []).flatMap((s) => s.allowed_children || []);
+    },
     availableChildNames() {
       const names = new Set();
       for (const lib of this.libraries) {
@@ -249,8 +253,7 @@ export default {
           names.add(comp.name);
         }
       }
-      const current = this.selectedItem?.allowed_children || [];
-      return [...names].filter((n) => !current.includes(n)).sort();
+      return [...names].filter((n) => !this.selectedItemChildren.includes(n)).sort();
     },
   },
   watch: {
@@ -380,13 +383,13 @@ export default {
         ...cs,
         type: "component_set",
         is_root: cs.is_root || false,
-        allowed_children: cs.allowed_children || [],
+        slots: cs.slots || [],
       }));
       const comps = (data.components || []).map((c) => ({
         ...c,
         type: "component",
         is_root: c.is_root || false,
-        allowed_children: c.allowed_children || [],
+        slots: c.slots || [],
       }));
       lib.components = [...sets, ...comps];
     },
@@ -463,7 +466,7 @@ export default {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            [key]: { is_root: comp.is_root, allowed_children: comp.allowed_children || [] },
+            [key]: { is_root: comp.is_root, slots: comp.slots || [] },
           }),
         });
       } catch {
@@ -474,8 +477,10 @@ export default {
       const comp = this.selectedItem;
       if (!comp || !this.childToAdd) return;
       const name = this.childToAdd;
-      if (!comp.allowed_children) comp.allowed_children = [];
-      comp.allowed_children.push(name);
+      if (!comp.slots || !comp.slots.length) {
+        comp.slots = [{ name: "children", allowed_children: [] }];
+      }
+      comp.slots[0].allowed_children.push(name);
       this.childToAdd = "";
       const { url, key } = this.configEndpoint(comp);
       try {
@@ -488,11 +493,11 @@ export default {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            [key]: { is_root: comp.is_root, allowed_children: comp.allowed_children },
+            [key]: { is_root: comp.is_root, slots: comp.slots },
           }),
         });
       } catch {
-        comp.allowed_children = comp.allowed_children.filter((c) => c !== name);
+        comp.slots[0].allowed_children = comp.slots[0].allowed_children.filter((c) => c !== name);
       }
     },
     isSelected(comp) {

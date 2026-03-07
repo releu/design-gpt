@@ -95,7 +95,7 @@ RSpec.describe DesignGenerator, type: :model do
       defs = task.payload["text"]["format"]["schema"]["$defs"]
       button_def = defs["Button"]
 
-      # Button has allowed_children: [] and no @slot → no children field
+      # Button has slots: [] and no @slot → no children field
       expect(button_def["properties"]).not_to have_key("children")
       expect(button_def["required"]).not_to include("children")
     end
@@ -107,7 +107,7 @@ RSpec.describe DesignGenerator, type: :model do
       defs = task.payload["text"]["format"]["schema"]["$defs"]
       vstack_def = defs["Vstack"]
 
-      # VStack has allowed_children: ["Button", "Badge"]
+      # VStack has slots: [{name: "children", allowed_children: ["Button", "Badge"]}]
       children = vstack_def["properties"]["children"]
       expect(children["type"]).to eq("array")
       expect(children["items"]["anyOf"]).to contain_exactly(
@@ -151,27 +151,27 @@ RSpec.describe DesignGenerator, type: :model do
       expect { gen.generate_task("Build a page") }.to raise_error("No root components configured")
     end
 
-    it "normalizes allowed_children names to match to_component_name output" do
-      # Simulate Figma import: component set named "Default list #list" stored with
-      # allowed_children from preferredValues as raw Figma names like "Card item"
+    it "normalizes slot allowed_children names to match to_component_name output" do
+      # Simulate Figma import: component set named "Default list" stored with
+      # slots from preferredValues as raw Figma names like "Card item"
       list_set = library.component_sets.create!(
         name: "Default list",
         node_id: "1:900",
         figma_file_key: "test",
-        allowed_children: ["Card item"],
+        slots: [{ "name" => "children", "allowed_children" => ["Card item"] }],
         is_root: false
       )
       library.component_sets.create!(
         name: "Card item",
         node_id: "1:901",
         figma_file_key: "test",
-        allowed_children: [],
+        slots: [],
         is_root: false
       )
 
       # Point VStack's children to the list using raw Figma name
       vstack = component_sets(:vstack_set)
-      vstack.update!(allowed_children: ["Default list"])
+      vstack.update!(slots: [{ "name" => "children", "allowed_children" => ["Default list"] }])
 
       gen = DesignGenerator.new(design.reload)
       task = gen.generate_task("Build a page")

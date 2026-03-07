@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 export default async function globalSetup() {
   console.log("[qa] Setting up E2E test database...");
   execSync(
-    "cd ../../api && RAILS_ENV=test bundle exec rails db:test:prepare",
+    "cd ../../api && RAILS_ENV=test bundle exec rails db:migrate",
     { stdio: "inherit", cwd: import.meta.dirname },
   );
   execSync(

@@ -76,7 +76,7 @@
     </div>
 
     <!-- Configuration (read-only — set via Figma conventions) -->
-    <div v-if="comp.is_root || (comp.allowed_children && comp.allowed_children.length)" class="ComponentDetail__section">
+    <div v-if="comp.is_root || allAllowedChildren.length" class="ComponentDetail__section">
       <div class="ComponentDetail__section-header" @click="toggleSection('config')">
         <span>Configuration</span>
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.config }">&#9654;</span>
@@ -86,11 +86,11 @@
           <span class="ComponentDetail__config-key">Root</span>
           <span class="ComponentDetail__config-tag ComponentDetail__config-tag_root">yes</span>
         </div>
-        <div v-if="comp.allowed_children && comp.allowed_children.length" class="ComponentDetail__config-row">
+        <div v-if="allAllowedChildren.length" class="ComponentDetail__config-row">
           <span class="ComponentDetail__config-key">Allowed children</span>
           <div class="ComponentDetail__children-list">
             <span
-              v-for="child in comp.allowed_children"
+              v-for="child in allAllowedChildren"
               :key="child"
               class="ComponentDetail__children-item ComponentDetail__prop-value"
             >{{ child }}</span>
@@ -130,6 +130,9 @@ export default {
     };
   },
   computed: {
+    allAllowedChildren() {
+      return (this.comp.slots || []).flatMap((s) => s.allowed_children || []);
+    },
     typeLabel() {
       if (this.comp.is_vector) return "Vector";
       if (this.comp.type === "component_set") return "Component Set";

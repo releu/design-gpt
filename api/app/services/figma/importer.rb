@@ -103,7 +103,7 @@ module Figma
 
         data[:prop_definitions] = strip_figma_id_suffixes(set_node["componentPropertyDefinitions"] || {})
         data[:figma_json] = set_node
-        data[:allowed_children] = extract_allowed_children_from_prop_defs(data[:prop_definitions], key_to_name)
+        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, set_node)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
 
         default_variant_id = find_default_variant_id(set_node, data[:prop_definitions])
@@ -127,7 +127,7 @@ module Figma
         data[:prop_definitions] = strip_figma_id_suffixes(comp_node["componentPropertyDefinitions"] || {})
         # Store raw figma_json as-is
         data[:figma_json] = comp_node
-        data[:allowed_children] = extract_allowed_children_from_prop_defs(data[:prop_definitions], key_to_name)
+        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, comp_node)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
       end
     end
@@ -179,18 +179,39 @@ module Figma
       map
     end
 
-    def extract_allowed_children_from_prop_defs(prop_defs, key_to_name)
-      return [] unless prop_defs.is_a?(Hash)
+    def extract_slots(prop_defs, key_to_name, node = nil)
+      slots = []
 
-      prop_defs.each_value do |definition|
-        next unless definition["type"] == "INSTANCE_SWAP"
-
-        preferred = definition["preferredValues"] || []
-        names = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
-        return names if names.any?
+      # 1. Check native Figma Slots API first
+      if node.is_a?(Hash) && node["slots"].is_a?(Array) && node["slots"].any?
+        node["slots"].each do |slot|
+          name = slot["name"].to_s.presence || "children"
+          preferred = slot["preferredValues"] || []
+          children = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
+          slots << { "name" => name, "allowed_children" => children }
+        end
+        return slots
       end
 
-      []
+      # 2. Fall back to INSTANCE_SWAP properties
+      return [] unless prop_defs.is_a?(Hash)
+
+      instance_swaps = prop_defs.select { |_, d| d["type"] == "INSTANCE_SWAP" }
+      instance_swaps.each do |prop_key, definition|
+        preferred = definition["preferredValues"] || []
+        children = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
+        next unless children.any?
+
+        # Strip Figma's #N suffix from property key to get slot name
+        slot_name = prop_key.to_s.gsub(/#[\d:]+$/, "").strip
+        slot_name = "children" if slot_name.empty?
+        slots << { "name" => slot_name, "allowed_children" => children }
+      end
+
+      # If exactly one slot, use "children" as the name for backward compatibility
+      slots.first["name"] = "children" if slots.length == 1
+
+      slots
     end
 
     def empty_component_set?(data)
@@ -243,7 +264,7 @@ module Figma
           figma_file_key: @file_key,
           figma_file_name: @file_name,
           prop_definitions: data[:prop_definitions] || {},
-          allowed_children: data[:allowed_children] || [],
+          slots: data[:slots] || [],
           is_root: data[:is_root] || false
         }
         if data[:invalid]
@@ -296,7 +317,7 @@ module Figma
           figma_json: data[:figma_json] || {},
           figma_file_key: @file_key,
           figma_file_name: @file_name,
-          allowed_children: data[:allowed_children] || [],
+          slots: data[:slots] || [],
           is_root: data[:is_root] || false
         }
         if data[:invalid]

@@ -221,7 +221,7 @@ RSpec.describe Figma::Importer do
     end
 
     context "with INSTANCE_SWAP preferredValues" do
-      it "populates allowed_children from preferredValues component keys" do
+      it "populates slots from preferredValues component keys" do
         figma_response = {
           "name" => "slot-test",
           "componentSets" => {
@@ -316,7 +316,7 @@ RSpec.describe Figma::Importer do
 
         page_set = ds.component_sets.find_by(name: "Page")
         expect(page_set).to be_present
-        expect(page_set.allowed_children).to contain_exactly("Title", "Button")
+        expect(page_set.slots).to eq([{ "name" => "children", "allowed_children" => ["Title", "Button"] }])
       end
     end
 

@@ -242,7 +242,10 @@ export default {
       item.is_root = !item.is_root;
     },
     async handleToggleChild({ parent, childId }) {
-      const children = parent.allowed_children || [];
+      if (!parent.slots || !parent.slots.length) {
+        parent.slots = [{ name: "children", allowed_children: [] }];
+      }
+      const children = parent.slots[0].allowed_children;
       const index = children.indexOf(childId);
       if (index === -1) {
         children.push(childId);
@@ -259,11 +262,9 @@ export default {
       await this.fetchJson(endpoint, {
         method: "PATCH",
         body: JSON.stringify({
-          [paramKey]: { allowed_children: children },
+          [paramKey]: { slots: parent.slots },
         }),
       });
-
-      parent.allowed_children = [...children];
     },
     async finishOnboarding() {
       try {

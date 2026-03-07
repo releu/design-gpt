@@ -32,8 +32,9 @@ Rails.application.routes.draw do
       post :reimport, :on => :member
     end
 
-    resources :design_systems, :only => [:index, :create], :path => "design-systems" do
+    resources :design_systems, :only => [:index, :create, :show, :update, :destroy], :path => "design-systems" do
       get :renderer, :on => :member
+      resources :figma_files, only: [:create, :destroy], controller: "design_system_figma_files", path: "figma-files"
     end
 
     resources :iterations, :only => [] do
@@ -44,6 +45,7 @@ Rails.application.routes.draw do
       post :improve
       post "apply/:message_id", :action => :apply_director_comments
       post :duplicate, :on => :member
+      post :reset, :on => :member
       get :export_image, :on => :member
       get :export_react, :on => :member
       get :export_figma, :on => :member

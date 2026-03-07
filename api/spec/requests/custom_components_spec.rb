@@ -36,7 +36,7 @@ RSpec.describe "Custom Components", type: :request do
       expect(component.prop_definitions["active"]["type"]).to eq("BOOLEAN")
     end
 
-    it "creates a root component with allowed_children" do
+    it "creates a root component with slots" do
       post "/api/custom-components",
         params: {
           component: {
@@ -45,7 +45,7 @@ RSpec.describe "Custom Components", type: :request do
             react_code: "function CustomLayout(props) { return <div>{props.children}</div>; }",
             component_library_id: library.id,
             is_root: true,
-            allowed_children: ["Button", "Badge"]
+            slots: [{ name: "children", allowed_children: ["Button", "Badge"] }]
           }
         },
         headers: auth_headers(user)
@@ -53,7 +53,7 @@ RSpec.describe "Custom Components", type: :request do
       expect(response).to have_http_status(:created)
       component = Component.find(JSON.parse(response.body)["id"])
       expect(component.is_root).to be true
-      expect(component.allowed_children).to eq(["Button", "Badge"])
+      expect(component.slots).to eq([{ "name" => "children", "allowed_children" => ["Button", "Badge"] }])
     end
   end
 

@@ -125,13 +125,13 @@ export default {
           ...cs,
           type: "component_set",
           is_root: cs.is_root || false,
-          allowed_children: cs.allowed_children || [],
+          slots: cs.slots || [],
         }));
         const comps = (compData.components || []).map((c) => ({
           ...c,
           type: "component",
           is_root: c.is_root || false,
-          allowed_children: c.allowed_children || [],
+          slots: c.slots || [],
         }));
         loaded.push({
           id,
@@ -164,7 +164,7 @@ export default {
               },
               body: JSON.stringify({
                 is_root: comp.is_root,
-                allowed_children: comp.allowed_children,
+                slots: comp.slots,
               }),
             });
           }

@@ -90,7 +90,8 @@ class DesignGenerator
       record = component_by_name(name)
       next unless record
 
-      children = (record.allowed_children || []).map { |c| normalize_child_name(c) }
+      all_slot_children = (record.slots || []).flat_map { |s| s["allowed_children"] || [] }
+      children = all_slot_children.map { |c| normalize_child_name(c) }
       collect_reachable(children, visited)
     end
   end
@@ -120,21 +121,28 @@ class DesignGenerator
       # Skip INSTANCE_SWAP and other types
     end
 
-    children = (cs.allowed_children || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
+    slots = cs.slots || []
     variant_json = cs.default_variant&.figma_json
     prop_defs = cs.prop_definitions || {}
-    if children.length == 1
-      props["children"] = { type: "array", items: { "$ref" => "#/$defs/#{children.first}" } }
-      required << "children"
-    elsif children.any?
-      props["children"] = {
-        type: "array",
-        items: {
-          anyOf: children.map { |c| { "$ref" => "#/$defs/#{c}" } }
+
+    slots.each do |slot|
+      slot_name = slot["name"]
+      children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
+
+      if children.length == 1
+        props[slot_name] = { type: "array", items: { "$ref" => "#/$defs/#{children.first}" } }
+        required << slot_name
+      elsif children.any?
+        props[slot_name] = {
+          type: "array",
+          items: { anyOf: children.map { |c| { "$ref" => "#/$defs/#{c}" } } }
         }
-      }
-      required << "children"
-    elsif has_slot?(variant_json, prop_defs)
+        required << slot_name
+      end
+    end
+
+    # Fallback: if no slots but component has slot instances in its tree, add generic children
+    if slots.empty? && has_slot?(variant_json, prop_defs)
       props["children"] = { type: "string" }
       required << "children"
     end
@@ -172,20 +180,27 @@ class DesignGenerator
       end
     end
 
-    children = (comp.allowed_children || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
+    slots = comp.slots || []
     prop_defs = comp.prop_definitions || {}
-    if children.length == 1
-      props["children"] = { type: "array", items: { "$ref" => "#/$defs/#{children.first}" } }
-      required << "children"
-    elsif children.any?
-      props["children"] = {
-        type: "array",
-        items: {
-          anyOf: children.map { |c| { "$ref" => "#/$defs/#{c}" } }
+
+    slots.each do |slot|
+      slot_name = slot["name"]
+      children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
+
+      if children.length == 1
+        props[slot_name] = { type: "array", items: { "$ref" => "#/$defs/#{children.first}" } }
+        required << slot_name
+      elsif children.any?
+        props[slot_name] = {
+          type: "array",
+          items: { anyOf: children.map { |c| { "$ref" => "#/$defs/#{c}" } } }
         }
-      }
-      required << "children"
-    elsif has_slot?(comp.figma_json, prop_defs)
+        required << slot_name
+      end
+    end
+
+    # Fallback: if no slots but component has slot instances in its tree, add generic children
+    if slots.empty? && has_slot?(comp.figma_json, prop_defs)
       props["children"] = { type: "string" }
       required << "children"
     end

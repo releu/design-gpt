@@ -99,7 +99,7 @@ export default {
     },
     isAllowedChild(childId) {
       if (!this.selectedItem) return false;
-      return (this.selectedItem.allowed_children || []).includes(childId);
+      return (this.selectedItem.slots || []).flatMap((s) => s.allowed_children || []).includes(childId);
     },
   },
 };

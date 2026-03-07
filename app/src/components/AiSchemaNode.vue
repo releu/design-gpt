@@ -68,7 +68,7 @@ export default {
     },
     children() {
       if (!this.comp) return [];
-      return (this.comp.allowed_children || []).filter((c) => c in this.components);
+      return (this.comp.slots || []).flatMap((s) => s.allowed_children || []).filter((c) => c in this.components);
     },
     props() {
       if (!this.comp) return [];

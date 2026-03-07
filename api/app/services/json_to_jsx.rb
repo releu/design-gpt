@@ -9,11 +9,31 @@ class JsonToJsx
 
   def render_node(node, depth)
     element  = node["component"]
-    children = node["children"]
-    props    = node.reject { |k, _| %w[children component].include?(k) }
-    indent   = "  " * depth
-    open     = "<#{element}#{props_str(element, props)}"
-    inner    = render_children(children, depth + 1)
+    # Separate slot props from regular props
+    regular_props = {}
+    slot_props = {}
+
+    node.each do |k, v|
+      next if k == "component"
+      if v.is_a?(Array) && v.any? { |x| x.is_a?(Hash) && x["component"] }
+        slot_props[k] = v
+      elsif k == "children"
+        slot_props["children"] = v
+      else
+        regular_props[k] = v
+      end
+    end
+
+    indent = "  " * depth
+    open   = "<#{element}#{props_str(element, regular_props)}"
+
+    # Render all slot content (children first, then named slots)
+    inner_parts = []
+    slot_props.each do |_slot_name, slot_content|
+      inner_parts << render_children(slot_content, depth + 1)
+    end
+    inner = inner_parts.join
+
     return "#{indent}#{open} />\n" if inner.empty?
     "#{indent}#{open}>\n#{inner}#{indent}</#{element}>\n"
   end
