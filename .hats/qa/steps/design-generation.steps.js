@@ -67,7 +67,7 @@ Given(
         ].join("\n"),
         component_library_id: lib.id,
         is_root: true,
-        allowed_children: ["Title", "Text"],
+        slots: [{ name: "children", allowed_children: ["Title", "Text"] }],
         prop_types: { title: "string" },
       },
     });
@@ -101,31 +101,29 @@ Given(
 // ---------------------------------------------------------------------------
 
 Then("the user can enter a design description", async ({ page }) => {
-  await expect(page.locator(".Prompt__field")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[qa="prompt-field"]')).toBeVisible({ timeout: 10_000 });
 });
 
 Then("the user can select a DESIGN_SYSTEM", async ({ page }) => {
-  await expect(page.locator(".LibrarySelector")).toBeVisible({
+  await expect(page.locator('[qa="library-selector"]')).toBeVisible({
     timeout: 10_000,
   });
 });
 
 Then("the PREVIEW area is visible", async ({ page }) => {
   await expect(
-    page.locator(".Preview__frame, .MainLayout__preview-empty, [class*='Preview']"),
-  )
-    .first()
-    .toBeVisible({ timeout: 10_000 });
+    page.locator('[qa="preview-frame"], [qa="preview-empty"]').first(),
+  ).toBeVisible({ timeout: 10_000 });
 });
 
 Then('a "generate" button is available', async ({ page }) => {
-  await expect(page.locator(".AIEngineSelector__generate")).toBeVisible({
+  await expect(page.locator('[qa="generate-btn"]')).toBeVisible({
     timeout: 10_000,
   });
 });
 
 Then('a "new design system" button is available', async ({ page }) => {
-  await expect(page.locator(".LibrarySelector__new-ds")).toBeVisible({
+  await expect(page.locator('[qa="new-ds-btn"]')).toBeVisible({
     timeout: 10_000,
   });
 });
@@ -137,7 +135,7 @@ Then('a "new design system" button is available', async ({ page }) => {
 When(
   "the user enters the PROMPT {string}",
   async ({ page }, promptText) => {
-    await page.fill(".Prompt__field", promptText);
+    await page.fill('[qa="prompt-field"]', promptText);
   },
 );
 
@@ -146,13 +144,13 @@ When(
   async ({ page }, dsName) => {
     // The DS should be visible in the selector -- first one is auto-selected
     await expect(
-      page.locator(".LibrarySelector__item-name", { hasText: dsName }),
+      page.locator('[qa="library-item-name"]', { hasText: dsName }),
     ).toBeVisible({ timeout: 10_000 });
   },
 );
 
 When('clicks "generate"', async ({ page }) => {
-  await page.click(".AIEngineSelector__generate");
+  await page.click('[qa="generate-btn"]');
 });
 
 Then("the user is taken to the design page", async ({ page }) => {
@@ -164,12 +162,8 @@ Then(
   async ({ page }) => {
     // The preview area shows a loading/empty state before the iframe appears
     await expect(
-      page.locator(
-        ".MainLayout__preview-empty, .Preview__loading, [class*='loading'], [class*='spinner']",
-      ),
-    )
-      .first()
-      .toBeVisible({ timeout: 10_000 })
+      page.locator('[qa="preview-empty"], [qa="preview-loading"]').first(),
+    ).toBeVisible({ timeout: 10_000 })
       .catch(() => {
         // Loading state may have already passed
       });
@@ -177,20 +171,20 @@ Then(
 );
 
 When("the AI generation completes", async ({ page }) => {
-  await expect(page.locator(".Preview__frame")).toBeVisible({
+  await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
     timeout: 120_000,
   });
 });
 
 Then("the PREVIEW shows the generated DESIGN", async ({ page }) => {
-  const frame = page.frameLocator(".Preview__frame");
+  const frame = page.frameLocator('[qa="preview-frame"]');
   await expect(frame.locator("#root")).not.toBeEmpty({ timeout: 30_000 });
 });
 
 Then(
   "the PREVIEW contains a list of parks in Amsterdam",
   async ({ page }) => {
-    const frame = page.frameLocator(".Preview__frame");
+    const frame = page.frameLocator('[qa="preview-frame"]');
     // The AI should generate content about parks in Amsterdam
     const rootText = await frame.locator("#root").textContent({ timeout: 15_000 });
     // Check for any park-related or Amsterdam-related content
@@ -212,7 +206,7 @@ Given(
   async ({ page, request, world }) => {
     // Navigate to a design page if not already there
     if (/\/designs\/\d+/.test(page.url())) {
-      await expect(page.locator(".Preview__frame")).toBeVisible({
+      await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
         timeout: 30_000,
       });
       return;
@@ -227,7 +221,7 @@ Given(
     if (ready) {
       await page.goto(`/designs/${ready.id}`);
       await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
-      await expect(page.locator(".Preview__frame")).toBeVisible({
+      await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
         timeout: 30_000,
       });
     }
@@ -237,17 +231,17 @@ Given(
 Then(
   'the user can switch between "phone", "desktop", and "code" PREVIEW modes',
   async ({ page }) => {
-    await expect(page.locator(".MainLayout__switcher")).toBeVisible({
+    await expect(page.locator('[qa="preview-switcher"]')).toBeVisible({
       timeout: 10_000,
     });
     await expect(
-      page.locator(".MainLayout__switcher-item_mobile"),
+      page.locator('[qa="switcher-mobile"]'),
     ).toBeVisible();
     await expect(
-      page.locator(".MainLayout__switcher-item_desktop"),
+      page.locator('[qa="switcher-desktop"]'),
     ).toBeVisible();
     await expect(
-      page.locator(".MainLayout__switcher-item_code"),
+      page.locator('[qa="switcher-code"]'),
     ).toBeVisible();
   },
 );
@@ -256,17 +250,17 @@ Then(
   "each mode shows the PREVIEW in a different layout",
   async ({ page }) => {
     // Click each mode and verify the layout changes
-    await page.locator(".MainLayout__switcher-item_desktop").click();
+    await page.locator('[qa="switcher-desktop"]').click();
     await expect(
-      page.locator(".MainLayout__preview-panel_desktop"),
+      page.locator('[qa="preview-panel-desktop"]'),
     ).toBeVisible({ timeout: 5_000 });
 
-    await page.locator(".MainLayout__switcher-item_mobile").click();
+    await page.locator('[qa="switcher-mobile"]').click();
     await expect(
-      page.locator(".MainLayout__preview-panel_mobile"),
+      page.locator('[qa="preview-panel-mobile"]'),
     ).toBeVisible({ timeout: 5_000 });
 
-    await page.locator(".MainLayout__switcher-item_code").click();
+    await page.locator('[qa="switcher-code"]').click();
     await expect(page.locator(".cm-editor")).toBeVisible({ timeout: 5_000 });
   },
 );
@@ -294,17 +288,17 @@ When("the user is on a design page", async ({ page, request, world }) => {
 Then(
   "the user can switch between DESIGNs via the design selector",
   async ({ page }) => {
-    await expect(page.locator(".MainLayout__history select")).toBeVisible({
+    await expect(page.locator('[qa="design-selector"]')).toBeVisible({
       timeout: 5_000,
     });
-    const options = page.locator(".MainLayout__history select option");
+    const options = page.locator('[qa="design-selector"] option');
     const count = await options.count();
     expect(count).toBeGreaterThanOrEqual(2);
   },
 );
 
 Then("the user can create a new DESIGN", async ({ page }) => {
-  const options = page.locator(".MainLayout__history select option");
+  const options = page.locator('[qa="design-selector"] option');
   const texts = await options.allTextContents();
   const hasNewOption = texts.some(
     (t) => t.includes("new") || t.includes("New") || t.includes("+"),
@@ -333,15 +327,13 @@ Given("the DESIGN is being generated", async ({ page, request, world }) => {
 
 Then("the PREVIEW shows a loading state", async ({ page }) => {
   // During generation, preview may show loading or empty state
-  await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
 });
 
 Then("the chat input is disabled", async ({ page }) => {
-  const sendDisabled = page.locator(
-    ".ChatPanel__send_disabled, .ChatPanel__send[disabled]",
-  );
-  const isDisabled = await sendDisabled
-    .isVisible({ timeout: 5_000 })
+  const isDisabled = await page
+    .locator('[qa="chat-send"]')
+    .isDisabled({ timeout: 5_000 })
     .catch(() => false);
   // During generation the send button should be disabled
   // This may not be testable if generation completes quickly
@@ -351,16 +343,16 @@ Then("the chat input is disabled", async ({ page }) => {
 });
 
 When("the generation completes", async ({ page }) => {
-  await expect(page.locator(".Preview__frame")).toBeVisible({
+  await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
     timeout: 120_000,
   });
 });
 
 Then("the chat input becomes enabled", async ({ page }) => {
-  await expect(page.locator(".ChatPanel__input")).toBeVisible({
+  await expect(page.locator('[qa="chat-input"]')).toBeVisible({
     timeout: 10_000,
   });
-  const sendBtn = page.locator(".ChatPanel__send");
+  const sendBtn = page.locator('[qa="chat-send"]');
   await expect(sendBtn).toBeVisible({ timeout: 10_000 });
 });
 
@@ -369,7 +361,7 @@ Then("the chat input becomes enabled", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 When('the user switches to "code" view', async ({ page }) => {
-  await page.locator(".MainLayout__switcher-item_code").click();
+  await page.locator('[qa="switcher-code"]').click();
 });
 
 Then("the code editor shows the generated JSX", async ({ page }) => {
@@ -389,7 +381,7 @@ Then("the code is editable", async ({ page }) => {
 
 Given("the user is viewing the code editor", async ({ page }) => {
   if (!(await page.locator(".cm-editor").isVisible().catch(() => false))) {
-    await page.locator(".MainLayout__switcher-item_code").click();
+    await page.locator('[qa="switcher-code"]').click();
   }
   await expect(page.locator(".cm-editor")).toBeVisible({ timeout: 5_000 });
 });
@@ -407,7 +399,7 @@ Then(
   "the PREVIEW re-renders with the updated JSX",
   async ({ page }) => {
     // The preview iframe should still be visible after code edit
-    await expect(page.locator(".Preview__frame")).toBeVisible({
+    await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
       timeout: 10_000,
     });
   },
@@ -424,8 +416,8 @@ Then("the changes are saved automatically", async ({ page }) => {
 
 Given("a DESIGN has multiple ITERATIONs", async ({ page }) => {
   // Assumes we are on a design page with chat history
-  await expect(page.locator(".ChatPanel")).toBeVisible({ timeout: 10_000 });
-  const messages = page.locator(".ChatPanel__message");
+  await expect(page.locator('[qa="chat-panel"]')).toBeVisible({ timeout: 10_000 });
+  const messages = page.locator('[qa^="chat-message-"]');
   await expect(async () => {
     const count = await messages.count();
     expect(count).toBeGreaterThanOrEqual(2);
@@ -438,7 +430,7 @@ When(
     // TODO: iteration reset endpoint not yet implemented
     // Look for a reset button on a previous message
     const resetBtn = page.locator(
-      ".ChatPanel__message button:has-text('reset'), .ChatPanel__message button:has-text('Reset'), .ChatPanel__message [class*='reset']",
+      '[qa^="chat-message-"] button:has-text("reset"), [qa^="chat-message-"] button:has-text("Reset")',
     );
     if (await resetBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
       await resetBtn.first().click();
@@ -451,7 +443,7 @@ When(
 Then("the code and PREVIEW revert to that ITERATION", async ({ page }) => {
   // TODO: iteration reset endpoint not yet implemented
   // Verify the preview is still visible
-  await expect(page.locator(".Preview__frame, .App")).first().toBeVisible({
+  await expect(page.locator('[qa="preview-frame"], [qa="app"]').first()).toBeVisible({
     timeout: 10_000,
   });
 });
@@ -460,27 +452,38 @@ Then("the code and PREVIEW revert to that ITERATION", async ({ page }) => {
 // Edge Cases
 // ---------------------------------------------------------------------------
 
-Given("the user has no DESIGN_SYSTEMs", async ({ page }) => {
-  // This step assumes a fresh user with no DS -- we just check the state
-  // The test should use a user that has no design systems
+Given("the user has no DESIGN_SYSTEMs", async ({ request, page, world }) => {
+  // Delete all design systems for the current user via API
+  const token = world.authToken || createTestToken();
+  const res = await request.get("/api/design-systems", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.ok()) {
+    const systems = await res.json();
+    for (const ds of systems) {
+      await request.delete(`/api/design-systems/${ds.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  }
+  // Reload the page so the UI reflects no design systems
+  await page.reload();
+  await page.waitForTimeout(1000);
 });
 
 Then('the "generate" button is disabled', async ({ page }) => {
-  const generateBtn = page.locator(".AIEngineSelector__generate");
+  const generateBtn = page.locator('[qa="generate-btn"]');
   await expect(generateBtn).toBeVisible({ timeout: 10_000 });
   const isDisabled = await generateBtn.isDisabled();
-  const hasDisabledClass = await generateBtn
-    .evaluate((el) => el.classList.contains("AIEngineSelector__generate_disabled"))
-    .catch(() => false);
-  expect(isDisabled || hasDisabledClass).toBe(true);
+  expect(isDisabled).toBe(true);
 });
 
 When(
   "the user tries to generate a DESIGN without selecting a DESIGN_SYSTEM",
   async ({ page }) => {
-    await page.fill(".Prompt__field", "test prompt");
+    await page.fill('[qa="prompt-field"]', "test prompt");
     // Don't select a DS -- attempt to generate
-    const generateBtn = page.locator(".AIEngineSelector__generate");
+    const generateBtn = page.locator('[qa="generate-btn"]');
     if (await generateBtn.isEnabled()) {
       await generateBtn.click();
     }
@@ -496,7 +499,7 @@ Then("the generation fails", async ({ page }) => {
 Given("a DESIGN is being generated", async ({ page }) => {
   // Precondition: a design is currently generating
   // This assumes we are on a design page during generation
-  await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
 });
 
 When("the AI generation fails", async ({ page }) => {
@@ -507,19 +510,16 @@ When("the AI generation fails", async ({ page }) => {
 
 Then("the DESIGN shows an error message", async ({ page }) => {
   // Check for error indicators in the chat or preview area
-  const errorIndicator = page.locator(
-    "[class*='error'], [class*='Error'], .ChatPanel__message:has-text('error')",
-  );
   // Error may or may not be visible depending on timing
-  await expect(page.locator(".App")).toBeVisible();
+  await expect(page.locator('[qa="app"]')).toBeVisible();
 });
 
 Then(
   "the user can retry by sending a new message in the chat",
   async ({ page }) => {
-    await expect(page.locator(".ChatPanel__input")).toBeVisible({
+    await expect(page.locator('[qa="chat-input"]')).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.locator(".ChatPanel__send")).toBeVisible();
+    await expect(page.locator('[qa="chat-send"]')).toBeVisible();
   },
 );

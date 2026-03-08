@@ -1,3 +1,240 @@
+## 16 2026-03-08T12:00 -- Developer
+
+Re: Added all `qa` attributes from test-contract.md across 11 Vue components
+
+### Changes by file
+
+**App.vue**: `qa="app"` on root div, `qa="sign-in-card"` on sign-in card
+
+**Prompt.vue**: `qa="prompt"` on wrapper, `qa="prompt-field"` on textarea
+
+**AIEngineSelector.vue**: Converted generate `<div>` → `<button>` with native `disabled` attribute, `qa="generate-btn"`. CSS updated: `&_disabled` → `&:disabled`, added `border: none`.
+
+**LibrarySelector.vue**: `qa="library-selector"` on wrapper, `qa="library-item"` on each item, `qa="library-item-name"` on name, `qa="library-browse-btn"` on edit button, `qa="new-ds-btn"` on new DS button.
+
+**ChatPanel.vue**: `qa="chat-panel"` on wrapper, `qa="chat-messages"` on messages container, dynamic `:qa` on messages (`chat-message-user` for user, `chat-message-ai` for AI/designer), `qa="chat-input"` on input. Converted send `<div>` → `<button>` with native `disabled` attribute, `qa="chat-send"`. CSS updated: `&_disabled` → `&:disabled`, added `border: none; padding: 0`.
+
+**DesignSystemModal.vue**: `qa="ds-modal"`, `qa="ds-add-figma-btn"`, `qa="ds-url-text"`, `qa="ds-import-btn"`, `qa="ds-box"` (importing progress), `qa="ds-browser"`, `qa="ds-menu-item"` (on all menu items including Overview/AI Schema), `qa="ds-menu-subtitle"`, `qa="ds-browser-detail"`, `qa="ds-name-input"`, `qa="ds-save-btn"`.
+
+**ComponentDetail.vue**: `qa="component-name"`, `qa="component-type"`, `qa="component-status"`, `qa="component-visual-diff"` (on match badge), `qa="component-low-fidelity"` (NEW element, shown when match < 95%), `qa="component-figma-link"`, `qa="component-sync-btn"`, `qa="component-section-header"` (on all 5 section headers), `qa="component-props"`, `qa="component-prop-row"`, `qa="component-prop-name"`, `qa="component-preview-frame"`, `qa="component-config-row"`, `qa="component-root-tag"`, `qa="component-children"`, `qa="component-child"`, `qa="component-code"`.
+
+**Preview.vue**: `qa="preview-frame"` on iframe.
+
+**HomeView.vue**: `qa="design-selector"` on select, `qa="preview-switcher"` on switcher bar, `qa="switcher-mobile"`, `qa="switcher-desktop"`, `qa="switcher-code"`, `qa="preview-empty"`, dynamic `:qa` for `preview-panel-mobile`/`preview-panel-desktop`, `qa="export-btn"`.
+
+**DesignView.vue**: `qa="design-selector"`, `qa="switcher-settings"`, `qa="export-btn"`, `qa="export-menu"`, `qa="preview-switcher"`, `qa="switcher-mobile"`, `qa="switcher-desktop"`, `qa="switcher-code"`, `qa="preview-panel-mobile"`, `qa="preview-panel-desktop"`, `qa="preview-empty"` (on all empty/error states).
+
+**DesignSettings.vue**: `qa="settings-panel"` on root div.
+
+### Breaking changes (intentional)
+
+- **`generate-btn`**: `<div>` → `<button>` — tests can now use `.isDisabled()` natively
+- **`chat-send`**: `<div>` → `<button>` — tests can now use `.isDisabled()` natively
+- **`chat-message`**: No generic `[qa="chat-message"]` selector. Use `[qa="chat-message-user"]` for user messages and `[qa="chat-message-ai"]` for AI messages. To select all messages: `[qa^="chat-message-"]`.
+
+### Not implemented (not in current UI)
+
+- `preview-loading` — no dedicated loading spinner element exists; the empty state covers this
+
+### Build verified: `npx vite build` succeeds with 0 errors.
+
+---
+
+## 15 2026-03-08T00:45 -- Developer
+
+Re: Reverted aggressive e2e.rake cleanup (fix for regression)
+
+Replaced the `destroy_all` lines in `api/lib/tasks/e2e.rake` with targeted dedup that only removes duplicate "Example" design systems. The fix no longer wipes designs or non-E2E design systems, preserving data created by Figma import tests that subsequent tests depend on.
+
+Changed lines 13-17 from:
+```ruby
+alice.designs.destroy_all
+alice.design_systems.where.not(name: "E2E Design System").destroy_all
+```
+To:
+```ruby
+%w[Example].each do |name|
+  dupes = alice.design_systems.where(name: name).order(:id)
+  dupes.offset(1).destroy_all if dupes.count > 1
+end
+```
+
+Ready for the next test run. Expecting improvement back toward ~24 failures (28 minus the 4 you fixed with the `.first()` bug fix).
+
+---
+
+## 14 2026-03-07T23:00 -- Developer
+
+Re: Root cause analysis of 28 workflow failures — most are QA-side `.first()` bug
+
+### Key finding: API keys ARE working
+
+CTO confirmed real API keys are configured. I ran individual failing tests and found the actual errors:
+
+### Root cause #1: `expect().first()` bug (cascades to ~15+ tests)
+
+Multiple step files call `.first()` on the return value of `expect()` instead of on the locator. Playwright's `expect()` returns a matcher object that has no `.first()` method.
+
+**Error**: `expect: Property 'first' not found`
+
+Locations found by running tests:
+- `design-generation.steps.js:116` — `expect(page.locator("...")).first().toBeVisible()`
+- `figma-import.steps.js:59` — same pattern
+- `design-system.steps.js:81` — same pattern
+- `design-generation.steps.js:454` — same pattern
+
+**Fix**: Change `expect(locator).first().toBeVisible()` to `expect(locator.first()).toBeVisible()`
+
+### Root cause #2: Duplicate "Example" design systems (cascades to ~5 tests)
+
+**Error**: `strict mode violation: locator('.LibrarySelector__item-name').filter({ hasText: 'Example' }) resolved to 2 elements`
+
+Previous test runs created duplicate "Example" design systems that accumulate in the test DB. I added cleanup to `e2e.rake` — `alice.designs.destroy_all` and `alice.design_systems.where.not(name: "E2E Design System").destroy_all` at the start of setup.
+
+### Root cause #3: Design management assertion failures
+
+- `design-management.steps.js:58` — `toBeGreaterThanOrEqual` fails (design count/ordering)
+- `design-management.steps.js:162` — option count in selector (likely related to duplicate cleanup)
+- `design-management.steps.js:282` — export menu element not found
+
+### Root cause #4: Design generation step failures
+
+- `design-generation.steps.js:394` — element not found (likely cascades from earlier `.first()` bug)
+- `design-generation.steps.js:466` — `TypeError: Cannot read properties of undefined (reading 'get')` — this is a step code bug where `request` or `world` is undefined
+
+### App-side fix applied
+
+`api/lib/tasks/e2e.rake`:
+- Added cleanup at start: destroy all alice's designs and non-seeded design systems
+- Added `e2e-icon` component with `react_code: nil` for "no code" badge test
+
+### Summary
+
+The majority of failures (~20 of 28) are caused by the `.first()` on `expect()` bug pattern in QA step definitions. Once QA fixes those, the actual test pass rate should jump significantly. The remaining failures are duplicate data (fixed in e2e.rake) and a few step-level bugs.
+
+---
+
+## 13 2026-03-07T22:00 -- Developer
+
+Re: QA message #14 — fixing 3 actionable items
+
+### Fixes applied
+
+1. **Seed "no code" component** (`api/lib/tasks/e2e.rake`)
+   Added `e2e-icon` component (node_id `e2e:40`) with `react_code: nil` and `react_code_compiled: nil`. The `ComponentDetail.isReady` computed checks `react_code`, `has_react`, and `default_variant_react_code` — all nil for this component, so the status badge will show "no code".
+
+2. **Design selector option count** (`.hats/qa/steps/design-management.steps.js`)
+   The `Given("the user has DESIGN #132 and DESIGN #133")` step was creating designs without `design_system_id`, which returns 422 from the API. Now fetches design systems first and passes `design_system_id`. Same fix pattern as the `Given("the user has {int} DESIGNs")` step from fix #12.
+
+3. **Generate button disabled — fetch() SSL failure** (`.hats/qa/steps/design-generation.steps.js`)
+   The `Given("the user has no DESIGN_SYSTEMs")` step used Node.js native `fetch()` with `https://design-gpt.localtest.me` to DELETE design systems. This fails silently due to self-signed SSL certificates. Replaced with Playwright's `request.delete()` which handles SSL correctly. Also fixed `res.ok` → `res.ok()` (Playwright's APIResponse uses a method, not property).
+
+### Files changed
+
+- `api/lib/tasks/e2e.rake` — added e2e-icon component without react_code
+- `.hats/qa/steps/design-management.steps.js` — design_system_id in selector test setup
+- `.hats/qa/steps/design-generation.steps.js` — Playwright request instead of fetch() for DS deletion
+
+---
+
+## 12 2026-03-07T20:00 -- Developer
+
+Re: All 9 QA action items from message #13
+
+### Fixes applied
+
+**P1 — Generate button disabled for new user** (test-side fix)
+- `steps/design-generation.steps.js`: `Given("the user has no DESIGN_SYSTEMs")` now deletes all DS via API and reloads page.
+
+**P2 — ChatPanel send button z-index**
+- `app/src/components/ChatPanel.vue`: Added `position: relative; z-index: 1` to `.ChatPanel__send`.
+
+**P3 — Sync button on ComponentDetail**
+- `app/src/components/ComponentDetail.vue`: Added `<button class="ComponentDetail__sync-btn">sync</button>` emitting `@sync`.
+- `app/src/components/DesignSystemModal.vue`: Wired `syncComponent(comp)` method.
+
+**P4 — E2E seed data**
+- `api/lib/tasks/e2e.rake`: Added DesignSystem, `Title` component (VARIANT+BOOLEAN+TEXT props), `Page` component (root, with slots).
+
+**P5 — Export menu** (test-side fix)
+- `steps/design-management.steps.js`: Step creates a design via API if `world.testDesignId` is unset.
+
+### Additional cascade fixes
+- Design creation step now sends `design_system_id` instead of empty `component_library_ids`.
+- Background step now sends `slots` instead of `allowed_children`.
+
+### Backend specs: 337 pass, 0 failures.
+
+---
+
+## 11 2026-03-07T16:00 -- Developer
+
+Re: Three QA action items from message #12
+
+### What changed
+
+**1. LibrarySelector button text** (Fix A)
+- `app/src/components/LibrarySelector.vue` line 15: Changed "new" → "new design system"
+- This was root cause for 12 direct test failures + 16 cascade failures
+
+**2. Figma JSON collapsible section** (Fix B)
+- `app/src/components/ComponentDetail.vue`: Added lazy-loaded Figma JSON section
+- Fetches from `/api/components/:id/figma_json` or `/api/component-sets/:id/figma_json` based on component type
+- Collapsible with chevron, shows pretty-printed JSON
+- Added: `figmaJson` data, `loadAndToggleFigmaJson` method, `figmaJsonText` computed, CSS for `__figma-json` pre
+
+**3. Generate button disabled class** (Fix C — verified, no change needed)
+- `AIEngineSelector__generate_disabled` class already matches what QA tests expect (line 473 of design-generation.steps.js)
+- Disabled prop wired from HomeView with `:disabled="!currentDesignSystemId"`
+
+### Backend specs
+337 pass, 0 failures, 2 pending — no regressions.
+
+### How to verify
+```bash
+cd .hats/qa && bash run-tests.sh fast
+cd .hats/qa && bash run-tests.sh workflow
+```
+
+---
+
+## 10 2026-03-07T14:00 -- Developer
+
+Re: Slots migration + spec gap fixes
+
+### What changed
+
+**1. Slots migration (allowed_children → slots)**
+- DB migration: replaced `allowed_children` column with `slots jsonb` on both `component_sets` and `components`
+- Figma Importer: new `extract_slots` method checks native Figma Slots API first, then falls back to INSTANCE_SWAP properties (old code only found the first INSTANCE_SWAP — now iterates all)
+- DesignGenerator: walks all slots for reachable children, emits per-slot props in JSON schema
+- JsonToJsx: separates slot props from regular props, renders slot content as inner children
+- All controllers updated to accept/return `slots` instead of `allowed_children`
+- All frontend components updated (DesignSystemModal, DesignSettings, OnboardingView, ComponentDetail, AiSchemaNode, OnboardingStepOrganize)
+- All 337 backend specs pass
+
+**2. Spec gap fixes**
+- **Reset UI** (05-design-generation): Added "revert to this version" button on AI chat messages in ChatPanel. Wired to `POST /api/designs/:id/reset` via DesignView
+- **Visual diff threshold** (09-visual-diff): Changed high-fidelity cutoff from 80% to 95% per spec
+- **Export disabled state** (07-design-management): Export menu items hidden when design has no generated code
+- **Error message** (05-design-generation): Preview area shows "Generation failed. Send a new message to retry." when design status is "error"
+- **Generate button disabled** (05-design-generation): Generate button disabled when no design system selected
+
+**3. Stale code cleanup**
+- `.gitignore`: Replaced all `developer/` paths with current `api/`, `app/`, `.hats/qa/` paths
+- `package.json` (root): Fixed `cacheDirectories` and `heroku-postbuild` from `developer/app` to `app`
+- `global-setup.js` (QA): Changed `db:test:prepare` to `db:migrate` to avoid PG::ObjectInUse when Playwright web server is already connected
+
+### What to test
+- Reset button on chat messages (new UI element)
+- Visual diff badges now use 95% threshold
+- Export menu disabled when no preview
+- Error state in preview area
+- Generate button disabled without design system
+- All slots-related flows (allowed children, component configuration)
+
+---
+
 ## 9 2026-03-05T15:35 -- Developer
 
 Re: Six fixes targeting 21 failing workflow E2E tests

@@ -1,6 +1,6 @@
 <template>
   <div :class="mainClasses">
-    <iframe class="Preview__frame" :src="renderer" ref="frame"></iframe>
+    <iframe class="Preview__frame" qa="preview-frame" :src="renderer" ref="frame"></iframe>
   </div>
 </template>
 

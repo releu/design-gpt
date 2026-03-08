@@ -20,15 +20,15 @@ When(
 );
 
 Then("a sign-in control is shown", async ({ page }) => {
-  const signIn = page.locator("[class*='sign-in-card'], [class*='App__signin']");
+  const signIn = page.locator('[qa="sign-in-card"]');
   await expect(signIn.first()).toBeVisible({ timeout: 15_000 });
 });
 
 Then(
   "no application content is visible behind the sign-in screen",
   async ({ page }) => {
-    await expect(page.locator(".Prompt")).not.toBeVisible({ timeout: 5_000 });
-    await expect(page.locator(".LibrarySelector")).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('[qa="prompt"]')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('[qa="library-selector"]')).not.toBeVisible({ timeout: 5_000 });
   },
 );
 
@@ -36,12 +36,12 @@ Then(
 
 Given("the user is on the sign-in screen", async ({ page }) => {
   await page.goto("/?unauth=1");
-  const card = page.locator("[class*='sign-in-card']");
+  const card = page.locator('[qa="sign-in-card"]');
   await expect(card.first()).toBeVisible({ timeout: 15_000 });
 });
 
 When("the user clicks the sign-in control", async ({ page }) => {
-  const card = page.locator("[class*='sign-in-card']");
+  const card = page.locator('[qa="sign-in-card"]');
   await card.first().click();
 });
 
@@ -50,9 +50,9 @@ Then(
   async ({ page }) => {
     // mock-auth0.js: loginWithRedirect() flips isAuthenticated to true,
     // sign-in card disappears and the app renders
-    const signInCard = page.locator("[class*='sign-in-card']");
+    const signInCard = page.locator('[qa="sign-in-card"]');
     await expect(signInCard).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -61,8 +61,8 @@ Then(
 Then(
   "the workspace is visible and the user can start generating designs with AI",
   async ({ page }) => {
-    await expect(page.locator(".Prompt")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator(".LibrarySelector")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[qa="prompt"]')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[qa="library-selector"]')).toBeVisible({ timeout: 10_000 });
   },
 );
 

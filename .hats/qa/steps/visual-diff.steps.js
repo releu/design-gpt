@@ -59,32 +59,32 @@ async function openComponentInBrowser(page, request, world, componentName) {
   const token = world.authToken || createTestToken();
   if (
     !(await page
-      .locator(".DesignSystemModal__browser")
+      .locator('[qa="ds-browser"]')
       .isVisible()
       .catch(() => false))
   ) {
     const item = page
-      .locator(".LibrarySelector__item", {
+      .locator('[qa="library-item"]', {
         hasText: world.designSystemName,
       })
       .first();
     if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await item.locator(".LibrarySelector__item-browse").click();
+      await item.locator('[qa="library-browse-btn"]').click();
       await expect(
-        page.locator(".DesignSystemModal__browser"),
+        page.locator('[qa="ds-browser"]'),
       ).toBeVisible({ timeout: 30_000 });
     }
   }
 
   // Navigate to the component
-  const menuItem = page.locator(".DesignSystemModal__menu-item", {
+  const menuItem = page.locator('[qa="ds-menu-item"]', {
     hasText: new RegExp(componentName, "i"),
   });
   if (
     await menuItem.first().isVisible({ timeout: 3_000 }).catch(() => false)
   ) {
     await menuItem.first().click();
-    await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+    await expect(page.locator('[qa="component-name"]')).toBeVisible({
       timeout: 5_000,
     });
   }
@@ -110,9 +110,7 @@ Then(
   "the diff percentage {string} is shown",
   async ({ page }, expectedPct) => {
     // Look for the visual diff percentage in the component detail
-    const diffIndicator = page.locator(
-      ".ComponentDetail [class*='diff'], .ComponentDetail [class*='visual-diff'], .ComponentDetail [class*='fidelity']",
-    );
+    const diffIndicator = page.locator('[qa="component-visual-diff"]');
     if (
       await diffIndicator.first().isVisible({ timeout: 5_000 }).catch(() => false)
     ) {
@@ -147,9 +145,7 @@ Then(
   "each VARIANT shows its own diff percentage",
   async ({ page }) => {
     // Visual diff percentages should appear per variant
-    const diffElements = page.locator(
-      ".ComponentDetail [class*='diff'], .ComponentDetail [class*='visual-diff'], .ComponentDetail [class*='fidelity']",
-    );
+    const diffElements = page.locator('[qa="component-visual-diff"]');
     const count = await diffElements.count();
     // Component sets may show diff per variant
     if (count > 0) {
@@ -167,9 +163,7 @@ Then(
 Then(
   "the COMPONENT_SET shows an average diff of {int}%",
   async ({ page }, avgPct) => {
-    const diffIndicator = page.locator(
-      ".ComponentDetail [class*='diff'], .ComponentDetail [class*='visual-diff'], .ComponentDetail [class*='fidelity']",
-    );
+    const diffIndicator = page.locator('[qa="component-visual-diff"]');
     if (
       await diffIndicator.first().isVisible({ timeout: 5_000 }).catch(() => false)
     ) {
@@ -191,20 +185,20 @@ When("the user browses components", async ({ page, request, world }) => {
   const token = world.authToken || createTestToken();
   if (
     !(await page
-      .locator(".DesignSystemModal__browser")
+      .locator('[qa="ds-browser"]')
       .isVisible()
       .catch(() => false))
   ) {
     if (world.designSystemName) {
       const item = page
-        .locator(".LibrarySelector__item", {
+        .locator('[qa="library-item"]', {
           hasText: world.designSystemName,
         })
         .first();
       if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await item.locator(".LibrarySelector__item-browse").click();
+        await item.locator('[qa="library-browse-btn"]').click();
         await expect(
-          page.locator(".DesignSystemModal__browser"),
+          page.locator('[qa="ds-browser"]'),
         ).toBeVisible({ timeout: 30_000 });
       }
     }
@@ -213,7 +207,7 @@ When("the user browses components", async ({ page, request, world }) => {
 
 Then("TEXT_COMPONENT is marked as low fidelity", async ({ page }) => {
   // Components with low diff should have a visual warning indicator
-  const menuItems = page.locator(".DesignSystemModal__menu-item");
+  const menuItems = page.locator('[qa="ds-menu-item"]');
   const count = await menuItems.count();
 
   for (let i = 0; i < count; i++) {
@@ -222,16 +216,14 @@ Then("TEXT_COMPONENT is marked as low fidelity", async ({ page }) => {
       // Check for low-fidelity marker on the menu item
       const item = menuItems.nth(i);
       const hasWarning = await item
-        .locator("[class*='warning'], [class*='low'], [class*='alert']")
+        .locator('[qa="component-low-fidelity"]')
         .isVisible({ timeout: 1_000 })
         .catch(() => false);
 
       // Or check in the detail view
       await item.click();
       await page.waitForTimeout(500);
-      const diffEl = page.locator(
-        ".ComponentDetail [class*='low-fidelity'], .ComponentDetail [class*='warning'], .ComponentDetail [class*='diff'][class*='low']",
-      );
+      const diffEl = page.locator('[qa="component-low-fidelity"]');
       const isHighlighted = await diffEl
         .first()
         .isVisible({ timeout: 3_000 })
@@ -259,7 +251,7 @@ Given(
 Then(
   "TITLE_COMPONENT has no low fidelity mark",
   async ({ page }) => {
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
 
     for (let i = 0; i < count; i++) {
@@ -268,9 +260,7 @@ Then(
         await menuItems.nth(i).click();
         await page.waitForTimeout(500);
 
-        const lowFidelity = page.locator(
-          ".ComponentDetail [class*='low-fidelity'], .ComponentDetail [class*='warning'][class*='diff']",
-        );
+        const lowFidelity = page.locator('[qa="component-low-fidelity"]');
         const isMarked = await lowFidelity
           .first()
           .isVisible({ timeout: 2_000 })

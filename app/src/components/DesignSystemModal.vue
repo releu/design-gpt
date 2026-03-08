@@ -1,5 +1,5 @@
 <template>
-  <div class="DesignSystemModal" @click.self="$emit('close')">
+  <div class="DesignSystemModal" qa="ds-modal" @click.self="$emit('close')">
     <div class="DesignSystemModal__top-bar">
       <div class="DesignSystemModal__close" @click="$emit('close')">×</div>
     </div>
@@ -10,7 +10,7 @@
       <!-- Phase: add — source buttons + URL list + Import -->
       <template v-if="phase === 'add'">
         <div class="DesignSystemModal__source-btns">
-          <div class="DesignSystemModal__source-btn" @click="addFigmaUrl">+ Figma</div>
+          <div class="DesignSystemModal__source-btn" qa="ds-add-figma-btn" @click="addFigmaUrl">+ Figma</div>
           <div class="DesignSystemModal__source-btn DesignSystemModal__source-btn_disabled">
             + React
           </div>
@@ -22,7 +22,7 @@
             v-for="(url, index) in pendingUrls"
             :key="index"
           >
-            <span class="DesignSystemModal__url-text">{{ url }}</span>
+            <span class="DesignSystemModal__url-text" qa="ds-url-text">{{ url }}</span>
             <div class="DesignSystemModal__url-remove" @click="removeUrl(index)">Remove</div>
           </div>
         </div>
@@ -30,6 +30,7 @@
         <div
           v-if="pendingUrls.length"
           class="DesignSystemModal__do-import"
+          qa="ds-import-btn"
           :class="{ 'DesignSystemModal__do-import_loading': importing }"
           @click="importAll"
         >
@@ -39,7 +40,7 @@
 
       <!-- Phase: importing — single aggregated progress bar -->
       <template v-else-if="phase === 'importing'">
-        <div class="DesignSystemModal__importing">
+        <div class="DesignSystemModal__importing" qa="ds-box">
           <div class="DesignSystemModal__importing-header">
             <span class="DesignSystemModal__importing-desc">
               <template v-if="activeLib">
@@ -60,11 +61,12 @@
 
       <!-- Phase: done — two-column browser -->
       <template v-else-if="phase === 'done'">
-        <div class="DesignSystemModal__browser">
+        <div class="DesignSystemModal__browser" qa="ds-browser">
           <!-- Left: menu -->
           <div class="DesignSystemModal__menu">
             <div
               class="DesignSystemModal__menu-item"
+              qa="ds-menu-item"
               :class="{ 'DesignSystemModal__menu-item_active': selectedItem === 'overview' }"
               @click="selectedItem = 'overview'"
             >
@@ -72,6 +74,7 @@
             </div>
             <div
               class="DesignSystemModal__menu-item"
+              qa="ds-menu-item"
               :class="{ 'DesignSystemModal__menu-item_active': selectedItem === 'ai-schema' }"
               @click="selectedItem = 'ai-schema'"
             >
@@ -79,11 +82,12 @@
             </div>
 
             <template v-for="lib in libraries" :key="lib.id">
-              <div class="DesignSystemModal__menu-subtitle">{{ lib.name }}</div>
+              <div class="DesignSystemModal__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
               <div
                 v-for="comp in lib.components"
                 :key="comp.type + comp.id"
                 class="DesignSystemModal__menu-item"
+                qa="ds-menu-item"
                 :class="{ 'DesignSystemModal__menu-item_active': isSelected(comp) }"
                 @click="selectedItem = comp"
               >
@@ -93,12 +97,13 @@
           </div>
 
           <!-- Right: detail -->
-          <div class="DesignSystemModal__browser-detail">
+          <div class="DesignSystemModal__browser-detail" qa="ds-browser-detail">
             <!-- Overview panel -->
             <div class="DesignSystemModal__overview" v-if="selectedItem === 'overview'">
               <div class="DesignSystemModal__overview-title">Overview</div>
               <input
                 class="DesignSystemModal__overview-name-input"
+                qa="ds-name-input"
                 v-model="designSystemName"
                 placeholder="Design system name"
               />
@@ -132,6 +137,7 @@
               <ComponentDetail
                 :comp="selectedItem"
                 :renderer-url="rendererUrl"
+                @sync="syncComponent"
               />
 
               <!-- Interactive configuration -->
@@ -171,6 +177,7 @@
 
         <div
           class="DesignSystemModal__save-btn"
+          qa="ds-save-btn"
           :class="{ 'DesignSystemModal__save-btn_loading': saving }"
           @click="saveAndClose"
         >
@@ -392,6 +399,26 @@ export default {
         slots: c.slots || [],
       }));
       lib.components = [...sets, ...comps];
+    },
+    async syncComponent(comp) {
+      const libId = comp.component_library_id;
+      if (!libId) return;
+      const token = await this.getToken();
+      const lib = this.libraries.find((l) => l.id === libId);
+      if (lib) {
+        lib.loading = true;
+        lib.progress = null;
+      }
+      try {
+        await fetch(`/api/component-libraries/${libId}/sync`, {
+          method: "POST",
+          credentials: "include",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.pollLibrary(libId);
+      } catch {
+        if (lib) lib.loading = false;
+      }
     },
     async syncAll() {
       if (this.syncing) return;

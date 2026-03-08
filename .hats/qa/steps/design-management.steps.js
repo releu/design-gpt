@@ -23,6 +23,13 @@ Given("the user has {int} DESIGNs", async ({ request, world }, count) => {
   });
   const designs = await res.json();
 
+  // Find a design system to associate with new designs
+  const dsRes = await request.get("/api/design-systems", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const systems = await dsRes.json();
+  const dsId = systems.length > 0 ? systems[0].id : null;
+
   const needed = count - designs.length;
   for (let i = 0; i < needed; i++) {
     await request.post("/api/designs", {
@@ -30,7 +37,7 @@ Given("the user has {int} DESIGNs", async ({ request, world }, count) => {
       data: {
         design: {
           prompt: `QA management test ${i + 1} ${Date.now()}`,
-          component_library_ids: [],
+          design_system_id: dsId,
         },
       },
     });
@@ -94,11 +101,9 @@ Then(
   "the design page shows the PREVIEW and chat history",
   async ({ page }) => {
     await expect(
-      page.locator(".Preview__frame, .MainLayout__preview-empty, [class*='Preview']"),
-    )
-      .first()
-      .toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".ChatPanel")).toBeVisible({ timeout: 10_000 });
+      page.locator('[qa="preview-frame"], [qa="preview-empty"]').first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[qa="chat-panel"]')).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -116,11 +121,18 @@ Given(
     const designs = await res.json();
 
     if (designs.length < 2) {
+      // Find a design system to associate with new designs
+      const dsRes = await request.get("/api/design-systems", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const systems = await dsRes.json();
+      const dsId = systems.length > 0 ? systems[0].id : null;
+
       const needed = 2 - designs.length;
       for (let i = 0; i < needed; i++) {
         await request.post("/api/designs", {
           headers: authHeaders(token),
-          data: { design: { prompt: `QA selector test ${i}` } },
+          data: { design: { prompt: `QA selector test ${i}`, design_system_id: dsId } },
         });
       }
       const updated = await request.get("/api/designs", {
@@ -137,7 +149,7 @@ Given(
 When("the user clicks the design selector", async ({ page, world }) => {
   await page.goto(`/designs/${world.testDesignId}`);
   await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
-  await expect(page.locator(".MainLayout__history select")).toBeVisible({
+  await expect(page.locator('[qa="design-selector"]')).toBeVisible({
     timeout: 10_000,
   });
 });
@@ -145,7 +157,7 @@ When("the user clicks the design selector", async ({ page, world }) => {
 Then(
   "they can switch to any DESIGN or create a new one",
   async ({ page }) => {
-    const options = page.locator(".MainLayout__history select option");
+    const options = page.locator('[qa="design-selector"] option');
     const count = await options.count();
     expect(count).toBeGreaterThanOrEqual(3); // At least 2 designs + new
     const texts = await options.allTextContents();
@@ -226,9 +238,20 @@ Then("a zip file is downloaded", async ({ world }) => {
 
 Given(
   "the user is on the design page for DESIGN #132",
-  async ({ page, world }) => {
+  async ({ page, request, world }) => {
     if (!/\/designs\/\d+/.test(page.url())) {
-      const id = world.exportDesignId || world.testDesignId;
+      let id = world.exportDesignId || world.testDesignId;
+      if (!id) {
+        // Create a design so we have a page to navigate to
+        const token = world.authToken || createTestToken();
+        const res = await request.post("/api/designs", {
+          headers: authHeaders(token),
+          data: { design: { prompt: "QA export menu test" } },
+        });
+        const body = await res.json();
+        id = body.id;
+        world.testDesignId = id;
+      }
       if (id) {
         await page.goto(`/designs/${id}`);
         await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
@@ -238,11 +261,7 @@ Given(
 );
 
 When("the user opens the export menu", async ({ page }) => {
-  const menuBtn = page
-    .locator(
-      ".MainLayout__export-btn, .MainLayout__menu-btn, button:has-text('...')",
-    )
-    .first();
+  const menuBtn = page.locator('[qa="export-btn"]').first();
   await expect(menuBtn).toBeVisible({ timeout: 10_000 });
   await menuBtn.click();
   await page.waitForTimeout(300);
@@ -251,11 +270,7 @@ When("the user opens the export menu", async ({ page }) => {
 Then(
   "options for downloading React project, image, and exporting to Figma are available",
   async ({ page }) => {
-    const menu = page
-      .locator(
-        ".MainLayout__export-menu, .MainLayout__dropdown, [class*='export-menu'], [class*='dropdown']",
-      )
-      .first();
+    const menu = page.locator('[qa="export-menu"]').first();
     await expect(menu).toBeVisible({ timeout: 5_000 });
     const menuText = await menu.textContent();
     // Menu should contain export-related text
@@ -268,16 +283,10 @@ Then(
 // ---------------------------------------------------------------------------
 
 When('the user chooses "Export to Figma"', async ({ page }) => {
-  const menu = page
-    .locator(
-      ".MainLayout__export-menu, .MainLayout__dropdown, [class*='export-menu'], [class*='dropdown']",
-    )
-    .first();
+  const menu = page.locator('[qa="export-menu"]').first();
   // Open menu if not already open
   if (!(await menu.isVisible().catch(() => false))) {
-    const menuBtn = page
-      .locator(".MainLayout__export-btn, .MainLayout__menu-btn, button:has-text('...')")
-      .first();
+    const menuBtn = page.locator('[qa="export-btn"]').first();
     await menuBtn.click();
     await page.waitForTimeout(300);
   }
@@ -291,7 +300,7 @@ Then(
   "an instruction is shown to open the DesignGPT Figma plugin",
   async ({ page }) => {
     // The Figma export should show instructions or a code
-    await expect(page.locator(".App")).toBeVisible();
+    await expect(page.locator('[qa="app"]')).toBeVisible();
   },
 );
 
@@ -299,7 +308,7 @@ Then(
   "a code is provided that the user can copy and paste into the plugin",
   async ({ page }) => {
     // Figma export provides a code/token for the plugin
-    await expect(page.locator(".App")).toBeVisible();
+    await expect(page.locator('[qa="app"]')).toBeVisible();
   },
 );
 
@@ -324,7 +333,7 @@ Then("export options are not available", async ({ page, world }) => {
     await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
   }
   // Export button should be hidden or disabled when no preview
-  const exportBtn = page.locator(".MainLayout__export-btn").first();
+  const exportBtn = page.locator('[qa="export-btn"]').first();
   const isVisible = await exportBtn
     .isVisible({ timeout: 5_000 })
     .catch(() => false);

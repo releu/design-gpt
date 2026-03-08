@@ -10,34 +10,34 @@
       }
     },
     "designer2team": {
-      "count": 6,
+      "count": 7,
       "read_by": {
-        "cto": 2,
+        "cto": 7,
         "manager": 2,
-        "qa": 2,
-        "developer": 6
+        "qa": 7,
+        "developer": 7
       }
     },
     "qa2dev": {
-      "count": 11,
+      "count": 16,
       "read_by": {
-        "developer": 11,
+        "developer": 16,
         "manager": 11
       }
     },
     "dev2qa": {
-      "count": 9,
+      "count": 16,
       "read_by": {
-        "qa": 9,
+        "qa": 15,
         "manager": 9
       }
     },
     "cto2team": {
-      "count": 6,
+      "count": 8,
       "read_by": {
-        "developer": 6,
+        "developer": 8,
         "designer": 6,
-        "qa": 6,
+        "qa": 8,
         "manager": 3
       }
     }

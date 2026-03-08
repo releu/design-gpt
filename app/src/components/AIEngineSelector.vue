@@ -7,9 +7,14 @@
         <div class="AIEngineSelector__subtitle">don't share nda for now</div>
       </div>
       <div class="AIEngineSelector__spacer"></div>
-      <div class="AIEngineSelector__generate" @click="$emit('generate')">
+      <button
+        class="AIEngineSelector__generate"
+        qa="generate-btn"
+        :disabled="disabled"
+        @click="$emit('generate')"
+      >
         generate
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -17,6 +22,9 @@
 <script>
 export default {
   name: "AIEngineSelector",
+  props: {
+    disabled: { type: Boolean, default: false },
+  },
   emits: ["generate"],
 };
 </script>
@@ -66,6 +74,7 @@ export default {
     background: var(--accent-primary);
     color: var(--text-on-dark);
     padding: 12px 32px;
+    border: none;
     border-radius: var(--radius-pill);
     cursor: pointer;
     font: var(--font-text-m);
@@ -73,6 +82,12 @@ export default {
 
     &:active {
       transform: scale(0.92);
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
     }
   }
 }

@@ -154,6 +154,21 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 - Shows the component's generated React source code in a read-only CodeMirror editor
 - Code font, syntax highlighting
 
+#### Figma JSON section
+
+- **Expandable/collapsible section** -- collapsed by default
+- **Label**: "figma json" -- black, with expand/collapse chevron
+- **Behavior**: JSON is fetched on demand when the section is first expanded (not pre-loaded)
+- **Content**: Formatted/pretty-printed JSON displayed in a code block
+  - Font: code font
+  - Background: fill (light gray)
+  - Border-radius: `--radius-sm` (8px)
+  - Padding: `--sp-2` (8px)
+  - Max-height: ~400px with internal vertical scroll
+- **Component Sets**: When viewing a component set, the Figma JSON for all variants is shown (concatenated or tabbed)
+- **Loading state**: While fetching, show "Loading..." placeholder text in darkgray
+- **Error state**: If fetch fails, show "Failed to load Figma JSON" in darkgray
+
 ---
 
 ## States
@@ -180,10 +195,21 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
   - Progress shows "step N/4" and a message (e.g., "Discovering components...")
   - The left sidebar may show components as they are discovered
 
-### Error state
+### Import finished with errors
 
-- If a sync fails, the overview shows an error message
-- Individual components that failed code generation show a "no code" status badge
+- When an import completes but some components had errors:
+  - The overview shows a **summary of import errors** at the top of the right pane
+  - Error summary is a list of failed component names with brief error descriptions
+  - Each error row shows: component name (clickable, navigates to that component's detail) + error reason text in darkgray
+  - The error summary is dismissible (small "x" to close it) but reappears if the user returns to overview
+- Individual components that failed code generation show a **"no code" status badge** (pill-shaped, red-tinted background)
+- Components with "no code" badge show a **"re-import" action link** next to the sync link in the component detail header
+  - Clicking "re-import" triggers a re-import of just that single component
+  - While re-importing, the status badge changes to "importing" (amber-tinted)
+
+### Error state (sync failure)
+
+- If a sync fails entirely, the overview shows an error message with a descriptive reason
 
 ---
 
@@ -218,5 +244,5 @@ The modal opens from the "new" or "edit" buttons on the home page design system 
 ## Spec Coverage
 
 - `04-design-system-management.feature`: Create via modal, browse components, component detail, interactive props, AI Schema (see `08-ai-schema-view.md`), configuration read-only
-- `03-figma-import.feature`: Create library from URL, sync progress, duplicate URL handling
-- `08-component-library-browser.feature`: Component detail with props, preview, React code, configuration
+- `03-figma-import.feature`: Create library from URL, sync progress, import errors list, re-import failed components, "no code" badge
+- `08-component-library-browser.feature`: Component detail with props, preview, React code, Figma JSON (on-demand), configuration, visual diff

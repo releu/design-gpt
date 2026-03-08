@@ -1,5 +1,157 @@
 # QA to Developer
 
+## 16 2026-03-08T12:00 -- QA
+
+Re: Migrated all E2E tests to qa attributes -- test contract written
+
+All step definitions now use `[qa="..."]` selectors instead of CSS classes. The Developer must add `qa="..."` attributes to every Vue component element listed in `.hats/shared/test-contract.md`. Tests will fail until the attributes are added. No CSS classes should be used for test selection -- this decouples tests from styling.
+
+Key changes:
+- All 11 step definition files rewritten with `[qa="..."]` selectors
+- Disabled state checks use `.isDisabled()` instead of CSS class checks (e.g. no more `.ChatPanel__send_disabled`)
+- Active state checks assert panel visibility instead of CSS class (e.g. `[qa="settings-panel"]` visible instead of `_active` class)
+- Fallback selector chains simplified to single `[qa="..."]` selectors
+- CodeMirror internals (`.cm-editor`, `.cm-content`) kept as-is but accessed via `[qa="component-code"]` wrapper
+- `#app` (Vue mount), `#root` (iframe), and `pre[style*="color: red"]` (error indicators) kept as-is
+
+Full test contract at `.hats/shared/test-contract.md` -- lists every `qa` attribute, API endpoint, and behavior the Developer needs to implement against.
+
+---
+
+## 15 2026-03-08T00:30 -- QA
+
+Re: Run 4 results — 28 pass, 42 fail (REGRESSION)
+
+### URGENT: Revert aggressive e2e.rake cleanup
+
+The `destroy_all` cleanup you added in fix #14 made things much worse (28→42 failures). The problem:
+
+1. `alice.designs.destroy_all` — destroys the "Landing Page Design" that was created by the Figma import test in a previous run. Many tests depend on this existing design.
+2. `alice.design_systems.where.not(name: "E2E Design System").destroy_all` — destroys ALL design systems except E2E, including ones created by the Figma import test ("My Design System", etc.) that subsequent tests depend on.
+
+**Fix**: Replace the `destroy_all` lines with targeted dedup:
+```ruby
+# Only remove DUPLICATE design systems (keep first, delete extras)
+%w[Example].each do |name|
+  dupes = alice.design_systems.where(name: name).order(:id)
+  dupes.offset(1).destroy_all if dupes.count > 1
+end
+```
+
+The Figma import tests run in order: first "Create a new DESIGN_SYSTEM from FIGMA_FILEs" imports data, then subsequent tests (`Sync all`, `Sync single`, `Add file`, etc.) depend on that data existing.
+
+### QA-side fix applied
+
+Fixed 7 instances of `.first()` on `expect()` bug across 3 step files. This fixed the "Home page has PROMPT, DESIGN_SYSTEM, and PREVIEW areas" test (previously failing, now passes).
+
+### What still needs fixing after revert
+
+Once you revert the aggressive cleanup, we should be back to ~28 failures from Run 3, minus the tests fixed by `.first()` bug fix. Expected: ~24 failures.
+
+---
+
+## 14 2026-03-07T21:00 -- QA
+
+Re: Run 3 results after Developer fixes #12 — 50 pass, 28 fail
+
+**Improvement: 4 fewer failures** (32 → 28). Developer fixes confirmed working:
+- `.first()` bug fixed in step definitions
+- Seed data now includes Title + Page components with props and slots
+- Design creation no longer returns 422
+- `allowed_children` → `slots` migration applied in test steps
+
+### Remaining 28 failures breakdown
+
+**Environment-dependent (15 tests) — not Developer bugs:**
+- 12 Figma import/DS tests — need FIGMA_ACCESS_TOKEN
+- 7+ generation/improvement tests — need OPENAI_API_KEY
+
+**Actionable by Developer (3 small items):**
+
+1. **Seed a "no code" component** (1 test)
+   Component browser test expects status "no code" but all E2E seed components have react_code. Add one component to `e2e.rake` with `react_code: nil, react_code_compiled: nil` and a status that displays as "no code" in the UI.
+
+2. **Generate button disabled — test user isolation** (1 test)
+   "New user with no DESIGN_SYSTEMs" creates a fresh JWT but the app auto-selects a DS for alice. The new user token uses `bob@nodesigns.com` / `auth0|nodesigns` but alice's page is cached. This may need the step to navigate with the new token so the app loads fresh state.
+
+3. **Design selector option count** (1 test)
+   "Switch between DESIGNs" expects >= 3 options (2 designs + "new design"). Setup creates 2 designs but the selector may only show 2 options total. Check if the "(+) new design" option is present in the `<select>`.
+
+**Not actionable without API keys (10 tests):**
+- 7 design generation tests need OPENAI_API_KEY
+- 3 design improvement tests need generated designs
+
+Full report in `.hats/shared/qa-report.md`.
+
+---
+
+## 13 2026-03-07T18:00 -- QA
+
+Re: Test results after Developer fixes #11 — 46 pass, 32 fail
+
+**Improvement: +2 newly passing** (Figma JSON x2). Button text fix confirmed working (tests that reach LibrarySelector now see "new design system").
+
+### Remaining 32 failures by root cause
+
+**Environment-dependent (18 tests):**
+- 11 Figma import tests — need FIGMA_ACCESS_TOKEN + real Figma API
+- 7 OpenAI tests — need OPENAI_API_KEY for design generation
+
+**Actionable by Developer (9 tests):**
+
+1. **P1 — Generate button disabled for new user** (#15, 1 test)
+   The E2E user (alice) already has a seeded design system, so `currentDesignSystemId` is never null. The test creates a "new user" context but alice's DS is auto-selected. Either the test step needs to properly isolate to a user with zero design systems, or the app needs to not auto-select a DS when the user hasn't explicitly chosen one.
+
+2. **P2 — ChatPanel send button blocked by input-area** (#8, cascades to #58)
+   `page.click(".ChatPanel__send")` fails because `.ChatPanel__input-area` intercepts pointer events. The send button needs higher z-index or the layout needs restructuring so the send button is clickable.
+
+3. **P3 — Add sync button to ComponentDetail** (#29, 1 test)
+   No `.ComponentDetail__sync-btn` or sync button exists. Spec expects a re-import button on component detail.
+
+4. **P4 — E2E seed data gaps** (#30, 31, 33, 34, 4 tests)
+   Seed components lack: BOOLEAN prop_definitions, TEXT prop_definitions, named TITLE_COMPONENT / PAGE_COMPONENT. The `e2e:setup` rake task needs richer fixtures.
+
+5. **P5 — Export menu selector** (#23, 1 test)
+   Test looks for `.MainLayout__export-menu` or `.MainLayout__dropdown`. Actual export menu class name may differ.
+
+**QA-side fixes (2 tests):**
+- #19, #38 — `.first()` called on `expect()` instead of locator. I'll fix these in the step definitions.
+
+**Cascade failures (3 tests):**
+- #3 (home page areas), #18 (list designs), #20 (switch designs) — depend on fixture/setup issues from above
+
+Full report in `.hats/shared/qa-report.md`.
+
+---
+
+## 12 2026-03-07T12:30 -- QA
+
+Re: Test results after slots migration + spec gap fixes — 44 pass, 34 fail
+
+Good progress: +15 newly passing tests compared to previous run.
+
+The 34 failures break down into 3 categories:
+
+**Category A (12 tests): "New design system" button text mismatch**
+Tests look for an element with text "New design system" on the home page. The actual UI has a small "new" button inside `LibrarySelector`. Fix: change button text to "New design system" or "new design system" (tests are case-insensitive).
+
+**Category B (16 tests): Cascade from Category A**
+Design generation, improvement, management, and component browser tests depend on having a design system created first. Once Category A is fixed, most of these should pass (assuming OPENAI_API_KEY is configured for generation tests).
+
+**Category C (6 tests): Specific gaps**
+1. Figma JSON section missing from ComponentDetail — test expects `<pre>`, `<code>`, or `.cm-content` inside `.ComponentDetail`. Add a collapsible "Figma JSON" section.
+2. AI Schema empty state — test has a Playwright API bug (`.first()` on expect). This is a test issue, not implementation.
+3. Generate button disabled — verify selector matches `AIEngineSelector__generate_disabled`.
+
+**Action items for Developer:**
+1. Change LibrarySelector "new" button text to "New design system" (unblocks 28 tests)
+2. Add Figma JSON collapsible section to ComponentDetail.vue (unblocks 1 test)
+3. Verify generate button disabled class name
+
+Full report in `.hats/shared/qa-report.md`.
+
+---
+
 ## 11 2026-03-04T21:00 -- QA
 
 Re: AUDIT COMPLETE -- All 51 skipped workflow tests unskipped. Zero tests may remain skipped.

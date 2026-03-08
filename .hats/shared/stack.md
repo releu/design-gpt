@@ -41,12 +41,16 @@ app/                            # Vue 3 frontend
     assets/
       main.css                  # Global CSS variables, @font-face, design tokens
     components/                 # Auto-registered globally via import.meta.glob (*.vue)
-                                # Includes: ChatPanel, ComponentDetail, ComponentDetailModal,
+                                # Includes: AIEngineSelector, AiSchemaNode, AiSchemaView,
+                                #   Button, ChatPanel, CodeField, ComponentCard,
+                                #   ComponentDetail, ComponentDetailModal, ComponentStatusBadge,
                                 #   DesignSettings, DesignSystemModal, FigmaUrlInput,
-                                #   Layout, LibraryCard, LibrarySelector, MainLayout,
-                                #   OnboardingLayout, OnboardingStepLibraries,
-                                #   OnboardingStepComponents, OnboardingStepPrompt,
-                                #   Preview, Prompt, PromptField, WizardStepper, ...
+                                #   Layout, LibraryCard, LibrarySelector, Loader, Logo,
+                                #   MainLayout, Menu, OnboardingLayout, OnboardingStepComponents,
+                                #   OnboardingStepLibraries, OnboardingStepOrganize,
+                                #   OnboardingStepPrompt, Preview, ProgressBar, Prompt,
+                                #   PromptField, Section, SectionHeader, Select, Snippet,
+                                #   VisualDiffOverlay, WizardStepper
     views/                      # HomeView, DesignView, OnboardingView,
                                 #   LibrariesView, LibraryDetailView
     router/index.js             # Routes: /, /designs/:id, /onboarding,
@@ -58,11 +62,12 @@ app/                            # Vue 3 frontend
 api/                            # Rails 8 API-only backend
   app/
     controllers/                # All scoped under /api
-                                # ApplicationController, DesignsController,
-                                #   FigmaFilesController (ComponentLibrariesController), ComponentSetsController,
-                                #   ComponentsController, CustomComponentsController,
-                                #   DesignSystemsController, ImagesController,
-                                #   IterationsController, RendersController, TasksController
+                                # ApplicationController, ComponentLibrariesController,
+                                #   ComponentSetsController, ComponentsController,
+                                #   CustomComponentsController, DesignSystemFigmaFilesController,
+                                #   DesignSystemsController, DesignsController,
+                                #   ImagesController, IterationsController,
+                                #   RendersController, TasksController
       concerns/
         renderable.rb           # Shared renderer endpoint logic
     models/                     # Domain models
@@ -94,8 +99,6 @@ Makefile                        # dev, clean_dev, test, test-api, test-app,
                                 #   test-e2e, test-render, test-render-fresh,
                                 #   setup, setup-e2e targets
 Procfile                        # Heroku process definitions (web, worker, release)
-                                # NOTE: currently contains stale developer/api paths --
-                                # needs updating to api/ before production deployment
 ```
 
 ## Key Domain Relationships
@@ -202,7 +205,7 @@ Global design tokens live in `src/assets/main.css` (`:root` CSS custom propertie
 - BEM naming: PascalCase block, `__kebab` element, `_kebab` modifier
 - SCSS nesting via `&`: `&__element`, `&_modifier`
 - Global tokens in `src/assets/main.css` (`:root` CSS variables)
-- Font: `-apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto, sans-serif`
+- Font: Suisse Int'l (loaded via @font-face as "suiss"), with system stack fallback. Code font: Menlo, monospace.
 - The right panel in DesignView has two modes: chat (default) and settings/component browser. A toggle controls which is shown.
 
 ### Backend
@@ -226,6 +229,7 @@ Global design tokens live in `src/assets/main.css` (`:root` CSS custom propertie
 - **API**: RSpec, fixtures (no FactoryBot), WebMock for HTTP stubs
 - **Frontend**: Vitest + @vue/test-utils + happy-dom, co-located `*.spec.js`
 - **E2E**: Playwright + playwright-bdd (Gherkin BDD), real API calls (no mocks except auth), real Figma sync pipeline
+- **API keys in test environment**: Real FIGMA_ACCESS_TOKEN and OPENAI_API_KEY are configured. E2E tests exercise full Figma import and AI generation pipelines. Do not assume keys are missing or skip tests on that basis — investigate actual errors instead.
 
 ## Key Dependencies
 

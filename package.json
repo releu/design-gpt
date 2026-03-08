@@ -1,8 +1,8 @@
 {
   "private": true,
   "engines": { "node": "20.x" },
-  "cacheDirectories": ["developer/app/node_modules"],
+  "cacheDirectories": ["app/node_modules"],
   "scripts": {
-    "heroku-postbuild": "cd developer/app && npm ci && npm run build && cp -r dist/* ../api/public/"
+    "heroku-postbuild": "cd app && npm ci && npm run build && cp -r dist/* ../api/public/"
   }
 }

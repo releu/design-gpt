@@ -14,11 +14,11 @@ const CUBES_FIGMA_URL =
 
 async function getComponentNames(page) {
   await expect(
-    page.locator(".DesignSystemModal__menu-subtitle"),
+    page.locator('[qa="ds-menu-subtitle"]'),
   ).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(1_000);
 
-  const menuItems = page.locator(".DesignSystemModal__menu-item");
+  const menuItems = page.locator('[qa="ds-menu-item"]');
   const count = await menuItems.count();
   const names = [];
   for (let i = 0; i < count; i++) {
@@ -31,10 +31,10 @@ async function getComponentNames(page) {
 
 async function navigateToComponent(page, compName) {
   await page
-    .locator(".DesignSystemModal__menu-item", { hasText: compName })
+    .locator('[qa="ds-menu-item"]', { hasText: compName })
     .first()
     .click();
-  await expect(page.locator(".ComponentDetail__name")).toContainText(
+  await expect(page.locator('[qa="component-name"]')).toContainText(
     compName,
     { timeout: 5_000 },
   );
@@ -42,7 +42,7 @@ async function navigateToComponent(page, compName) {
 
 async function checkComponentRendersDefault(page) {
   const statusText = await page
-    .locator(".ComponentDetail__status-badge")
+    .locator('[qa="component-status"]')
     .textContent({ timeout: 3_000 })
     .catch(() => "unknown");
 
@@ -50,14 +50,14 @@ async function checkComponentRendersDefault(page) {
     return { ok: false, error: "no React code generated" };
   }
 
-  const previewFrame = page.locator(".ComponentDetail__preview-frame");
+  const previewFrame = page.locator('[qa="component-preview-frame"]');
   let previewVisible = await previewFrame
     .isVisible({ timeout: 3_000 })
     .catch(() => false);
 
   if (!previewVisible) {
     const previewHeader = page.locator(
-      ".ComponentDetail__section-header",
+      '[qa="component-section-header"]',
       { hasText: "Preview" },
     );
     if (await previewHeader.isVisible().catch(() => false)) {
@@ -71,7 +71,7 @@ async function checkComponentRendersDefault(page) {
     }
   }
 
-  const frame = page.frameLocator(".ComponentDetail__preview-frame");
+  const frame = page.frameLocator('[qa="component-preview-frame"]');
   try {
     await expect(frame.locator("#root")).not.toBeEmpty({ timeout: 8_000 });
   } catch {
@@ -90,13 +90,13 @@ async function checkComponentRendersDefault(page) {
 }
 
 async function ensurePropsOpen(page) {
-  const propsHeader = page.locator(".ComponentDetail__section-header", {
+  const propsHeader = page.locator('[qa="component-section-header"]', {
     hasText: "Props",
   });
   if (await propsHeader.isVisible().catch(() => false)) {
     if (
       !(await page
-        .locator(".ComponentDetail__props")
+        .locator('[qa="component-props"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -121,12 +121,12 @@ async function ensureCubesImported(page, request, world) {
     world.cubesDsName = cubesDs.name;
     // Open browser for this DS
     const item = page
-      .locator(".LibrarySelector__item", { hasText: cubesDs.name })
+      .locator('[qa="library-item"]', { hasText: cubesDs.name })
       .first();
     if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await item.locator(".LibrarySelector__item-browse").click();
+      await item.locator('[qa="library-browse-btn"]').click();
       await expect(
-        page.locator(".DesignSystemModal__browser"),
+        page.locator('[qa="ds-browser"]'),
       ).toBeVisible({ timeout: 30_000 });
       return;
     }
@@ -134,21 +134,21 @@ async function ensureCubesImported(page, request, world) {
 
   // Import Cubes via UI
   console.log("[qa] Importing Cubes via UI for compatibility test...");
-  await page.click(".LibrarySelector__new-ds");
-  await expect(page.locator(".DesignSystemModal")).toBeVisible();
+  await page.click('[qa="new-ds-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).toBeVisible();
 
   page.once("dialog", async (dialog) => await dialog.accept(CUBES_FIGMA_URL));
-  await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
-  await expect(page.locator(".DesignSystemModal__url-text")).toBeVisible();
+  await page.click('[qa="ds-add-figma-btn"]');
+  await expect(page.locator('[qa="ds-url-text"]')).toBeVisible();
 
-  await page.click(".DesignSystemModal__do-import");
+  await page.click('[qa="ds-import-btn"]');
 
   // Wait for import to complete
   const startTime = Date.now();
   let lastStatus = "";
   while (true) {
     const browserVisible = await page
-      .locator(".DesignSystemModal__browser")
+      .locator('[qa="ds-browser"]')
       .isVisible()
       .catch(() => false);
 
@@ -159,7 +159,7 @@ async function ensureCubesImported(page, request, world) {
     }
 
     const statusText = await page
-      .locator(".DesignSystemModal__box")
+      .locator('[qa="ds-box"]')
       .first()
       .textContent()
       .catch(() => "");
@@ -175,11 +175,11 @@ async function ensureCubesImported(page, request, world) {
 
   // Name and save
   await page.fill(
-    ".DesignSystemModal__overview-name-input",
+    '[qa="ds-name-input"]',
     "QA Cubes Validation",
   );
-  await page.click(".DesignSystemModal__save-btn");
-  await expect(page.locator(".DesignSystemModal")).not.toBeVisible({
+  await page.click('[qa="ds-save-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).not.toBeVisible({
     timeout: 5_000,
   });
 
@@ -187,12 +187,12 @@ async function ensureCubesImported(page, request, world) {
 
   // Re-open the browser
   const newItem = page
-    .locator(".LibrarySelector__item", { hasText: "QA Cubes Validation" })
+    .locator('[qa="library-item"]', { hasText: "QA Cubes Validation" })
     .first();
   await expect(newItem).toBeVisible({ timeout: 10_000 });
-  await newItem.locator(".LibrarySelector__item-browse").click();
+  await newItem.locator('[qa="library-browse-btn"]').click();
   await expect(
-    page.locator(".DesignSystemModal__browser"),
+    page.locator('[qa="ds-browser"]'),
   ).toBeVisible({ timeout: 30_000 });
 }
 
@@ -274,7 +274,7 @@ Then(
   async ({ page }) => {
     // This is validated as part of the render check above -- each component
     // should produce non-empty, unique HTML output
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
   },
 );
 
@@ -312,20 +312,20 @@ Then(
         }
         successes.push({ component: compName, test: "default_render" });
 
-        const frame = page.frameLocator(".ComponentDetail__preview-frame");
+        const frame = page.frameLocator('[qa="component-preview-frame"]');
         const errorPre = frame.locator(
           'pre[style*="color: red"], pre[style*="color:red"]',
         );
 
         await ensurePropsOpen(page);
 
-        const propRows = page.locator(".ComponentDetail__prop-row");
+        const propRows = page.locator('[qa="component-prop-row"]');
         const propCount = await propRows.count();
 
         for (let pi = 0; pi < propCount; pi++) {
           const propRow = propRows.nth(pi);
           const propName = (
-            await propRow.locator(".ComponentDetail__prop-name").textContent()
+            await propRow.locator('[qa="component-prop-name"]').textContent()
           ).trim();
 
           // VARIANT props
@@ -548,7 +548,7 @@ Then(
   "the PREVIEW HTML reflects the changed PROP value",
   async ({ page }) => {
     // Validated as part of the prop check above
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
   },
 );
 

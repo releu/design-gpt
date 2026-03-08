@@ -24,7 +24,7 @@ Given(
   async ({ page, world }, email) => {
     world.authToken = createTestToken({ email });
     await page.goto(`/?e2e_token=${world.authToken}`);
-    await expect(page.locator(".App")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 15_000 });
   },
 );
 
@@ -33,12 +33,12 @@ Given(
 // ---------------------------------------------------------------------------
 
 Given("the user is on the home page", async ({ page }) => {
-  await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
 });
 
 When("the user visits the home page", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------

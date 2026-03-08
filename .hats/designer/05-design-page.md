@@ -134,6 +134,16 @@ This is the same ComponentDetail view used in the design system modal (see `06-d
 - The panel auto-scrolls to the bottom when new messages arrive
 - If there are fewer messages than the panel height, messages are gravity-anchored to the bottom (empty space above)
 
+### Reset / Revert button on iteration messages
+
+Each AI response message that created a new iteration has a small **reset button** (icon or text link) visible on hover or always visible:
+
+- **Position**: Bottom-right of the AI message bubble, or inline after the message content
+- **Appearance**: Small text link "reset" or a revert icon in darkgray
+- **Behavior**: Clicking reverts the design to that iteration -- the code and preview both update to match the state at that iteration
+- **Current iteration**: The reset button is hidden or disabled on the most recent iteration (already active)
+- **Confirmation**: No confirmation dialog -- the action is instant (the user can always re-send a new improvement to move forward again)
+
 ### Message input bar
 
 - **Position**: Pinned to the bottom of the chat panel
@@ -232,6 +242,6 @@ When the user clicks the "..." button in the header, a dropdown appears with thr
 
 ## Spec Coverage
 
-- `05-design-generation.feature`: View mode switching, design name in dropdown, code view editing, live preview
+- `05-design-generation.feature`: View mode switching, design name in dropdown, code view editing, live preview, reset to previous iteration
 - `06-design-improvement.feature`: Chat send, history display, auto-scroll, Ctrl+Enter, empty message prevention, disabled-while-generating
 - `07-design-management.feature`: Export menu, download React/image, Figma export, rename, duplicate, delete (via API)

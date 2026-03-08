@@ -21,12 +21,12 @@ async function openDesignSystemBrowser(page, request, token) {
 
   if (ds) {
     const item = page
-      .locator(".LibrarySelector__item", { hasText: ds.name })
+      .locator('[qa="library-item"]', { hasText: ds.name })
       .first();
     if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await item.locator(".LibrarySelector__item-browse").click();
+      await item.locator('[qa="library-browse-btn"]').click();
       await expect(
-        page.locator(".DesignSystemModal__browser"),
+        page.locator('[qa="ds-browser"]'),
       ).toBeVisible({ timeout: 30_000 });
       return ds;
     }
@@ -36,10 +36,10 @@ async function openDesignSystemBrowser(page, request, token) {
 
 async function navigateToComponent(page, name) {
   await page
-    .locator(".DesignSystemModal__menu-item", { hasText: name })
+    .locator('[qa="ds-menu-item"]', { hasText: name })
     .first()
     .click();
-  await expect(page.locator(".ComponentDetail__name")).toContainText(name, {
+  await expect(page.locator('[qa="component-name"]')).toContainText(name, {
     timeout: 5_000,
   });
 }
@@ -59,7 +59,7 @@ Given(
 Then(
   "components are grouped under their FIGMA_FILE names",
   async ({ page }) => {
-    const subtitles = page.locator(".DesignSystemModal__menu-subtitle");
+    const subtitles = page.locator('[qa="ds-menu-subtitle"]');
     await expect(subtitles.first()).toBeVisible({ timeout: 10_000 });
     const count = await subtitles.count();
     expect(count).toBeGreaterThanOrEqual(1);
@@ -76,7 +76,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -84,7 +84,7 @@ Given(
     }
 
     // Try to find Title component; fall back to first available component
-    const titleItem = page.locator(".DesignSystemModal__menu-item", {
+    const titleItem = page.locator('[qa="ds-menu-item"]', {
       hasText: /title/i,
     });
     if (
@@ -93,7 +93,7 @@ Given(
       await titleItem.first().click();
     } else {
       // Click the first non-special menu item
-      const menuItems = page.locator(".DesignSystemModal__menu-item");
+      const menuItems = page.locator('[qa="ds-menu-item"]');
       const count = await menuItems.count();
       for (let i = 0; i < count; i++) {
         const text = (await menuItems.nth(i).textContent()).trim();
@@ -103,7 +103,7 @@ Given(
         }
       }
     }
-    await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+    await expect(page.locator('[qa="component-name"]')).toBeVisible({
       timeout: 5_000,
     });
   },
@@ -112,9 +112,7 @@ Given(
 Then(
   "a link to the component's Figma source is shown",
   async ({ page }) => {
-    const figmaLink = page.locator(
-      ".ComponentDetail a[href*='figma.com'], .ComponentDetail [class*='figma-link'], .ComponentDetail__figma-link",
-    );
+    const figmaLink = page.locator('[qa="component-figma-link"]');
     await expect(figmaLink.first()).toBeVisible({ timeout: 5_000 });
   },
 );
@@ -124,9 +122,7 @@ Then(
 // ---------------------------------------------------------------------------
 
 When("the user clicks the sync button", async ({ page }) => {
-  const syncBtn = page.locator(
-    ".ComponentDetail__sync-btn, .ComponentDetail button:has-text('sync'), .ComponentDetail button:has-text('Sync')",
-  );
+  const syncBtn = page.locator('[qa="component-sync-btn"]');
   await expect(syncBtn.first()).toBeVisible({ timeout: 5_000 });
   await syncBtn.first().click();
 });
@@ -144,7 +140,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -152,7 +148,7 @@ Given(
     }
 
     // Navigate to Title component
-    const titleItem = page.locator(".DesignSystemModal__menu-item", {
+    const titleItem = page.locator('[qa="ds-menu-item"]', {
       hasText: /title/i,
     });
     if (
@@ -160,19 +156,19 @@ Given(
     ) {
       await titleItem.first().click();
     }
-    await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+    await expect(page.locator('[qa="component-name"]')).toBeVisible({
       timeout: 5_000,
     });
   },
 );
 
 Then("all three PROPs are listed with their types", async ({ page }) => {
-  const propRows = page.locator(".ComponentDetail__prop-row");
+  const propRows = page.locator('[qa="component-prop-row"]');
   const count = await propRows.count();
   expect(count).toBeGreaterThanOrEqual(3);
 
   // Check that prop names are visible
-  const propNames = page.locator(".ComponentDetail__prop-name");
+  const propNames = page.locator('[qa="component-prop-name"]');
   const nameCount = await propNames.count();
   expect(nameCount).toBeGreaterThanOrEqual(3);
 });
@@ -187,7 +183,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -195,7 +191,7 @@ Given(
     }
 
     // Navigate to Page component (root)
-    const pageItem = page.locator(".DesignSystemModal__menu-item", {
+    const pageItem = page.locator('[qa="ds-menu-item"]', {
       hasText: /page/i,
     });
     if (
@@ -203,7 +199,7 @@ Given(
     ) {
       await pageItem.first().click();
     }
-    await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+    await expect(page.locator('[qa="component-name"]')).toBeVisible({
       timeout: 5_000,
     });
   },
@@ -212,18 +208,16 @@ Given(
 Then(
   'the SLOT "content" and its ALLOWED_CHILDREN are shown',
   async ({ page }) => {
-    const childrenList = page.locator(".ComponentDetail__children-list");
+    const childrenList = page.locator('[qa="component-children"]');
     if (
       await childrenList.isVisible({ timeout: 5_000 }).catch(() => false)
     ) {
-      const children = page.locator(".ComponentDetail__children-item");
+      const children = page.locator('[qa="component-child"]');
       const count = await children.count();
       expect(count).toBeGreaterThanOrEqual(2);
     } else {
       // Check for any configuration section showing allowed children
-      const configSection = page.locator(
-        ".ComponentDetail__config-row, [class*='allowed-children']",
-      );
+      const configSection = page.locator('[qa="component-config-row"]');
       await expect(configSection.first()).toBeVisible({ timeout: 5_000 });
     }
   },
@@ -239,7 +233,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -247,7 +241,7 @@ Given(
     }
 
     // Find a component with variant props
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -256,7 +250,7 @@ Given(
       await menuItems.nth(i).click();
       await page.waitForTimeout(500);
 
-      const propSelect = page.locator(".ComponentDetail__prop-row select");
+      const propSelect = page.locator('[qa="component-prop-row"] select');
       if (
         await propSelect.first().isVisible({ timeout: 2_000 }).catch(() => false)
       ) {
@@ -271,7 +265,7 @@ Given(
 When(
   'the user selects "m" for the "size" PROP',
   async ({ page }) => {
-    const select = page.locator(".ComponentDetail__prop-row select").first();
+    const select = page.locator('[qa="component-prop-row"] select').first();
     await expect(select).toBeVisible({ timeout: 5_000 });
     const options = await select.locator("option").allTextContents();
     // Select first available option (may not be exactly "m")
@@ -283,7 +277,7 @@ When(
 );
 
 Then('the PREVIEW updates to show the "m" variant', async ({ page }) => {
-  const frame = page.frameLocator(".ComponentDetail__preview-frame");
+  const frame = page.frameLocator('[qa="component-preview-frame"]');
   await expect(frame.locator("#root")).not.toBeEmpty({ timeout: 10_000 });
 });
 
@@ -297,7 +291,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -305,7 +299,7 @@ Given(
     }
 
     // Find a component with boolean props
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -315,7 +309,7 @@ Given(
       await page.waitForTimeout(500);
 
       const checkbox = page.locator(
-        '.ComponentDetail__prop-row input[type="checkbox"]',
+        '[qa="component-prop-row"] input[type="checkbox"]',
       );
       if (
         await checkbox.first().isVisible({ timeout: 2_000 }).catch(() => false)
@@ -330,7 +324,7 @@ Given(
 
 When('the user toggles the "marker" checkbox', async ({ page }) => {
   const checkbox = page
-    .locator('.ComponentDetail__prop-row input[type="checkbox"]')
+    .locator('[qa="component-prop-row"] input[type="checkbox"]')
     .first();
   await expect(checkbox).toBeVisible({ timeout: 5_000 });
   const isChecked = await checkbox.isChecked();
@@ -341,7 +335,7 @@ When('the user toggles the "marker" checkbox', async ({ page }) => {
 Then(
   "the PREVIEW updates to reflect the new value",
   async ({ page }) => {
-    const frame = page.frameLocator(".ComponentDetail__preview-frame");
+    const frame = page.frameLocator('[qa="component-preview-frame"]');
     await expect(frame.locator("#root")).not.toBeEmpty({ timeout: 10_000 });
   },
 );
@@ -356,7 +350,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -364,7 +358,7 @@ Given(
     }
 
     // Find a component with text props
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -374,7 +368,7 @@ Given(
       await page.waitForTimeout(500);
 
       const textInput = page.locator(
-        '.ComponentDetail__prop-row input[type="text"]',
+        '[qa="component-prop-row"] input[type="text"]',
       );
       if (
         await textInput.first().isVisible({ timeout: 2_000 }).catch(() => false)
@@ -391,7 +385,7 @@ When(
   'the user types "Hello World" into the "text" input',
   async ({ page }) => {
     const textInput = page
-      .locator('.ComponentDetail__prop-row input[type="text"]')
+      .locator('[qa="component-prop-row"] input[type="text"]')
       .first();
     await expect(textInput).toBeVisible({ timeout: 5_000 });
     await textInput.fill("Hello World");
@@ -402,7 +396,7 @@ When(
 Then(
   'the PREVIEW updates to display "Hello World"',
   async ({ page }) => {
-    const frame = page.frameLocator(".ComponentDetail__preview-frame");
+    const frame = page.frameLocator('[qa="component-preview-frame"]');
     const rootText = await frame
       .locator("#root")
       .textContent({ timeout: 10_000 });
@@ -420,7 +414,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -428,7 +422,7 @@ Given(
     }
 
     // Find a component with "ready" status
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -438,7 +432,7 @@ Given(
       await page.waitForTimeout(500);
 
       const statusBadge = await page
-        .locator(".ComponentDetail__status-badge")
+        .locator('[qa="component-status"]')
         .textContent({ timeout: 2_000 })
         .catch(() => "");
       if (statusBadge.trim() === "ready") {
@@ -454,14 +448,14 @@ Then(
   "the user can view the component's React source code",
   async ({ page }) => {
     // Expand React Code section if needed
-    const codeHeader = page.locator(".ComponentDetail__section-header", {
+    const codeHeader = page.locator('[qa="component-section-header"]', {
       hasText: "React Code",
     });
     if (await codeHeader.isVisible().catch(() => false)) {
       await codeHeader.click();
     }
 
-    const codeWrap = page.locator(".ComponentDetail__code-wrap");
+    const codeWrap = page.locator('[qa="component-code"]');
     await expect(codeWrap).toBeVisible({ timeout: 5_000 });
     const editor = codeWrap.locator(".cm-content");
     await expect(editor).not.toBeEmpty({ timeout: 5_000 });
@@ -480,7 +474,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -488,7 +482,7 @@ Given(
     }
 
     // Find a component with "no code" status
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -498,7 +492,7 @@ Given(
       await page.waitForTimeout(500);
 
       const statusBadge = await page
-        .locator(".ComponentDetail__status-badge")
+        .locator('[qa="component-status"]')
         .textContent({ timeout: 2_000 })
         .catch(() => "");
       if (statusBadge.trim() === "no code") {
@@ -511,7 +505,7 @@ Given(
 );
 
 When("the user views the component detail", async ({ page }) => {
-  await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+  await expect(page.locator('[qa="component-name"]')).toBeVisible({
     timeout: 5_000,
   });
 });
@@ -519,7 +513,7 @@ When("the user views the component detail", async ({ page }) => {
 Then(
   "a message indicates that React code is not available",
   async ({ page }) => {
-    const statusBadge = page.locator(".ComponentDetail__status-badge");
+    const statusBadge = page.locator('[qa="component-status"]');
     await expect(statusBadge).toBeVisible({ timeout: 5_000 });
     const text = await statusBadge.textContent();
     expect(text.trim()).toBe("no code");
@@ -536,7 +530,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -547,13 +541,13 @@ Given(
 
 When("the user opens the AI Schema view", async ({ page }) => {
   await page
-    .locator(".DesignSystemModal__menu-item", { hasText: "AI Schema" })
+    .locator('[qa="ds-menu-item"]', { hasText: "AI Schema" })
     .click();
 });
 
 Then("a tree is displayed starting from PAGE", async ({ page }) => {
   await expect(
-    page.locator(".DesignSystemModal__browser-detail"),
+    page.locator('[qa="ds-browser-detail"]'),
   ).toBeVisible({ timeout: 5_000 });
 });
 
@@ -562,7 +556,7 @@ Then(
   async ({ page }) => {
     // The AI Schema view should render the component tree
     await expect(
-      page.locator(".DesignSystemModal__browser-detail"),
+      page.locator('[qa="ds-browser-detail"]'),
     ).toBeVisible();
   },
 );
@@ -582,21 +576,21 @@ Given(
     });
     // Reload page to see the new DS
     await page.reload();
-    await expect(page.locator(".App")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[qa="app"]')).toBeVisible({ timeout: 10_000 });
   },
 );
 
 When("the user views the AI Schema", async ({ page }) => {
   // Open the no-root DS and navigate to AI Schema
   const item = page
-    .locator(".LibrarySelector__item", { hasText: /No-root DS/ })
+    .locator('[qa="library-item"]', { hasText: /No-root DS/ })
     .first();
   if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await item.locator(".LibrarySelector__item-browse").click();
+    await item.locator('[qa="library-browse-btn"]').click();
     await expect(
-      page.locator(".DesignSystemModal"),
+      page.locator('[qa="ds-modal"]'),
     ).toBeVisible({ timeout: 10_000 });
-    const aiSchema = page.locator(".DesignSystemModal__menu-item", {
+    const aiSchema = page.locator('[qa="ds-menu-item"]', {
       hasText: "AI Schema",
     });
     if (await aiSchema.isVisible({ timeout: 3_000 }).catch(() => false)) {
@@ -610,10 +604,8 @@ Then(
   async ({ page }) => {
     // The AI Schema view should show an empty/help message
     await expect(
-      page.locator(".DesignSystemModal__browser-detail, .DesignSystemModal"),
-    )
-      .first()
-      .toBeVisible({ timeout: 5_000 });
+      page.locator('[qa="ds-browser-detail"], [qa="ds-modal"]').first(),
+    ).toBeVisible({ timeout: 5_000 });
   },
 );
 
@@ -622,7 +614,7 @@ Then(
 // ---------------------------------------------------------------------------
 
 When("the user opens the Figma JSON section", async ({ page }) => {
-  const jsonHeader = page.locator(".ComponentDetail__section-header", {
+  const jsonHeader = page.locator('[qa="component-section-header"]', {
     hasText: /Figma JSON/i,
   });
   if (await jsonHeader.isVisible().catch(() => false)) {
@@ -633,12 +625,12 @@ When("the user opens the Figma JSON section", async ({ page }) => {
 
 Then("the Figma JSON is fetched on demand", async ({ page }) => {
   // JSON section should now be expanded
-  await expect(page.locator(".ComponentDetail__name")).toBeVisible();
+  await expect(page.locator('[qa="component-name"]')).toBeVisible();
 });
 
 Then("displayed in a formatted code block", async ({ page }) => {
   const codeBlock = page.locator(
-    ".ComponentDetail pre, .ComponentDetail code, .ComponentDetail .cm-content",
+    '[qa="component-code"] .cm-content, [qa="component-code"] pre, [qa="component-code"] code',
   );
   await expect(codeBlock.first()).toBeVisible({ timeout: 5_000 });
   const text = await codeBlock.first().textContent();
@@ -655,7 +647,7 @@ Given(
     const token = world.authToken || createTestToken();
     if (
       !(await page
-        .locator(".DesignSystemModal__browser")
+        .locator('[qa="ds-browser"]')
         .isVisible()
         .catch(() => false))
     ) {
@@ -663,7 +655,7 @@ Given(
     }
 
     // Find a Component Set
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
     for (let i = 0; i < count; i++) {
       const text = (await menuItems.nth(i).textContent()).trim();
@@ -673,7 +665,7 @@ Given(
       await page.waitForTimeout(500);
 
       const typeBadge = await page
-        .locator(".ComponentDetail__type-badge")
+        .locator('[qa="component-type"]')
         .textContent({ timeout: 2_000 })
         .catch(() => "");
       if (typeBadge.trim() === "Component Set") {
@@ -689,7 +681,7 @@ Then(
   "the Figma JSON for all VARIANTs is shown",
   async ({ page }) => {
     const codeBlock = page.locator(
-      ".ComponentDetail pre, .ComponentDetail code, .ComponentDetail .cm-content",
+      '[qa="component-code"] .cm-content, [qa="component-code"] pre, [qa="component-code"] code',
     );
     if (await codeBlock.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
       const text = await codeBlock.first().textContent();

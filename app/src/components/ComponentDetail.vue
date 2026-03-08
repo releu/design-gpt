@@ -4,16 +4,23 @@
     <!-- Header -->
     <div class="ComponentDetail__header">
       <div class="ComponentDetail__header-row">
-        <div class="ComponentDetail__name">{{ comp.name }}</div>
-        <span class="ComponentDetail__type-badge">{{ typeLabel }}</span>
+        <div class="ComponentDetail__name" qa="component-name">{{ comp.name }}</div>
+        <span class="ComponentDetail__type-badge" qa="component-type">{{ typeLabel }}</span>
         <span
           class="ComponentDetail__status-badge"
+          qa="component-status"
           :class="isReady ? 'ComponentDetail__status-badge_ready' : 'ComponentDetail__status-badge_missing'"
         >{{ isReady ? "ready" : "no code" }}</span>
         <span
           class="ComponentDetail__match-badge"
+          qa="component-visual-diff"
           :class="matchBadgeClass"
         >{{ matchPercent != null ? Math.round(matchPercent) + '% match' : '-' }}</span>
+        <span
+          v-if="matchPercent != null && matchPercent < 95"
+          class="ComponentDetail__match-badge ComponentDetail__match-badge_low"
+          qa="component-low-fidelity"
+        >low fidelity</span>
       </div>
       <div v-if="comp.description" class="ComponentDetail__description">{{ comp.description }}</div>
       <a
@@ -22,19 +29,21 @@
         target="_blank"
         rel="noopener"
         class="ComponentDetail__figma-link"
+        qa="component-figma-link"
       >Open in Figma</a>
+      <button class="ComponentDetail__sync-btn" qa="component-sync-btn" @click="$emit('sync', comp)">sync</button>
     </div>
 
     <!-- Props (interactive) -->
     <div v-if="propRows.length" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" @click="toggleSection('props')">
+      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('props')">
         <span>Props</span>
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.props }">&#9654;</span>
       </div>
       <div v-if="expandedSections.props" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__props">
-          <div v-for="prop in propRows" :key="prop.name" class="ComponentDetail__prop-row">
-            <span class="ComponentDetail__prop-name">{{ prop.name }}</span>
+        <div class="ComponentDetail__props" qa="component-props">
+          <div v-for="prop in propRows" :key="prop.name" class="ComponentDetail__prop-row" qa="component-prop-row">
+            <span class="ComponentDetail__prop-name" qa="component-prop-name">{{ prop.name }}</span>
             <span class="ComponentDetail__prop-info">
               <template v-if="prop.type === 'VARIANT' && prop.values.length">
                 <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
@@ -61,7 +70,7 @@
 
     <!-- Preview (live, only if rendererUrl provided) -->
     <div v-if="rendererUrl" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" @click="toggleSection('preview')">
+      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('preview')">
         <span>Preview</span>
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.preview }">&#9654;</span>
       </div>
@@ -70,6 +79,7 @@
           ref="previewIframe"
           :src="rendererUrl"
           class="ComponentDetail__preview-frame"
+          qa="component-preview-frame"
           @load="onPreviewIframeLoad"
         />
       </div>
@@ -77,22 +87,23 @@
 
     <!-- Configuration (read-only — set via Figma conventions) -->
     <div v-if="comp.is_root || allAllowedChildren.length" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" @click="toggleSection('config')">
+      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('config')">
         <span>Configuration</span>
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.config }">&#9654;</span>
       </div>
       <div v-if="expandedSections.config" class="ComponentDetail__section-body">
-        <div v-if="comp.is_root" class="ComponentDetail__config-row">
-          <span class="ComponentDetail__config-key">Root</span>
+        <div v-if="comp.is_root" class="ComponentDetail__config-row" qa="component-config-row">
+          <span class="ComponentDetail__config-key" qa="component-root-tag">Root</span>
           <span class="ComponentDetail__config-tag ComponentDetail__config-tag_root">yes</span>
         </div>
-        <div v-if="allAllowedChildren.length" class="ComponentDetail__config-row">
+        <div v-if="allAllowedChildren.length" class="ComponentDetail__config-row" qa="component-config-row">
           <span class="ComponentDetail__config-key">Allowed children</span>
-          <div class="ComponentDetail__children-list">
+          <div class="ComponentDetail__children-list" qa="component-children">
             <span
               v-for="child in allAllowedChildren"
               :key="child"
               class="ComponentDetail__children-item ComponentDetail__prop-value"
+              qa="component-child"
             >{{ child }}</span>
           </div>
         </div>
@@ -101,13 +112,26 @@
 
     <!-- React Code -->
     <div v-if="reactCode" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" @click="toggleSection('code')">
+      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('code')">
         <span>React Code</span>
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.code }">&#9654;</span>
       </div>
       <div v-if="expandedSections.code" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__code-wrap">
+        <div class="ComponentDetail__code-wrap" qa="component-code">
           <CodeField :modelValue="reactCode" language="javascript" :readOnly="true" height="300px" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Figma JSON -->
+    <div class="ComponentDetail__section">
+      <div class="ComponentDetail__section-header" qa="component-section-header" @click="loadAndToggleFigmaJson">
+        <span>Figma JSON</span>
+        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.figmaJson }">&#9654;</span>
+      </div>
+      <div v-if="expandedSections.figmaJson" class="ComponentDetail__section-body">
+        <div class="ComponentDetail__code-wrap">
+          <pre class="ComponentDetail__figma-json">{{ figmaJsonText }}</pre>
         </div>
       </div>
     </div>
@@ -118,15 +142,17 @@
 <script>
 export default {
   name: "ComponentDetail",
+  emits: ["sync"],
   props: {
     comp: Object,
     rendererUrl: String,
   },
   data() {
     return {
-      expandedSections: { preview: true, props: true, config: true, code: false },
+      expandedSections: { preview: true, props: true, config: true, code: false, figmaJson: false },
       previewReady: false,
       selectedProps: {},
+      figmaJson: null,
     };
   },
   computed: {
@@ -151,7 +177,7 @@ export default {
     matchBadgeClass() {
       const p = this.matchPercent;
       if (p == null) return "";
-      if (p >= 80) return "ComponentDetail__match-badge_high";
+      if (p >= 95) return "ComponentDetail__match-badge_high";
       if (p >= 50) return "ComponentDetail__match-badge_medium";
       return "ComponentDetail__match-badge_low";
     },
@@ -211,10 +237,35 @@ export default {
     reactCode() {
       return this.comp.default_variant_react_code || this.comp.react_code || null;
     },
+    figmaJsonText() {
+      if (!this.figmaJson) return "Loading…";
+      return JSON.stringify(this.figmaJson, null, 2);
+    },
   },
   methods: {
     toggleSection(name) {
       this.expandedSections[name] = !this.expandedSections[name];
+    },
+    async loadAndToggleFigmaJson() {
+      if (this.expandedSections.figmaJson) {
+        this.expandedSections.figmaJson = false;
+        return;
+      }
+      this.expandedSections.figmaJson = true;
+      if (this.figmaJson) return;
+      const endpoint = this.comp.type === "component_set"
+        ? `/api/component-sets/${this.comp.id}/figma_json`
+        : `/api/components/${this.comp.id}/figma_json`;
+      try {
+        const res = await fetch(endpoint);
+        if (res.ok) {
+          this.figmaJson = await res.json();
+        } else {
+          this.figmaJson = { error: `Failed to load (${res.status})` };
+        }
+      } catch {
+        this.figmaJson = { error: "Network error" };
+      }
     },
     toPropName(name) {
       const clean = name.replace(/[^\w\s-]/g, "").trim();
@@ -362,6 +413,22 @@ export default {
     font: var(--font-text-m);
     color: var(--superdarkgray);
     margin-bottom: 4px;
+  }
+
+  &__sync-btn {
+    display: inline-block;
+    font: var(--font-text-s);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--lightgray);
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 150ms ease;
+
+    &:hover {
+      background: var(--bg-chip-active);
+    }
   }
 
   &__figma-link {
@@ -546,6 +613,17 @@ export default {
     padding: 2px 10px;
     border-radius: 6px;
     background: var(--superlightgray);
+    color: var(--superdarkgray);
+  }
+
+  // Figma JSON
+  &__figma-json {
+    margin: 0;
+    padding: 12px;
+    font: var(--font-text-s);
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
     color: var(--superdarkgray);
   }
 

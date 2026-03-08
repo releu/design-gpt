@@ -3,7 +3,7 @@
     <template #design-selector>
       <div class="MainLayout__design-selector">
         new design
-        <select value="new" @change="onDesignSelect">
+        <select qa="design-selector" value="new" @change="onDesignSelect">
           <option value="new">(+) new design</option>
           <option v-for="d in allDesigns" :key="d.id" :value="String(d.id)">
             {{ d.name || `design #${d.id}` }}
@@ -20,21 +20,24 @@
     </template>
 
     <template #more-button>
-      <button class="MainLayout__more-button MainLayout__more-btn">...</button>
+      <button class="MainLayout__more-button MainLayout__more-btn" qa="export-btn">...</button>
     </template>
 
     <template #preview-selector>
-      <div class="MainLayout__preview-selector MainLayout__switcher">
+      <div class="MainLayout__preview-selector MainLayout__switcher" qa="preview-switcher">
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'phone' }]"
+          qa="switcher-mobile"
           @click="previewMode = 'phone'"
         >phone</div>
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'desktop' }]"
+          qa="switcher-desktop"
           @click="previewMode = 'desktop'"
         >desktop</div>
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'code' }]"
+          qa="switcher-code"
           @click="previewMode = 'code'"
         >code</div>
       </div>
@@ -49,12 +52,12 @@
     </template>
 
     <template #ai-engine>
-      <AIEngineSelector @generate="generateView" />
+      <AIEngineSelector :disabled="!currentDesignSystemId" @generate="generateView" />
     </template>
 
     <template #preview>
-      <div :class="previewPanelClass">
-        <div class="MainLayout__preview-empty">
+      <div :class="previewPanelClass" :qa="previewMode === 'desktop' ? 'preview-panel-desktop' : 'preview-panel-mobile'">
+        <div class="MainLayout__preview-empty" qa="preview-empty">
           <div class="MainLayout__preview-empty-text">preview</div>
         </div>
       </div>

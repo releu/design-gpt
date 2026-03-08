@@ -29,11 +29,12 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 |--------|------|------|-------------|
 | GET | /api/design-systems | Yes | List user's design systems |
 | POST | /api/design-systems | Yes | Create (name + figma_file URLs to import) |
-| GET | /api/design-systems/:id | Yes | Show single design system with its FigmaFiles _(not yet implemented)_ |
-| PATCH | /api/design-systems/:id | Yes | Update name and/or linked FigmaFiles _(not yet implemented)_ |
-| DELETE | /api/design-systems/:id | Yes | Delete design system _(not yet implemented)_ |
-| POST | /api/design-systems/:id/figma-files | Yes | Add a FigmaFile to an existing design system _(not yet implemented)_ |
-| DELETE | /api/design-systems/:id/figma-files/:figma_file_id | Yes | Remove a FigmaFile from a design system _(not yet implemented)_ |
+| GET | /api/design-systems/:id | Yes | Show single design system with its FigmaFiles |
+| PATCH | /api/design-systems/:id | Yes | Update name and/or linked FigmaFiles |
+| DELETE | /api/design-systems/:id | Yes | Delete design system |
+| GET | /api/design-systems/:id/renderer | No | Renderer combining all libraries in this design system |
+| POST | /api/design-systems/:id/figma-files | Yes | Add a FigmaFile to an existing design system |
+| DELETE | /api/design-systems/:id/figma-files/:figma_file_id | Yes | Remove a FigmaFile from a design system |
 
 ### FigmaFiles
 _(URL paths use `/api/component-libraries/` — current code name. Domain name is FigmaFile.)_
@@ -89,7 +90,7 @@ _No feature spec. Status TBD._
 | PATCH | /api/designs/:id | Yes | Update name |
 | DELETE | /api/designs/:id | Yes | Delete |
 | POST | /api/designs/:id/improve | Yes | Chat improvement (new iteration); request body must include full chat history |
-| POST | /api/designs/:id/reset | Yes | Revert design to previous iteration _(not yet implemented)_ |
+| POST | /api/designs/:id/reset | Yes | Revert design to previous iteration |
 | POST | /api/designs/:id/apply/:message_id | Yes | Apply art director comments (route live; feature currently disabled) |
 | POST | /api/designs/:id/duplicate | Yes | Duplicate design |
 | GET | /api/designs/:id/export_image | Yes | Export as PNG |

@@ -7,32 +7,23 @@ node_modules/
 .hats/logs/
 .mcp.json
 
-# Developer dependencies
-developer/api/vendor/
-developer/app/node_modules/
-developer/e2e/node_modules/
+# API
+api/vendor/
+api/.env
+api/tmp/
+api/log/
+api/storage/
+api/public/assets/
+api/public/index.html
+api/public/favicon.ico
 
-# Developer environment
-developer/api/.env
-developer/app/.env
-
-# Developer build artifacts
-developer/e2e/.features-gen/
-developer/e2e/test-results/
-developer/e2e/screenshots/
-developer/api/tmp/
-developer/api/log/
-developer/api/storage/
-developer/api/public/assets/
-developer/api/public/index.html
-developer/api/public/favicon.ico
-
-# Developer vendored/external
-developer/cubes/
-developer/libs/
-developer/figma-plugin-remove-images/
+# App
+app/node_modules/
+app/.env
 
 # QA
-qa/node_modules/
-qa/.features-gen/
-qa/test-results/
+.hats/qa/node_modules/
+.hats/qa/.features-gen/
+.hats/qa/.features-gen-fast/
+.hats/qa/.features-gen-workflow/
+.hats/qa/test-results/

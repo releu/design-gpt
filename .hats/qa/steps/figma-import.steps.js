@@ -32,20 +32,20 @@ async function createDesignSystemViaAPI(request, token, name, figmaFileKeys) {
 // ---------------------------------------------------------------------------
 
 When('the user clicks "New design system"', async ({ page }) => {
-  await page.click(".LibrarySelector__new-ds");
-  await expect(page.locator(".DesignSystemModal")).toBeVisible({
+  await page.click('[qa="new-ds-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).toBeVisible({
     timeout: 10_000,
   });
 });
 
 When("adds one or more FIGMA_FILE URLs", async ({ page }) => {
   page.once("dialog", async (dialog) => await dialog.accept(CUBES_FIGMA_URL));
-  await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
-  await expect(page.locator(".DesignSystemModal__url-text")).toBeVisible();
+  await page.click('[qa="ds-add-figma-btn"]');
+  await expect(page.locator('[qa="ds-url-text"]')).toBeVisible();
 });
 
 When('clicks "import"', async ({ page }) => {
-  await page.click(".DesignSystemModal__do-import");
+  await page.click('[qa="ds-import-btn"]');
 });
 
 Then(
@@ -54,16 +54,14 @@ Then(
     // Wait for any progress indicator inside the modal
     await expect(
       page.locator(
-        ".DesignSystemModal [class*='progress'], .DesignSystemModal [role='progressbar'], .DesignSystemModal__box",
-      ),
-    )
-      .first()
-      .toBeVisible({ timeout: 30_000 });
+        '[qa="ds-modal"] [role="progressbar"], [qa="ds-box"]',
+      ).first(),
+    ).toBeVisible({ timeout: 30_000 });
   },
 );
 
 When("the import finishes", async ({ page }) => {
-  await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
     timeout: 600_000,
   });
 });
@@ -71,8 +69,8 @@ When("the import finishes", async ({ page }) => {
 Then(
   "the new DESIGN_SYSTEM opens for the user to review the imported components",
   async ({ page }) => {
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
-    const items = page.locator(".DesignSystemModal__menu-item");
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+    const items = page.locator('[qa="ds-menu-item"]');
     const count = await items.count();
     expect(count).toBeGreaterThan(2); // Overview + AI Schema + components
   },
@@ -80,7 +78,7 @@ Then(
 
 Then("a success message is shown", async ({ page }) => {
   // After import completes, the browser is visible which is the success state
-  await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -88,8 +86,8 @@ Then("a success message is shown", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 Given("the user is creating a new DESIGN_SYSTEM", async ({ page }) => {
-  await page.click(".LibrarySelector__new-ds");
-  await expect(page.locator(".DesignSystemModal")).toBeVisible();
+  await page.click('[qa="new-ds-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).toBeVisible();
 });
 
 Given(
@@ -99,27 +97,24 @@ Given(
     page.once("dialog", async (dialog) =>
       await dialog.accept(CUBES_FIGMA_URL),
     );
-    await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
-    await page.click(".DesignSystemModal__do-import");
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+    await page.click('[qa="ds-add-figma-btn"]');
+    await page.click('[qa="ds-import-btn"]');
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
       timeout: 600_000,
     });
   },
 );
 
 Then("the DESIGN_SYSTEM opens for review", async ({ page }) => {
-  await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
 });
 
 Then(
   "a list of import errors is shown so the user knows what went wrong",
   async ({ page }) => {
     // Components with errors show "no code" badge in the browser
-    const noCodeBadges = page.locator(
-      ".ComponentDetail__status-badge:has-text('no code')",
-    );
     // At least check that the browser is visible; errors may or may not exist
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
   },
 );
 
@@ -145,7 +140,7 @@ Given(
 Then(
   "all {int} DESIGN_SYSTEMs are shown in the list",
   async ({ page }, count) => {
-    const items = page.locator(".LibrarySelector__item-name");
+    const items = page.locator('[qa="library-item-name"]');
     await expect(async () => {
       const actual = await items.count();
       expect(actual).toBeGreaterThanOrEqual(count);
@@ -171,7 +166,7 @@ Given(
 );
 
 Then("all {int} DESIGN_SYSTEMs are visible", async ({ page }, count) => {
-  const items = page.locator(".LibrarySelector__item-name");
+  const items = page.locator('[qa="library-item-name"]');
   await expect(async () => {
     const actual = await items.count();
     expect(actual).toBeGreaterThanOrEqual(count);
@@ -182,7 +177,7 @@ Then(
   "each one indicates whether it belongs to the current user",
   async ({ page }) => {
     // Verify items are visible and have name text
-    const items = page.locator(".LibrarySelector__item");
+    const items = page.locator('[qa="library-item"]');
     const count = await items.count();
     expect(count).toBeGreaterThan(0);
   },
@@ -242,7 +237,7 @@ Then(
   "a progress bar appears showing the sync progress",
   async ({ page }) => {
     // Sync progress is tracked via API polling; in the UI this shows as modal progress
-    await expect(page.locator(".App")).toBeVisible();
+    await expect(page.locator('[qa="app"]')).toBeVisible();
   },
 );
 
@@ -251,7 +246,7 @@ Then(
   async ({ page }) => {
     // Verify the browser shows components after sync
     // This is validated via the UI when the user opens the DS
-    await expect(page.locator(".App")).toBeVisible();
+    await expect(page.locator('[qa="app"]')).toBeVisible();
   },
 );
 
@@ -269,7 +264,7 @@ When(
 
 Then("a progress bar appears for that file's sync", async ({ page }) => {
   // Sync progress is shown in the modal or via API polling
-  await expect(page.locator(".App")).toBeVisible();
+  await expect(page.locator('[qa="app"]')).toBeVisible();
 });
 
 Then("only that file's components are re-imported", async () => {
@@ -282,10 +277,8 @@ Given(
     // Navigate to the browser and select a component
     // Assumes a DS is already open in the modal
     await expect(
-      page.locator(".DesignSystemModal__browser, .ComponentDetail__name"),
-    )
-      .first()
-      .toBeVisible({ timeout: 10_000 });
+      page.locator('[qa="ds-browser"], [qa="component-name"]').first(),
+    ).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -293,9 +286,7 @@ When(
   "the user triggers a sync for that component",
   async ({ page }) => {
     // Click the sync button on the component detail
-    const syncBtn = page.locator(
-      ".ComponentDetail__sync-btn, .ComponentDetail button:has-text('sync'), .ComponentDetail button:has-text('Sync')",
-    );
+    const syncBtn = page.locator('[qa="component-sync-btn"]');
     if (await syncBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
       await syncBtn.first().click();
     }
@@ -303,13 +294,13 @@ When(
 );
 
 Then("the component is re-imported from Figma", async ({ page }) => {
-  await expect(page.locator(".ComponentDetail__name")).toBeVisible({
+  await expect(page.locator('[qa="component-name"]')).toBeVisible({
     timeout: 30_000,
   });
 });
 
 Then("the updated component details are shown", async ({ page }) => {
-  await expect(page.locator(".ComponentDetail__name")).toBeVisible();
+  await expect(page.locator('[qa="component-name"]')).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -334,13 +325,13 @@ Given(
     if (ds) {
       world.designSystemId = ds.id;
       // Open the DS browser via UI
-      const item = page.locator(".LibrarySelector__item", {
+      const item = page.locator('[qa="library-item"]', {
         hasText: ds.name,
       });
       if (await item.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await item.first().locator(".LibrarySelector__item-browse").click();
+        await item.first().locator('[qa="library-browse-btn"]').click();
         await expect(
-          page.locator(".DesignSystemModal__browser"),
+          page.locator('[qa="ds-browser"]'),
         ).toBeVisible({ timeout: 30_000 });
       }
     }
@@ -352,7 +343,7 @@ Then(
   async ({ page }, _openText, _removeText) => {
     // TODO: endpoint not yet implemented -- DS show/update/delete
     // Check that file names are visible in the overview
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible();
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
   },
 );
 
@@ -386,12 +377,12 @@ Given(
   async ({ page }) => {
     // Open the first DS in the browser for editing
     const browseBtn = page
-      .locator(".LibrarySelector__item-browse")
+      .locator('[qa="library-browse-btn"]')
       .first();
     if (await browseBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await browseBtn.click();
       await expect(
-        page.locator(".DesignSystemModal__browser"),
+        page.locator('[qa="ds-browser"]'),
       ).toBeVisible({ timeout: 30_000 });
     }
   },
@@ -403,14 +394,14 @@ When(
     page.once("dialog", async (dialog) =>
       await dialog.accept(CUBES_FIGMA_URL),
     );
-    await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
-    await expect(page.locator(".DesignSystemModal__url-text")).toBeVisible();
+    await page.click('[qa="ds-add-figma-btn"]');
+    await expect(page.locator('[qa="ds-url-text"]')).toBeVisible();
   },
 );
 
 When("triggers a sync", async ({ page }) => {
   // Click import/sync button
-  const importBtn = page.locator(".DesignSystemModal__do-import");
+  const importBtn = page.locator('[qa="ds-import-btn"]');
   if (await importBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
     await importBtn.click();
   }
@@ -419,7 +410,7 @@ When("triggers a sync", async ({ page }) => {
 Then(
   "the new file is imported alongside the existing files",
   async ({ page }) => {
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
       timeout: 600_000,
     });
   },
@@ -428,7 +419,7 @@ Then(
 Then(
   "the component browser updates with the newly discovered components",
   async ({ page }) => {
-    const items = page.locator(".DesignSystemModal__menu-item");
+    const items = page.locator('[qa="ds-menu-item"]');
     const count = await items.count();
     expect(count).toBeGreaterThan(2);
   },
@@ -455,12 +446,12 @@ Given("a DESIGN_SYSTEM has imported components", async ({ page, request, world }
 When("the user opens the DESIGN_SYSTEM", async ({ page, world }) => {
   if (world.designSystemName) {
     const item = page
-      .locator(".LibrarySelector__item", { hasText: world.designSystemName })
+      .locator('[qa="library-item"]', { hasText: world.designSystemName })
       .first();
     if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await item.locator(".LibrarySelector__item-browse").click();
+      await item.locator('[qa="library-browse-btn"]').click();
       await expect(
-        page.locator(".DesignSystemModal__browser"),
+        page.locator('[qa="ds-browser"]'),
       ).toBeVisible({ timeout: 30_000 });
     }
   }
@@ -469,7 +460,7 @@ When("the user opens the DESIGN_SYSTEM", async ({ page, world }) => {
 Then(
   "COMPONENT_SETs are listed with their names, VARIANTs, and PROPs",
   async ({ page }) => {
-    const items = page.locator(".DesignSystemModal__menu-item");
+    const items = page.locator('[qa="ds-menu-item"]');
     const count = await items.count();
     expect(count).toBeGreaterThan(2);
   },
@@ -477,7 +468,7 @@ Then(
 
 Then("standalone COMPONENTs are listed", async ({ page }) => {
   // Components (non-sets) should also appear in the menu
-  const items = page.locator(".DesignSystemModal__menu-item");
+  const items = page.locator('[qa="ds-menu-item"]');
   const count = await items.count();
   expect(count).toBeGreaterThan(0);
 });
@@ -486,7 +477,7 @@ Then(
   "ROOT components are indicated with their SLOTs and ALLOWED_CHILDREN",
   async ({ page }) => {
     // Iterate to find a root component and check its configuration
-    const menuItems = page.locator(".DesignSystemModal__menu-item");
+    const menuItems = page.locator('[qa="ds-menu-item"]');
     const count = await menuItems.count();
 
     for (let i = 0; i < count; i++) {
@@ -496,14 +487,14 @@ Then(
       await menuItems.nth(i).click();
       await page.waitForTimeout(500);
 
-      const rootBadge = page.locator(".ComponentDetail__config-tag_root");
+      const rootBadge = page.locator('[qa="component-root-tag"]');
       if (await rootBadge.isVisible({ timeout: 1_000 }).catch(() => false)) {
         // Found a root -- verify children list exists
-        const childrenList = page.locator(".ComponentDetail__children-list");
+        const childrenList = page.locator('[qa="component-children"]');
         if (
           await childrenList.isVisible({ timeout: 1_000 }).catch(() => false)
         ) {
-          const children = page.locator(".ComponentDetail__children-item");
+          const children = page.locator('[qa="component-child"]');
           const childCount = await children.count();
           expect(childCount).toBeGreaterThan(0);
         }
@@ -529,7 +520,7 @@ Given(
 );
 
 When("the import completes", async ({ page }) => {
-  await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
     timeout: 600_000,
   });
 });
@@ -538,12 +529,12 @@ Then(
   "the PAGE COMPONENT_SET is marked as a ROOT component",
   async ({ page, world }) => {
     // Navigate to Page component and check root badge
-    const menuItem = page.locator(".DesignSystemModal__menu-item", {
+    const menuItem = page.locator('[qa="ds-menu-item"]', {
       hasText: world.expectedRootName || "Page",
     });
     if (await menuItem.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
       await menuItem.first().click();
-      const rootBadge = page.locator(".ComponentDetail__config-tag_root");
+      const rootBadge = page.locator('[qa="component-root-tag"]');
       await expect(rootBadge).toBeVisible({ timeout: 5_000 });
     }
   },
@@ -560,9 +551,9 @@ Given(
 Then(
   'the component has a SLOT "content" with ALLOWED_CHILDREN [TEXT_COMPONENT, TITLE_COMPONENT]',
   async ({ page }) => {
-    const childrenList = page.locator(".ComponentDetail__children-list");
+    const childrenList = page.locator('[qa="component-children"]');
     await expect(childrenList).toBeVisible({ timeout: 5_000 });
-    const children = page.locator(".ComponentDetail__children-item");
+    const children = page.locator('[qa="component-child"]');
     const count = await children.count();
     expect(count).toBeGreaterThanOrEqual(2);
   },
@@ -572,7 +563,7 @@ Then(
   "the SLOT accepts children in the generated code",
   async ({ page }) => {
     // Check the React code section contains children or slots
-    const codeWrap = page.locator(".ComponentDetail__code-wrap");
+    const codeWrap = page.locator('[qa="component-code"]');
     if (await codeWrap.isVisible({ timeout: 3_000 }).catch(() => false)) {
       const editor = codeWrap.locator(".cm-content");
       const text = await editor.textContent().catch(() => "");
@@ -591,9 +582,9 @@ Given(
 Then(
   "the preferred values become the SLOT's ALLOWED_CHILDREN",
   async ({ page }) => {
-    const childrenList = page.locator(".ComponentDetail__children-list");
+    const childrenList = page.locator('[qa="component-children"]');
     if (await childrenList.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      const children = page.locator(".ComponentDetail__children-item");
+      const children = page.locator('[qa="component-child"]');
       const count = await children.count();
       expect(count).toBeGreaterThan(0);
     }
@@ -603,7 +594,7 @@ Then(
 Then(
   "the component accepts children in the generated code",
   async ({ page }) => {
-    const codeWrap = page.locator(".ComponentDetail__code-wrap");
+    const codeWrap = page.locator('[qa="component-code"]');
     if (await codeWrap.isVisible({ timeout: 3_000 }).catch(() => false)) {
       const editor = codeWrap.locator(".cm-content");
       const text = await editor.textContent().catch(() => "");
@@ -620,7 +611,7 @@ Given(
 );
 
 Then("the component is marked as a VECTOR", async ({ page }) => {
-  const typeBadge = page.locator(".ComponentDetail__type-badge");
+  const typeBadge = page.locator('[qa="component-type"]');
   await expect(typeBadge).toBeVisible({ timeout: 5_000 });
   const text = await typeBadge.textContent();
   expect(text.trim().toLowerCase()).toContain("vector");
@@ -630,7 +621,7 @@ Then("an SVG image is available for it", async ({ page, request, world }) => {
   // Check via API that the component has an SVG
   const token = world.authToken || createTestToken();
   // SVG availability is indicated in the component detail view
-  await expect(page.locator(".ComponentDetail__name")).toBeVisible();
+  await expect(page.locator('[qa="component-name"]')).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -640,17 +631,17 @@ Then("an SVG image is available for it", async ({ page, request, world }) => {
 Given(
   "the user is importing a DESIGN_SYSTEM with an invalid FIGMA_FILE URL",
   async ({ page }) => {
-    await page.click(".LibrarySelector__new-ds");
-    await expect(page.locator(".DesignSystemModal")).toBeVisible();
+    await page.click('[qa="new-ds-btn"]');
+    await expect(page.locator('[qa="ds-modal"]')).toBeVisible();
     page.once("dialog", async (dialog) =>
       await dialog.accept("https://www.figma.com/design/INVALID_KEY/bad-file"),
     );
-    await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
+    await page.click('[qa="ds-add-figma-btn"]');
   },
 );
 
 When("the import runs", async ({ page }) => {
-  await page.click(".DesignSystemModal__do-import");
+  await page.click('[qa="ds-import-btn"]');
   // Wait a bit for the error to appear
   await page.waitForTimeout(5_000);
 });
@@ -660,7 +651,7 @@ Then(
   async ({ page }) => {
     // Check for error message in the modal
     const errorLocator = page.locator(
-      ".DesignSystemModal [class*='error'], .DesignSystemModal [class*='Error'], .DesignSystemModal__box:has-text('error')",
+      '[qa="ds-modal"] [qa="ds-box"]:has-text("error")',
     );
     await expect(errorLocator.first()).toBeVisible({ timeout: 30_000 });
   },
@@ -669,7 +660,7 @@ Then(
 Given(
   "the user opens a DESIGN_SYSTEM after import",
   async ({ page }) => {
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
       timeout: 30_000,
     });
   },
@@ -684,7 +675,7 @@ Given(
 
 Then('those components show a "no code" badge', async ({ page }) => {
   // Iterate components looking for "no code" badges
-  const menuItems = page.locator(".DesignSystemModal__menu-item");
+  const menuItems = page.locator('[qa="ds-menu-item"]');
   const count = await menuItems.count();
 
   for (let i = 0; i < count; i++) {
@@ -695,7 +686,7 @@ Then('those components show a "no code" badge', async ({ page }) => {
     await page.waitForTimeout(500);
 
     const statusBadge = await page
-      .locator(".ComponentDetail__status-badge")
+      .locator('[qa="component-status"]')
       .textContent({ timeout: 2_000 })
       .catch(() => "");
 
@@ -711,9 +702,7 @@ Then(
   "the user can trigger a re-import for individual failed components",
   async ({ page }) => {
     // The sync button on a component detail allows re-import
-    const syncBtn = page.locator(
-      ".ComponentDetail__sync-btn, .ComponentDetail button:has-text('sync'), .ComponentDetail button:has-text('Sync')",
-    );
+    const syncBtn = page.locator('[qa="component-sync-btn"]');
     if (await syncBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
       await expect(syncBtn.first()).toBeEnabled();
     }

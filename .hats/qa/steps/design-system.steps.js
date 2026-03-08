@@ -22,63 +22,61 @@ function authHeaders(token) {
 // ---------------------------------------------------------------------------
 
 When("the user creates a new DESIGN_SYSTEM", async ({ page }) => {
-  await page.click(".LibrarySelector__new-ds");
-  await expect(page.locator(".DesignSystemModal")).toBeVisible({
+  await page.click('[qa="new-ds-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).toBeVisible({
     timeout: 10_000,
   });
 });
 
 When('enters a name "My Design System"', async ({ page }) => {
   await page.fill(
-    ".DesignSystemModal__overview-name-input",
+    '[qa="ds-name-input"]',
     "My Design System",
   );
 });
 
 When("adds a FIGMA_FILE URL", async ({ page }) => {
   page.once("dialog", async (dialog) => await dialog.accept(CUBES_FIGMA_URL));
-  await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
-  await expect(page.locator(".DesignSystemModal__url-text")).toBeVisible();
+  await page.click('[qa="ds-add-figma-btn"]');
+  await expect(page.locator('[qa="ds-url-text"]')).toBeVisible();
 });
 
 Then("the import begins and progress is visible", async ({ page }) => {
-  await page.click(".DesignSystemModal__do-import");
+  await page.click('[qa="ds-import-btn"]');
   // Wait for progress indicator
   await expect(
     page.locator(
-      ".DesignSystemModal [class*='progress'], .DesignSystemModal [role='progressbar'], .DesignSystemModal__box",
-    ),
-  )
-    .first()
-    .toBeVisible({ timeout: 30_000 });
+      '[qa="ds-modal"] [role="progressbar"], [qa="ds-box"]',
+    ).first(),
+  ).toBeVisible({ timeout: 30_000 });
 });
 
 // Note: "the import completes" step is defined in figma-import.steps.js
 // and is shared across features via playwright-bdd's step registry.
 
 Then("the user can browse the imported components", async ({ page }) => {
-  const items = page.locator(".DesignSystemModal__menu-item");
+  const items = page.locator('[qa="ds-menu-item"]');
   const count = await items.count();
   expect(count).toBeGreaterThan(2);
 });
 
 Then("the name is saved automatically", async ({ page }) => {
-  const nameInput = page.locator(".DesignSystemModal__overview-name-input");
+  const nameInput = page.locator('[qa="ds-name-input"]');
   const value = await nameInput.inputValue();
   expect(value.length).toBeGreaterThan(0);
 });
 
 When("the user finishes editing", async ({ page }) => {
-  await page.click(".DesignSystemModal__save-btn");
-  await expect(page.locator(".DesignSystemModal")).not.toBeVisible({
+  await page.click('[qa="ds-save-btn"]');
+  await expect(page.locator('[qa="ds-modal"]')).not.toBeVisible({
     timeout: 5_000,
   });
 });
 
 Then("the DESIGN_SYSTEM appears on the home page", async ({ page }) => {
   await expect(
-    page.locator(".LibrarySelector__item-name"),
-  ).first().toBeVisible({ timeout: 10_000 });
+    page.locator('[qa="library-item-name"]').first(),
+  ).toBeVisible({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -88,27 +86,27 @@ Then("the DESIGN_SYSTEM appears on the home page", async ({ page }) => {
 When(
   "the user creates a DESIGN_SYSTEM with {int} FIGMA_FILEs",
   async ({ page }, fileCount) => {
-    await page.click(".LibrarySelector__new-ds");
-    await expect(page.locator(".DesignSystemModal")).toBeVisible();
+    await page.click('[qa="new-ds-btn"]');
+    await expect(page.locator('[qa="ds-modal"]')).toBeVisible();
 
     const urls = [CUBES_FIGMA_URL, EXAMPLE_LIB_URL].slice(0, fileCount);
 
     for (const url of urls) {
       page.once("dialog", async (dialog) => await dialog.accept(url));
-      await page.click(".DesignSystemModal__source-btn >> text=+ Figma");
+      await page.click('[qa="ds-add-figma-btn"]');
     }
 
-    await page.click(".DesignSystemModal__do-import");
-    await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+    await page.click('[qa="ds-import-btn"]');
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
       timeout: 600_000,
     });
 
     await page.fill(
-      ".DesignSystemModal__overview-name-input",
+      '[qa="ds-name-input"]',
       `Multi-file DS ${Date.now()}`,
     );
-    await page.click(".DesignSystemModal__save-btn");
-    await expect(page.locator(".DesignSystemModal")).not.toBeVisible({
+    await page.click('[qa="ds-save-btn"]');
+    await expect(page.locator('[qa="ds-modal"]')).not.toBeVisible({
       timeout: 5_000,
     });
   },
@@ -153,7 +151,7 @@ Given("the user has {int} DESIGN_SYSTEMs", async ({ request, world }, count) => 
 });
 
 Then("both DESIGN_SYSTEMs are shown", async ({ page }) => {
-  const items = page.locator(".LibrarySelector__item-name");
+  const items = page.locator('[qa="library-item-name"]');
   await expect(async () => {
     const count = await items.count();
     expect(count).toBeGreaterThanOrEqual(2);
@@ -189,11 +187,11 @@ Given(
 
 When('the user opens "Example" for editing', async ({ page, world }) => {
   const item = page
-    .locator(".LibrarySelector__item", { hasText: "Example" })
+    .locator('[qa="library-item"]', { hasText: "Example" })
     .first();
   await expect(item).toBeVisible({ timeout: 10_000 });
-  await item.locator(".LibrarySelector__item-browse").click();
-  await expect(page.locator(".DesignSystemModal__browser")).toBeVisible({
+  await item.locator('[qa="library-browse-btn"]').click();
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
     timeout: 30_000,
   });
 });
@@ -203,10 +201,10 @@ Then(
   async ({ page }) => {
     // Name should be visible in the overview
     await expect(
-      page.locator(".DesignSystemModal__overview-name-input"),
+      page.locator('[qa="ds-name-input"]'),
     ).toBeVisible();
     const name = await page
-      .locator(".DesignSystemModal__overview-name-input")
+      .locator('[qa="ds-name-input"]')
       .inputValue();
     expect(name.length).toBeGreaterThan(0);
   },
@@ -218,20 +216,20 @@ When(
     // TODO: DS update endpoint not yet implemented
     // Edit the name via the UI
     await page.fill(
-      ".DesignSystemModal__overview-name-input",
+      '[qa="ds-name-input"]',
       "Example Updated",
     );
   },
 );
 
 When("clicks save", async ({ page }) => {
-  await page.click(".DesignSystemModal__save-btn");
+  await page.click('[qa="ds-save-btn"]');
 });
 
 Then("the changes are persisted", async ({ page }) => {
   // TODO: DS update endpoint not yet implemented
   // Verify modal closes (save was accepted)
-  await expect(page.locator(".DesignSystemModal")).not.toBeVisible({
+  await expect(page.locator('[qa="ds-modal"]')).not.toBeVisible({
     timeout: 5_000,
   });
 });

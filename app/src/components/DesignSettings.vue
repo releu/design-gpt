@@ -1,5 +1,5 @@
 <template>
-  <div class="DesignSettings">
+  <div class="DesignSettings" qa="settings-panel">
     <div class="DesignSettings__menu">
       <div v-if="loading" class="DesignSettings__loading">Loading…</div>
       <template v-for="lib in libraries" :key="lib.id">

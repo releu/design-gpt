@@ -25,9 +25,9 @@ The visual diff appears as an expandable section within the ComponentDetail view
 ### Collapsed State
 
 - **Section label**: "visual diff" -- black- **Match badge**: Pill-shaped badge showing the percentage
-  - High match (80-100%): Badge with green-tinted or neutral styling
-  - Medium match (50-79%): Badge with amber/yellow-tinted styling
-  - Low match (0-49%): Badge with red-tinted styling
+  - High fidelity (95-100%): Badge with green-tinted styling
+  - Low fidelity (80-94%): Badge with amber/yellow-tinted styling
+  - Very low fidelity (0-79%): Badge with red-tinted styling
   - No data: Badge shows "no diff" in darkgray
 - **Expand indicator**: Chevron or arrow indicating the section is collapsible
 
@@ -52,12 +52,16 @@ The visual diff appears as an expandable section within the ComponentDetail view
 
 ### Match Badge Styling
 
-| Range      | Background              | Text color     |
-|------------|-------------------------|----------------|
-| 80-100%    | `#E8F5E9` (light green) | `#2E7D32`      |
-| 50-79%     | `#FFF8E1` (light amber) | `#F57F17`      |
-| 0-49%      | `#FFEBEE` (light red)   | `#C62828`      |
-| No data    | fill      | darkgray |
+Per the spec (`09-visual-diff.feature`), components below **95%** are highlighted as low fidelity. Components at or above 95% are not highlighted.
+
+| Range      | Background              | Text color     | Meaning        |
+|------------|-------------------------|----------------|----------------|
+| 95-100%    | `#E8F5E9` (light green) | `#2E7D32`      | High fidelity  |
+| 80-94%     | `#FFF8E1` (light amber) | `#F57F17`      | Low fidelity (highlighted in component list) |
+| 0-79%      | `#FFEBEE` (light red)   | `#C62828`      | Very low fidelity (highlighted in component list) |
+| No data    | fill      | darkgray | No diff available |
+
+In the component browser list, components below 95% show a small colored dot or badge next to their name to draw attention.
 
 Note: These colors are an exception to the warm monochrome palette, used specifically for status indication in the visual diff context. They follow standard traffic-light conventions for quick scanning.
 

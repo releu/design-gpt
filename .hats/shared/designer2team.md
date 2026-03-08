@@ -126,3 +126,36 @@ Used Figma MCP to fetch the frame/node structure and mapped each frame to its de
 - `01-global-design-system.md` and `10-figma-export-popup.md` → kept at `0-1` (no dedicated frame)
 
 ---
+
+## 7 2026-03-07T10:00 -- Designer
+
+Re: Gap analysis pass -- 3 design files updated for full spec coverage
+
+Compared all 10 current feature specs against the 10 existing design files. Found and closed 4 minor coverage gaps:
+
+### Updated Files (3)
+
+1. **`05-design-page.md`** -- Added "Reset / Revert button on iteration messages" section to the Chat Panel. Each AI response message has a reset link that reverts the design to that iteration's code and preview. Covers `05-design-generation.feature` "Reset JSX to a previous ITERATION" scenario.
+
+2. **`06-design-system-modal.md`** -- Three additions:
+   - Added **Figma JSON section** to ComponentDetail view: collapsible, fetched on demand, formatted code block, shows all variants for component sets. Covers `08-component-library-browser.feature` Figma JSON scenarios.
+   - Added **import errors summary** state: error list at top of overview after failed import, with clickable component names linking to their detail. Covers `03-figma-import.feature` "Import finishes with errors" scenario.
+   - Added **re-import action** on "no code" components: link in component detail header to retry import of individual failed components. Covers `03-figma-import.feature` "Individual component errors" scenario.
+
+3. **`09-visual-diff-overlay.md`** -- Updated match badge thresholds to use **95%** as the fidelity cutoff (was 80%). Components below 95% are now highlighted as low fidelity in the component browser list. Covers `09-visual-diff.feature` "Components below 95% are highlighted" scenario.
+
+### Coverage Summary
+
+All 10 feature specs now have complete design coverage:
+- `01-authentication` -- `03-authentication-screen.md`
+- `02-health-check` -- no UI (infrastructure only)
+- `03-figma-import` -- `06-design-system-modal.md`
+- `04-design-system-management` -- `06-design-system-modal.md` + `08-ai-schema-view.md`
+- `05-design-generation` -- `04-home-new-design.md` + `05-design-page.md`
+- `06-design-improvement` -- `05-design-page.md`
+- `07-design-management` -- `05-design-page.md` + `10-figma-export-popup.md`
+- `08-component-library-browser` -- `06-design-system-modal.md` + `09-visual-diff-overlay.md`
+- `09-visual-diff` -- `09-visual-diff-overlay.md`
+- `10-complex-figma-compatibility` -- validation/backend, no UI needed
+
+---

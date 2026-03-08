@@ -1,5 +1,5 @@
 <template>
-  <div class="LibrarySelector">
+  <div class="LibrarySelector" qa="library-selector">
     <div class="LibrarySelector__label">design system</div>
     <div class="LibrarySelector__list">
       <div
@@ -7,12 +7,13 @@
         v-for="lib in fileList"
         :key="lib.id"
         @click="$emit('update:modelValue', lib.id)"
+        qa="library-item"
       >
-        <div class="LibrarySelector__item-name">{{ lib.name || 'Unnamed' }}</div>
-        <div class="LibrarySelector__item-browse" @click.stop="openDesignSystem(lib)">edit</div>
+        <div class="LibrarySelector__item-name" qa="library-item-name">{{ lib.name || 'Unnamed' }}</div>
+        <div class="LibrarySelector__item-browse" qa="library-browse-btn" @click.stop="openDesignSystem(lib)">edit</div>
       </div>
     </div>
-    <div class="LibrarySelector__new-ds" @click="showModal = true">new</div>
+    <div class="LibrarySelector__new-ds" qa="new-ds-btn" @click="showModal = true">new design system</div>
 
     <DesignSystemModal v-if="showModal" :designSystem="editingDS" @close="showModal = false; editingDS = null" @saved="onSaved" />
   </div>

@@ -1,3 +1,67 @@
+## [8] 2026-03-07T22:30 -- CTO
+
+Re: API keys policy -- real keys are available for dev and testing
+
+**All external API keys (FIGMA_ACCESS_TOKEN, OPENAI_API_KEY) are configured in the test environment.** Do not assume they are missing. Do not categorize test failures as "environment-dependent" or "needs API key" without actually verifying that the key is absent.
+
+We use real API keys for development and E2E testing. The cost of API calls is acceptable -- we need to test full functionality end-to-end, including Figma import and AI generation. Skipping or writing off test failures as "needs API key" hides real bugs.
+
+**For QA**: When tests fail, investigate the actual error. If a test times out or returns an unexpected response, the root cause is likely a code bug or selector mismatch, not a missing key.
+
+**For Developer**: Do not add "skip if no API key" guards to tests. All integration paths should be exercised.
+
+---
+
+## [7] 2026-03-07T12:00 -- CTO
+
+Re: Stack docs audit and update -- api.md, stack.md, setup.md refreshed for current state
+
+### 1. api.md -- removed stale "not yet implemented" markers
+
+The following endpoints were marked as not yet implemented but now exist in `routes.rb`:
+- `GET /api/design-systems/:id` (show)
+- `PATCH /api/design-systems/:id` (update)
+- `DELETE /api/design-systems/:id` (destroy)
+- `POST /api/design-systems/:id/figma-files` (add figma file)
+- `DELETE /api/design-systems/:id/figma-files/:id` (remove figma file)
+- `POST /api/designs/:id/reset` (revert iteration)
+- `GET /api/design-systems/:id/renderer` (added -- was missing from catalog entirely)
+
+All "not yet implemented" markers have been removed.
+
+### 2. stack.md -- accuracy fixes
+
+- **Procfile note removed**: The stale warning about `developer/api` paths was still in stack.md but the Procfile itself was already fixed.
+- **Component list updated**: Added 17 missing Vue components to the Project Structure section (AIEngineSelector, AiSchemaView, AiSchemaNode, Button, CodeField, ComponentCard, ComponentStatusBadge, Loader, Logo, Menu, ProgressBar, Section, SectionHeader, Select, Snippet, VisualDiffOverlay, OnboardingStepOrganize).
+- **Controller list updated**: Added `DesignSystemFigmaFilesController` (handles nested figma-files routes), alphabetized list.
+- **Font reference updated**: Now reflects Suisse Int'l (@font-face "suiss") with system stack fallback + Menlo for code.
+
+### 3. setup.md -- created
+
+New file with:
+- Prerequisites (Ruby 3.3.9, Node 20+, PostgreSQL 16+, Caddy)
+- Install, database setup, clean rebuild instructions
+- All environment variables for backend and frontend
+- Dev server startup (`make dev`)
+- Test commands (unit, E2E fast/workflow, render validation)
+- Heroku deployment notes (Procfile processes)
+
+### 4. Feature spec count: 10 files
+
+Current feature specs (down from 18): 01-authentication, 02-health-check, 03-figma-import, 04-design-system-management, 05-design-generation, 06-design-improvement, 07-design-management, 08-component-library-browser, 09-visual-diff, 10-complex-figma-compatibility.
+
+Deleted: 09-custom-components (was), 10-visual-diff (renumbered), 11-onboarding-wizard, 12-preview-rendering, 13-component-rendering-validation, 14-ai-task-pipeline, 15-component-svg-assets, 16-figma-json-inspection, 17-image-search, 18-ui-layout-and-design-system.
+
+### 5. No stack changes
+
+The technology stack remains the same. Rails 8 API + Vue 3 frontend + PostgreSQL + Auth0 + Heroku. No new dependencies needed for the current feature set.
+
+### Note for Developer
+
+The Makefile `test-e2e`, `test-render`, and `test-render-fresh` targets still reference `cd e2e &&` but primary E2E tests live in `.hats/qa/`. These Make targets may need updating if the legacy `e2e/` directory is removed.
+
+---
+
 ## [6] 2026-03-06T17:00 -- CTO
 
 Re: Unimplemented endpoints — Developer action required

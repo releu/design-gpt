@@ -4,7 +4,7 @@
     <template #design-selector>
       <div class="MainLayout__design-selector MainLayout__history" v-if="design">
         {{ design.name || `design #${id}` }}
-        <select :value="id" @change="onDesignSelect">
+        <select qa="design-selector" :value="id" @change="onDesignSelect">
           <option value="new">(+) new design</option>
           <option v-for="d in allDesigns" :key="d.id" :value="String(d.id)">
             {{ d.name || `design #${d.id}` }}
@@ -22,6 +22,7 @@
         >chat</div>
         <div
           :class="['MainLayout__mode-item MainLayout__switcher-item', { 'MainLayout__mode-item_active MainLayout__switcher-item_active': panelMode === 'settings' }]"
+          qa="switcher-settings"
           @click="panelMode = 'settings'"
         >settings</div>
       </div>
@@ -29,29 +30,35 @@
 
     <!-- More button -->
     <template #more-button>
-      <button class="MainLayout__more-button MainLayout__more-btn" @click.stop="showExportMenu = !showExportMenu">
+      <button class="MainLayout__more-button MainLayout__more-btn" qa="export-btn" @click.stop="showExportMenu = !showExportMenu">
         ...
-        <div v-if="showExportMenu" class="MainLayout__export-dropdown">
-          <div class="MainLayout__export-item" @click="exportReact">Download React project</div>
-          <div class="MainLayout__export-item" @click="exportImage">Download image</div>
-          <div class="MainLayout__export-item" @click="exportFigma">Figma (alpha)</div>
+        <div v-if="showExportMenu" class="MainLayout__export-dropdown" qa="export-menu">
+          <template v-if="code">
+            <div class="MainLayout__export-item" @click="exportReact">Download React project</div>
+            <div class="MainLayout__export-item" @click="exportImage">Download image</div>
+            <div class="MainLayout__export-item" @click="exportFigma">Figma (alpha)</div>
+          </template>
+          <div v-else class="MainLayout__export-item MainLayout__export-item_disabled">No preview available</div>
         </div>
       </button>
     </template>
 
     <!-- Preview selector -->
     <template #preview-selector>
-      <div class="MainLayout__preview-selector MainLayout__switcher">
+      <div class="MainLayout__preview-selector MainLayout__switcher" qa="preview-switcher">
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'mobile' }]"
+          qa="switcher-mobile"
           @click="viewMode = 'mobile'"
         >phone</div>
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'desktop' }]"
+          qa="switcher-desktop"
           @click="viewMode = 'desktop'"
         >desktop</div>
         <div
           :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'code' }]"
+          qa="switcher-code"
           @click="viewMode = 'code'"
         >code</div>
       </div>
@@ -65,6 +72,7 @@
         :designId="id"
         :generating="design && design.status === 'generating'"
         @sent="fetchDesign"
+        @reset="resetToIteration"
       />
       <DesignSettings
         v-else-if="panelMode === 'settings' && design"
@@ -87,8 +95,12 @@
       <div
         v-if="viewMode === 'mobile' || viewMode === 'code'"
         class="MainLayout__preview-panel MainLayout__preview-panel_mobile"
+        qa="preview-panel-mobile"
       >
-        <div class="MainLayout__preview-empty" v-if="!code">
+        <div class="MainLayout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
+          <div class="MainLayout__preview-empty-text">Generation failed. Send a new message to retry.</div>
+        </div>
+        <div class="MainLayout__preview-empty" qa="preview-empty" v-else-if="!code">
           <div class="MainLayout__preview-empty-text">preview</div>
         </div>
         <Preview
@@ -101,8 +113,12 @@
       <div
         v-else
         class="MainLayout__preview-panel MainLayout__preview-panel_desktop"
+        qa="preview-panel-desktop"
       >
-        <div class="MainLayout__preview-empty" v-if="!code">
+        <div class="MainLayout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
+          <div class="MainLayout__preview-empty-text">Generation failed. Send a new message to retry.</div>
+        </div>
+        <div class="MainLayout__preview-empty" qa="preview-empty" v-else-if="!code">
           <div class="MainLayout__preview-empty-text">preview</div>
         </div>
         <Preview
@@ -246,6 +262,17 @@ export default {
     exportFigma() {
       this.showExportMenu = false;
       // Figma plugin pairing
+    },
+    async resetToIteration(iterationId) {
+      const token = await this.getAccessTokenSilently({
+        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
+      });
+      await fetch(`/api/designs/${this.id}/reset`, {
+        method: "POST",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      this.fetchDesign();
     },
   },
   mounted() {

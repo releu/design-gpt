@@ -1,8 +1,9 @@
 <template>
-  <div class="Prompt">
+  <div class="Prompt" qa="prompt">
     <div class="Prompt__label">prompt</div>
     <textarea
       class="Prompt__field"
+      qa="prompt-field"
       :value="modelValue"
       @input="$emit('update:modelValue', $event.target.value)"
       placeholder="describe what you want to create"

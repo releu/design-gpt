@@ -1,33 +1,41 @@
 <template>
-  <div class="ChatPanel">
-    <div class="ChatPanel__messages" ref="messagesList">
+  <div class="ChatPanel" qa="chat-panel">
+    <div class="ChatPanel__messages" qa="chat-messages" ref="messagesList">
       <div class="ChatPanel__messages-spacer" />
       <div
         v-for="msg in messages"
         :key="msg.id"
         :class="['ChatPanel__message', `ChatPanel__message_${msg.author}`]"
+        :qa="msg.author === 'user' ? 'chat-message-user' : 'chat-message-ai'"
       >
         <div class="ChatPanel__message-body" v-html="msg.html || msg.content || msg.body || ''" />
+        <div
+          v-if="msg.author === 'designer' && msg.iteration_id"
+          class="ChatPanel__reset-btn"
+          @click="$emit('reset', msg.iteration_id)"
+        >revert to this version</div>
       </div>
     </div>
     <div class="ChatPanel__input-area">
       <input
         type="text"
         class="ChatPanel__input"
+        qa="chat-input"
         v-model="inputText"
         placeholder="Type a message..."
         :disabled="sending || generating"
         @keydown="onKeydown"
       />
-      <div
+      <button
         class="ChatPanel__send"
-        :class="{ 'ChatPanel__send_disabled': !canSend }"
+        qa="chat-send"
+        :disabled="!canSend"
         @click="send"
       >
         <svg class="ChatPanel__send-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M1 13L13 7L1 1V5.5L8 7L1 8.5V13Z" fill="currentColor"/>
         </svg>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -49,7 +57,7 @@ export default {
       default: false,
     },
   },
-  emits: ["sent"],
+  emits: ["sent", "reset"],
   data() {
     return {
       inputText: "",
@@ -182,6 +190,17 @@ export default {
     overflow-wrap: break-word;
   }
 
+  &__reset-btn {
+    font: var(--font-text-s);
+    color: var(--gray);
+    cursor: pointer;
+    margin-top: 4px;
+
+    &:hover {
+      color: var(--orange);
+    }
+  }
+
   /* Input bar: pill-shaped, light gray bg */
   &__input-area {
     flex-shrink: 0;
@@ -216,10 +235,14 @@ export default {
 
   /* Send button: solid black circle */
   &__send {
+    position: relative;
+    z-index: 1;
     width: 32px;
     height: 32px;
     min-width: 32px;
     border-radius: 50%;
+    border: none;
+    padding: 0;
     background: var(--accent-primary);
     display: flex;
     align-items: center;
@@ -232,7 +255,7 @@ export default {
       transform: scale(0.9);
     }
 
-    &_disabled {
+    &:disabled {
       opacity: 0.3;
       cursor: default;
       pointer-events: none;
