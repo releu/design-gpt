@@ -63,30 +63,6 @@
       </div>
     </template>
 
-    <template #overlay>
-      <div
-        class="MainLayout__overlay"
-        v-if="showFigmaImport"
-        @click="hideOverlay"
-      >
-        <div class="MainLayout__import" @click.stop>
-          <div class="MainLayout__import-title">
-            Copy & Paste url to the Figma file
-          </div>
-          <div class="MainLayout__import-field">
-            <input
-              name="figma"
-              v-model="importFigmaFileUrl"
-              placeholder="https://figma.com/..."
-              required
-            />
-          </div>
-          <div class="MainLayout__import-button" @click="importFigmaFile">
-            Import
-          </div>
-        </div>
-      </div>
-    </template>
   </MainLayout>
 </template>
 
@@ -103,8 +79,6 @@ export default {
       prompt: "",
       allDesigns: [],
       currentDesignSystemId: null,
-      importFigmaFileUrl: "",
-      showFigmaImport: false,
       designSystems: [],
       previewMode: "phone",
     };
@@ -154,29 +128,6 @@ export default {
       if (data.id) {
         this.$router.push({ name: "design", params: { id: data.id } });
       }
-    },
-    hideOverlay() {
-      this.showFigmaImport = false;
-    },
-    async importFigmaFile() {
-      if (this.importFigmaFileUrl.length === 0) {
-        return;
-      }
-
-      const token = await this.getAccessTokenSilently({
-        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
-      });
-      fetch(`/api/component-libraries`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: this.importFigmaFileUrl,
-        }),
-      });
     },
     async refreshDesignSystems() {
       const token = await this.getAccessTokenSilently({

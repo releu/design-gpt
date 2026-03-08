@@ -25,14 +25,11 @@ class AiRequestJob < ApplicationJob
       i = Iteration.find(iteration_id)
       m = ChatMessage.find(message_id)
 
-      case action
-      when :set_jsx
+      if action == :set_jsx
         i.update!(jsx: task.jsx)
         m.update!(state: "completed", message: "Done. Version ##{i.id}")
         i.design.update!(status: "ready")
         i.design.render_last_iteration
-      when :post_design_review
-        m.update!(state: "completed", message: task.text_response)
       end
     end
   rescue => e

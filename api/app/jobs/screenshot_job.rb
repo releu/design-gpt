@@ -37,8 +37,6 @@ class ScreenshotJob < ApplicationJob
     render = Render.create!(:image => File.read(tmp.path))
     iteration.update(:render => render)
 
-    # Art director review disabled for now
-    # iteration.design.analyze_last_render
   ensure
     page&.close
     browser&.quit

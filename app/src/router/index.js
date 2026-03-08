@@ -2,8 +2,6 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import HomeView from "../views/HomeView.vue";
 import DesignView from "../views/DesignView.vue";
-import LibrariesView from "../views/LibrariesView.vue";
-import LibraryDetailView from "../views/LibraryDetailView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,17 +15,6 @@ const router = createRouter({
       path: "/designs/:id",
       name: "design",
       component: DesignView,
-      props: true,
-    },
-    {
-      path: "/libraries",
-      name: "libraries",
-      component: LibrariesView,
-    },
-    {
-      path: "/libraries/:id",
-      name: "library_detail",
-      component: LibraryDetailView,
       props: true,
     },
   ],

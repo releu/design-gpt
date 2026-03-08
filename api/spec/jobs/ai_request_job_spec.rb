@@ -30,19 +30,6 @@ RSpec.describe AiRequestJob, type: :job do
     }
   end
 
-  let(:review_response) do
-    {
-      "output" => [
-        {
-          "type" => "message",
-          "content" => [
-            { "text" => '{"verdict":"ok","feedback":"Looks good!"}' }
-          ]
-        }
-      ]
-    }
-  end
-
   describe "#perform with :set_jsx action" do
     it "updates iteration with generated JSX" do
       task = AiTask.create!(payload: { model: "gpt-5" })
@@ -112,21 +99,6 @@ RSpec.describe AiRequestJob, type: :job do
       expect(design.reload.status).to eq("error")
       expect(task.reload.state).to eq("error")
       expect(designer_message.reload.message).to include("Generation failed")
-    end
-  end
-
-  describe "#perform with :post_design_review action" do
-    it "updates chat message with review text" do
-      task = AiTask.create!(payload: { model: "gpt-5" })
-
-      stub_request(:post, "https://api.openai.com/v1/responses")
-        .to_return(status: 200, body: review_response.to_json, headers: { "Content-Type" => "application/json" })
-
-      AiRequestJob.perform_now(task.id, iteration.id, designer_message.id, :post_design_review)
-
-      designer_message.reload
-      expect(designer_message.state).to eq("completed")
-      expect(designer_message.message).to include("verdict")
     end
   end
 

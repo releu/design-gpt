@@ -79,7 +79,6 @@ export default {
           authorizationParams: { audience: this.AUDIENCE, scope: this.SCOPE },
         });
         this.authorized = true;
-        this.checkOnboardingRedirect(token);
       } catch (e) {
         console.error("token check failed:", e);
         this.authorized = false;
@@ -105,8 +104,6 @@ export default {
         }
       }
     },
-
-    checkOnboardingRedirect() {},
 
     handleLogin() {
       this.$auth0.loginWithRedirect({
