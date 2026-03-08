@@ -11,9 +11,6 @@
       <template v-if="phase === 'add'">
         <div class="DesignSystemModal__source-btns">
           <div class="DesignSystemModal__source-btn" qa="ds-add-figma-btn" @click="addFigmaUrl">+ Figma</div>
-          <div class="DesignSystemModal__source-btn DesignSystemModal__source-btn_disabled">
-            + React
-          </div>
         </div>
 
         <div class="DesignSystemModal__url-list" v-if="pendingUrls.length">
@@ -140,25 +137,12 @@
                 @sync="syncComponent"
               />
 
-              <!-- Interactive configuration -->
-              <div class="DesignSystemModal__config">
-                <div class="DesignSystemModal__root-toggle">
-                  <label>
-                    <input type="checkbox" :checked="selectedItem.is_root" @change="toggleRoot" />
-                    Root component
-                  </label>
-                </div>
-
-                <div class="DesignSystemModal__children-section">
+              <!-- Read-only configuration (auto-detected from Figma) -->
+              <div class="DesignSystemModal__config" v-if="selectedItem.is_root || selectedItemChildren.length">
+                <div v-if="selectedItem.is_root" class="DesignSystemModal__root-badge">Root component</div>
+                <div v-if="selectedItemChildren.length" class="DesignSystemModal__children-section">
                   <div class="DesignSystemModal__children-label">Allowed children</div>
-                  <div class="DesignSystemModal__children-controls">
-                    <select class="DesignSystemModal__children-select" v-model="childToAdd">
-                      <option value="" disabled>Select component…</option>
-                      <option v-for="name in availableChildNames" :key="name" :value="name">{{ name }}</option>
-                    </select>
-                    <div class="DesignSystemModal__children-add" @click="addChild">Add</div>
-                  </div>
-                  <div class="DesignSystemModal__children-list" v-if="selectedItemChildren.length">
+                  <div class="DesignSystemModal__children-list">
                     <div
                       v-for="child in selectedItemChildren"
                       :key="child"
@@ -212,7 +196,6 @@ export default {
       saving: false,
       syncing: false,
       designSystemName: "",
-      childToAdd: "",
     };
   },
   computed: {
@@ -252,15 +235,6 @@ export default {
     selectedItemChildren() {
       if (!this.selectedItem || typeof this.selectedItem === "string") return [];
       return (this.selectedItem.slots || []).flatMap((s) => s.allowed_children || []);
-    },
-    availableChildNames() {
-      const names = new Set();
-      for (const lib of this.libraries) {
-        for (const comp of lib.components) {
-          names.add(comp.name);
-        }
-      }
-      return [...names].filter((n) => !this.selectedItemChildren.includes(n)).sort();
     },
   },
   watch: {
@@ -470,61 +444,6 @@ export default {
         this.$emit("saved");
       } finally {
         this.saving = false;
-      }
-    },
-    configEndpoint(comp) {
-      if (comp.type === "component_set") {
-        return { url: `/api/component-sets/${comp.id}`, key: "component_set" };
-      }
-      return { url: `/api/components/${comp.id}`, key: "component" };
-    },
-    async toggleRoot() {
-      const comp = this.selectedItem;
-      if (!comp) return;
-      comp.is_root = !comp.is_root;
-      const { url, key } = this.configEndpoint(comp);
-      try {
-        const token = await this.getToken();
-        await fetch(url, {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            [key]: { is_root: comp.is_root, slots: comp.slots || [] },
-          }),
-        });
-      } catch {
-        comp.is_root = !comp.is_root;
-      }
-    },
-    async addChild() {
-      const comp = this.selectedItem;
-      if (!comp || !this.childToAdd) return;
-      const name = this.childToAdd;
-      if (!comp.slots || !comp.slots.length) {
-        comp.slots = [{ name: "children", allowed_children: [] }];
-      }
-      comp.slots[0].allowed_children.push(name);
-      this.childToAdd = "";
-      const { url, key } = this.configEndpoint(comp);
-      try {
-        const token = await this.getToken();
-        await fetch(url, {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            [key]: { is_root: comp.is_root, slots: comp.slots },
-          }),
-        });
-      } catch {
-        comp.slots[0].allowed_children = comp.slots[0].allowed_children.filter((c) => c !== name);
       }
     },
     isSelected(comp) {
@@ -1071,23 +990,14 @@ export default {
     border-top: 1px solid var(--superlightgray);
   }
 
-  &__root-toggle {
-    margin-bottom: 12px;
-
-    label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font: var(--font-text-m);
-      cursor: pointer;
-    }
-
-    input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--orange);
-      cursor: pointer;
-    }
+  &__root-badge {
+    font: var(--font-text-s);
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: var(--superlightgray);
+    color: var(--superdarkgray);
+    display: inline-block;
+    margin-bottom: 8px;
   }
 
   &__children-section {
@@ -1097,40 +1007,6 @@ export default {
   &__children-label {
     font: var(--font-bold-m);
     margin-bottom: 8px;
-  }
-
-  &__children-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  &__children-select {
-    font: var(--font-text-m);
-    padding: 6px 10px;
-    border: 1px solid var(--lightgray);
-    border-radius: 8px;
-    background: white;
-    outline: none;
-    flex: 1;
-
-    &:focus {
-      border-color: var(--orange);
-    }
-  }
-
-  &__children-add {
-    padding: 6px 16px;
-    border: 1px solid var(--lightgray);
-    border-radius: 8px;
-    font: var(--font-text-m);
-    cursor: pointer;
-    white-space: nowrap;
-
-    &:hover {
-      background: var(--superlightgray);
-    }
   }
 
   &__children-list {

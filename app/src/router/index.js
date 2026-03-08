@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from "vue-router";
 
 import HomeView from "../views/HomeView.vue";
 import DesignView from "../views/DesignView.vue";
-import OnboardingView from "../views/OnboardingView.vue";
 import LibrariesView from "../views/LibrariesView.vue";
 import LibraryDetailView from "../views/LibraryDetailView.vue";
 
@@ -19,11 +18,6 @@ const router = createRouter({
       name: "design",
       component: DesignView,
       props: true,
-    },
-    {
-      path: "/onboarding",
-      name: "onboarding",
-      component: OnboardingView,
     },
     {
       path: "/libraries",

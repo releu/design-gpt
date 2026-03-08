@@ -28,6 +28,6 @@ class ComponentSetsController < ApplicationController
   private
 
   def component_set_params
-    params.require(:component_set).permit(:is_root, slots: [:name, allowed_children: []])
+    params.require(:component_set).permit(:name)
   end
 end

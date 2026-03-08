@@ -23,9 +23,6 @@ class Design < ApplicationRecord
     design_last_iteration
   end
 
-  def apply_art_director_comments(comment_id)
-  end
-
   def improve(prompt)
     update!(status: "generating")
 
@@ -58,19 +55,6 @@ class Design < ApplicationRecord
 
   def render_last_iteration
     ScreenshotJob.perform_later(iterations.last.id)
-  end
-
-  def analyze_last_render
-    i = iterations.last
-    task = ArtDirector.new(self).analyze
-
-    m = chat_messages.create! do |m|
-      m.author = "art_director"
-      m.message = ""
-      m.state = "thinking"
-    end
-
-    AiRequestJob.perform_later(task.id, i.id, m.id, :post_design_review)
   end
 
   def create_new_iteration(text)

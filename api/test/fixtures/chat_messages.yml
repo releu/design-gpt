@@ -9,9 +9,3 @@ designer_message:
   author: designer
   message: "Here is the landing page design"
   state: completed
-
-art_director_message:
-  design_id: <%= ActiveRecord::FixtureSet.identify(:alice_design) %>
-  author: art_director
-  message: '{"verdict":"good","feedback":"Looks great, nice layout."}'
-  state: completed

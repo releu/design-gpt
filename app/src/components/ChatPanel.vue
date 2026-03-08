@@ -167,8 +167,7 @@ export default {
     }
 
     /* AI/designer = RIGHT, gray bubble */
-    &_designer,
-    &_art_director {
+    &_designer {
       align-items: flex-end;
       text-align: right;
 

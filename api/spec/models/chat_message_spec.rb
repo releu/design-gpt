@@ -10,13 +10,6 @@ RSpec.describe ChatMessage, type: :model do
     expect(msg.html).to eq("Build a landing page")
   end
 
-  it "returns html with verdict emoji for art_director messages" do
-    msg = chat_messages(:art_director_message)
-    html = msg.html
-    expect(html).to include("\u2705") # checkmark
-    expect(html).to include("Looks great")
-  end
-
   it "returns as_frontend_json with html method" do
     json = chat_messages(:user_message).as_frontend_json
     expect(json["html"]).to be_present

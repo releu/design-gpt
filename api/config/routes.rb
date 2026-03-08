@@ -43,16 +43,12 @@ Rails.application.routes.draw do
 
     resources :designs, :only => [:show, :create, :index, :update, :destroy] do
       post :improve
-      post "apply/:message_id", :action => :apply_director_comments
       post :duplicate, :on => :member
       post :reset, :on => :member
       get :export_image, :on => :member
       get :export_react, :on => :member
       get :export_figma, :on => :member
     end
-
-    resources :custom_components, :only => [:create, :update, :destroy],
-      :path => "custom-components", :controller => "custom_components"
 
     get "up" => "application#health_check", :as => :rails_health_check
   end

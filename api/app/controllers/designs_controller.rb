@@ -91,17 +91,6 @@ class DesignsController < ApplicationController
     render json: { id: new_design.id, name: new_design.name }, status: :created
   end
 
-  def apply_director_comments
-    design = find_accessible_design(params[:design_id])
-    message = design.chat_messages.find(params[:message_id])
-    text = JSON.parse(message.message)["feedback"]
-    message.destroy
-
-    design.improve(text)
-
-    render json: { id: design.id }
-  end
-
   def export_image
     design = find_accessible_design(params[:id])
     render_record = design.last_screenshot

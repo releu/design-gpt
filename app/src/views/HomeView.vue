@@ -44,7 +44,7 @@
     </template>
 
     <template #prompt>
-      <Prompt v-model="prompt" />
+      <PromptField v-model="prompt" />
     </template>
 
     <template #design-system>
@@ -52,7 +52,7 @@
     </template>
 
     <template #ai-engine>
-      <AIEngineSelector :disabled="!currentDesignSystemId" @generate="generateView" />
+      <button qa="generate-btn" :disabled="!currentDesignSystemId" @click="generateView">generate</button>
     </template>
 
     <template #preview>
@@ -136,7 +136,7 @@ export default {
       const token = await this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
-      fetch(`/api/designs`, {
+      const res = await fetch("/api/designs", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -149,16 +149,11 @@ export default {
             design_system_id: this.currentDesignSystemId,
           },
         }),
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.id) {
-            this.$router.push({
-              name: "design",
-              params: { id: res.id },
-            });
-          }
-        });
+      });
+      const data = await res.json();
+      if (data.id) {
+        this.$router.push({ name: "design", params: { id: data.id } });
+      }
     },
     hideOverlay() {
       this.showFigmaImport = false;
