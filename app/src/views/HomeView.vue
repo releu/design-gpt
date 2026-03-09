@@ -8,18 +8,6 @@
       />
     </template>
 
-    <template #mode-selector>
-      <ModeSelector :modelValue="0" />
-    </template>
-
-    <template #more-button>
-      <MoreButton />
-    </template>
-
-    <template #preview-selector>
-      <PreviewSelector v-model="previewMode" />
-    </template>
-
     <template #prompt>
       <Module label="prompt">
         <ModuleContentPrompt v-model="prompt" placeholder="describe what you want to create" />
@@ -39,7 +27,7 @@
     </template>
 
     <template #preview>
-      <div :class="previewMode === 'desktop' ? 'Layout__preview-panel Layout__preview-panel_desktop' : 'Layout__preview-panel Layout__preview-panel_mobile'" :qa="previewMode === 'desktop' ? 'preview-panel-desktop' : 'preview-panel-mobile'">
+      <div class="Layout__preview-panel Layout__preview-panel_mobile" qa="preview-panel-mobile">
         <div class="Layout__preview-empty" qa="preview-empty">
           <div class="Layout__preview-empty-text">preview</div>
         </div>
@@ -63,7 +51,6 @@ export default {
       allDesigns: [],
       currentDesignSystemId: null,
       designSystems: [],
-      previewMode: "phone",
     };
   },
   methods: {
