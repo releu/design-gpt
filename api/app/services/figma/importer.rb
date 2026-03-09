@@ -193,11 +193,11 @@ module Figma
         return slots
       end
 
-      # 2. Fall back to INSTANCE_SWAP properties
+      # 2. Fall back to SLOT and INSTANCE_SWAP properties
       return [] unless prop_defs.is_a?(Hash)
 
-      instance_swaps = prop_defs.select { |_, d| d["type"] == "INSTANCE_SWAP" }
-      instance_swaps.each do |prop_key, definition|
+      slot_props = prop_defs.select { |_, d| d["type"] == "SLOT" || d["type"] == "INSTANCE_SWAP" }
+      slot_props.each do |prop_key, definition|
         preferred = definition["preferredValues"] || []
         children = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
         next unless children.any?
