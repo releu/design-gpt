@@ -33,7 +33,7 @@ export default {
 
 <style lang="scss">
 .PreviewSelector {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-pill);
   display: flex;
   padding: 2px;
@@ -63,7 +63,7 @@ export default {
     transition: background-color 100ms ease;
 
     &_active {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
   }
 }

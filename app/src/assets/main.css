@@ -27,39 +27,21 @@
 }
 
 :root {
-  /* Font families -- system stack per designer spec */
+  /* Font families */
   --ff-text: 'suiss', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
   --ff-header: 'suiss', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
   --ff-mono: 'suiss-mono', 'Menlo', monospace;
 
-  /* Typography scale */
-  --font-text-s: 500 13px/16px var(--ff-text);
-  --font-text-sm: 400 12px/16px var(--ff-text);
-  --font-text-m: 400 14px/18px var(--ff-text);
-  --font-bold-m: 700 14px/18px var(--ff-text);
-  --font-text-l: 400 26px/32px var(--ff-text);
-  --font-header-l: 700 48px/54px var(--ff-header);
-  --font-header-m: 700 20px/24px var(--ff-header);
+  /* Typography */
+  --font-basic: 400 14px/18px var(--ff-text);
+  --font-mono: 400 14px/18px var(--ff-mono);
 
-  /* Backgrounds */
-  --bg-page: #EDECE8;
-  --bg-panel: #FFFFFF;
-  --bg-input: #FFFFFF;
-  --bg-bubble-user: #EDECE8;
-  --bg-bubble-ai: transparent;
-  --bg-chip-inactive: transparent;
-  --bg-chip-active: #EDECE8;
-  --bg-modal-overlay: #EDECE8;
-
-  /* Foreground / Text */
-  --text-primary: #1B1B1F;
-  --text-secondary: #999999;
-  --text-on-dark: #FFFFFF;
-
-  /* Accents */
-  --accent-primary: #1B1B1F;
-  --accent-border: #D4D4D4;
-  --accent-divider: #E0E0E0;
+  /* Colors */
+  --black: #1B1B1F;
+  --darkgray: #565553;
+  --lightgray: #A6A5A2;
+  --white: #FFFFFF;
+  --fill: #EDECE8;
 
   /* Spacing (8px grid) */
   --sp-1: 4px;
@@ -75,19 +57,6 @@
   --radius-lg: 24px;
   --radius-pill: 9999px;
   --radius-phone: 72px;
-
-  /* Legacy color aliases */
-  --black: #1B1B1F;
-  --blue: #a0c7fe;
-  --gray: #999999;
-  --green: #4cd964;
-  --lightgray: #D4D4D4;
-  --orange: #1B1B1F;
-  --superdarkgray: #565553;
-  --superlightgray: #EDECE8;
-  --violet: #e26de9;
-  --white: #FFFFFF;
-  --yellow: #f8ed32;
 }
 
 html, body {
@@ -101,9 +70,9 @@ html, body {
 }
 
 body {
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font: var(--font-text-m);
+  background: var(--fill);
+  color: var(--black);
+  font: var(--font-basic);
 }
 
 #app {

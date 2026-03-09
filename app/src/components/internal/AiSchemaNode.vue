@@ -88,7 +88,7 @@ export default {
 
 <style lang="scss">
 .AiSchemaNode {
-  font: var(--font-text-m);
+  font: var(--font-basic);
 
   &__header {
     display: flex;
@@ -99,13 +99,13 @@ export default {
     border-radius: 6px;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
   }
 
   &__chevron {
     font-size: 10px;
-    color: var(--gray);
+    color: var(--darkgray);
     width: 14px;
     text-align: center;
     transition: transform 150ms ease;
@@ -121,7 +121,7 @@ export default {
   }
 
   &__badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 0 6px;
     border-radius: 4px;
     background: #dcfce7;
@@ -148,12 +148,12 @@ export default {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 0;
   }
 
   &__prop-name {
-    color: var(--superdarkgray);
+    color: var(--darkgray);
   }
 
   &__prop-type {
@@ -166,7 +166,7 @@ export default {
   }
 
   &__prop-values {
-    color: var(--gray);
+    color: var(--darkgray);
     font-size: 11px;
   }
 
@@ -177,8 +177,8 @@ export default {
   }
 
   &__children-label {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     padding: 2px 0;
   }
 }

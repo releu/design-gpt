@@ -129,7 +129,7 @@ export default {
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--bg-page);
+    background: var(--fill);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -139,7 +139,7 @@ export default {
   &__signin-card {
     width: 120px;
     height: 120px;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: var(--radius-md);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     display: flex;
@@ -166,8 +166,8 @@ export default {
 
   &__signin-label {
     margin-top: var(--sp-3);
-    font: var(--font-text-m);
-    color: var(--text-secondary);
+    font: var(--font-basic);
+    color: var(--darkgray);
     text-align: center;
   }
 

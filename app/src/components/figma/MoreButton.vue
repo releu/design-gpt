@@ -21,9 +21,9 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font: var(--font-text-m);
-  color: var(--text-primary);
-  background: var(--bg-panel);
+  font: var(--font-basic);
+  color: var(--black);
+  background: var(--white);
   border: none;
   border-radius: 50%;
   position: relative;

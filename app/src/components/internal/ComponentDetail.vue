@@ -392,19 +392,21 @@ export default {
   }
 
   &__name {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
   }
 
   &__type-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
-    background: var(--superlightgray);
-    color: var(--gray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 
   &__status-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
     font-weight: 600;
@@ -421,7 +423,7 @@ export default {
   }
 
   &__match-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
     font-weight: 600;
@@ -443,31 +445,31 @@ export default {
   }
 
   &__description {
-    font: var(--font-text-m);
-    color: var(--superdarkgray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     margin-bottom: 4px;
   }
 
   &__sync-btn {
     display: inline-block;
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 4px 12px;
     border-radius: var(--radius-pill);
     border: 1px solid var(--lightgray);
-    background: var(--bg-panel);
-    color: var(--text-primary);
+    background: var(--white);
+    color: var(--black);
     cursor: pointer;
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
   }
 
   &__figma-link {
     display: inline-block;
-    font: var(--font-text-s);
-    color: var(--orange);
+    font: var(--font-basic);
+    color: var(--black);
     text-decoration: none;
 
     &:hover {
@@ -477,7 +479,7 @@ export default {
 
   // Collapsible sections
   &__section {
-    border-top: 1px solid var(--superlightgray);
+    border-top: 1px solid var(--fill);
     padding-top: 4px;
     margin-top: 4px;
   }
@@ -488,11 +490,12 @@ export default {
     align-items: center;
     padding: 10px 0;
     cursor: pointer;
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
     user-select: none;
 
     &:hover {
-      color: var(--orange);
+      color: var(--black);
     }
   }
 
@@ -502,7 +505,7 @@ export default {
 
   &__chevron {
     font-size: 10px;
-    color: var(--gray);
+    color: var(--darkgray);
     transition: transform 200ms ease;
 
     &_open {
@@ -514,7 +517,7 @@ export default {
   &__preview-frame {
     width: 100%;
     height: 200px;
-    border: 1px solid var(--superlightgray);
+    border: 1px solid var(--fill);
     border-radius: 12px;
     background: #fafafa;
   }
@@ -531,8 +534,8 @@ export default {
     align-items: center;
     gap: 12px;
     padding: 7px 0;
-    border-bottom: 1px solid var(--superlightgray);
-    font: var(--font-text-m);
+    border-bottom: 1px solid var(--fill);
+    font: var(--font-basic);
 
     &:last-child {
       border-bottom: none;
@@ -553,7 +556,7 @@ export default {
   }
 
   &__prop-type {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 1px 8px;
     border-radius: 4px;
     background: #e3f2fd;
@@ -562,15 +565,15 @@ export default {
   }
 
   &__prop-value {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 1px 8px;
     border-radius: 4px;
-    background: var(--superlightgray);
-    color: var(--superdarkgray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 
   &__prop-select {
-    font: var(--font-text-m);
+    font: var(--font-basic);
     padding: 4px 8px;
     border: 1px solid var(--lightgray);
     border-radius: 6px;
@@ -579,12 +582,12 @@ export default {
     cursor: pointer;
 
     &:focus {
-      border-color: var(--orange);
+      border-color: var(--black);
     }
   }
 
   &__prop-input {
-    font: var(--font-text-m);
+    font: var(--font-basic);
     padding: 4px 8px;
     border: 1px solid var(--lightgray);
     border-radius: 6px;
@@ -593,7 +596,7 @@ export default {
     min-width: 120px;
 
     &:focus {
-      border-color: var(--orange);
+      border-color: var(--black);
     }
   }
 
@@ -601,7 +604,7 @@ export default {
     width: 16px;
     height: 16px;
     cursor: pointer;
-    accent-color: var(--orange);
+    accent-color: var(--black);
   }
 
   // Configuration (read-only)
@@ -610,8 +613,8 @@ export default {
     align-items: center;
     gap: 12px;
     padding: 7px 0;
-    border-bottom: 1px solid var(--superlightgray);
-    font: var(--font-text-m);
+    border-bottom: 1px solid var(--fill);
+    font: var(--font-basic);
 
     &:last-child {
       border-bottom: none;
@@ -625,7 +628,7 @@ export default {
   }
 
   &__config-tag {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 1px 8px;
     border-radius: 4px;
 
@@ -642,29 +645,29 @@ export default {
   }
 
   &__children-item {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
-    background: var(--superlightgray);
-    color: var(--superdarkgray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 
   // Figma JSON
   &__figma-json {
     margin: 0;
     padding: 12px;
-    font: var(--font-text-s);
+    font: var(--font-basic);
     font-family: monospace;
     white-space: pre-wrap;
     word-break: break-all;
-    color: var(--superdarkgray);
+    color: var(--darkgray);
   }
 
   // React Code
   &__code-wrap {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid var(--superlightgray);
+    border: 1px solid var(--fill);
     border-radius: 12px;
 
     &::-webkit-scrollbar {

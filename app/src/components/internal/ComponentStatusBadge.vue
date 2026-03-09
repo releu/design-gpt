@@ -40,7 +40,7 @@ export default {
 <style lang="scss">
 .ComponentStatusBadge {
   display: inline-block;
-  font: var(--font-text-s);
+  font: var(--font-basic);
   padding: 2px 10px;
   border-radius: 12px;
   white-space: nowrap;
@@ -65,8 +65,8 @@ export default {
   }
 
   &_skipped {
-    background: var(--superlightgray);
-    color: var(--gray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 }
 </style>

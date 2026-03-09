@@ -189,7 +189,7 @@ export default {
 
 <style lang="scss">
 .DesignSettings {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   height: 100%;
   box-sizing: border-box;
@@ -199,7 +199,7 @@ export default {
 
   &__menu {
     overflow-y: auto;
-    border-right: 1px solid var(--superlightgray);
+    border-right: 1px solid var(--fill);
     padding: 24px 20px 24px 24px;
 
     &::-webkit-scrollbar {
@@ -208,8 +208,8 @@ export default {
   }
 
   &__menu-subtitle {
-    font: var(--font-text-s);
-    color: var(--text-secondary);
+    font: var(--font-basic);
+    color: var(--darkgray);
     text-transform: none;
     letter-spacing: 0;
     padding: 16px 10px 6px;
@@ -222,21 +222,21 @@ export default {
   &__menu-item {
     padding: 7px 10px;
     border-radius: 8px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
 
     &_active {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
   }
 
   &__loading {
-    font: var(--font-text-m);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     padding: 10px;
   }
 
@@ -252,17 +252,17 @@ export default {
   }
 
   &__placeholder {
-    font: var(--font-text-m);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   &__save {
     display: inline-flex;
     padding: 12px 32px;
-    background: var(--orange);
+    background: var(--black);
     color: white;
     border-radius: 32px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     margin-top: 24px;
     align-self: flex-start;

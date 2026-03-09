@@ -67,21 +67,21 @@ export default {
     flex: 1;
     min-width: 300px;
     border: 1px solid var(--lightgray);
-    font: var(--font-text-m);
+    font: var(--font-basic);
     padding: 14px 20px;
     border-radius: 32px;
     outline: none;
     transition: border-color 200ms ease;
 
     &:focus {
-      border-color: var(--orange);
+      border-color: var(--black);
     }
   }
 
   &__button {
-    background: var(--orange);
+    background: var(--black);
     color: white;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     padding: 14px 32px;
     border-radius: 32px;
     cursor: pointer;
@@ -101,7 +101,7 @@ export default {
 
   &__error {
     width: 100%;
-    font: var(--font-text-s);
+    font: var(--font-basic);
     color: #e53e3e;
     padding: 0 20px;
   }

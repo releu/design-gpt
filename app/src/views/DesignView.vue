@@ -269,7 +269,7 @@ export default {
   position: absolute;
   top: 100%;
   right: 0;
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-md);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   z-index: 100;
@@ -280,14 +280,14 @@ export default {
 
 .DesignView__export-item {
   padding: var(--sp-2) var(--sp-3);
-  font: var(--font-text-m);
-  color: var(--text-primary);
+  font: var(--font-basic);
+  color: var(--black);
   cursor: pointer;
   transition: background 100ms ease;
   white-space: nowrap;
 
   &:hover {
-    background: var(--bg-chip-active);
+    background: var(--fill);
   }
 }
 </style>

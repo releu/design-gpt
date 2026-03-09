@@ -415,7 +415,7 @@ export default {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: 20px;
   border: 1px solid #1B1B1F;
   position: relative;
@@ -436,7 +436,7 @@ export default {
 
 /* Panel styles (replicating HomeView scoped styles) */
 .TestCase__panel {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   padding: var(--sp-3);
   display: flex;
@@ -446,19 +446,19 @@ export default {
 }
 
 .TestCase__panel-label {
-  font: var(--font-text-s);
-  color: var(--text-primary);
+  font: var(--font-basic);
+  color: var(--black);
   margin-bottom: var(--sp-2);
   flex-shrink: 0;
 }
 
 .TestCase__generate-btn {
-  background: var(--accent-primary);
-  color: var(--text-on-dark);
+  background: var(--black);
+  color: var(--white);
   border: none;
   border-radius: var(--radius-pill);
   padding: 12px 24px;
-  font: var(--font-text-m);
+  font: var(--font-basic);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -469,26 +469,27 @@ export default {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
-  font: var(--font-text-m);
+  font: var(--font-basic);
 }
 
 .TestCase__ai-info-label {
-  font: var(--font-text-s);
-  color: var(--text-secondary);
+  font: var(--font-basic);
+  color: var(--darkgray);
 }
 
 .TestCase__ai-info-value {
-  font: var(--font-bold-m);
+  font: var(--font-basic);
+  font-weight: 700;
 }
 
 .TestCase__ai-info-note {
-  font: var(--font-text-m);
-  color: var(--text-secondary);
+  font: var(--font-basic);
+  color: var(--darkgray);
 }
 
 /* Settings panel (for design-settings frame) */
 .TestCase__settings-panel {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   height: 100%;
   box-sizing: border-box;
@@ -503,13 +504,13 @@ export default {
 
 .TestCase__settings-menu {
   overflow-y: auto;
-  border-right: 1px solid var(--superlightgray);
+  border-right: 1px solid var(--fill);
   padding: 24px 20px 24px 24px;
 }
 
 .TestCase__settings-menu-label {
-  font: var(--font-text-s);
-  color: var(--text-secondary);
+  font: var(--font-basic);
+  color: var(--darkgray);
   padding: 16px 10px 6px;
 }
 
@@ -520,12 +521,12 @@ export default {
 .TestCase__settings-menu-item {
   padding: 7px 10px;
   border-radius: 8px;
-  font: var(--font-text-m);
+  font: var(--font-basic);
   cursor: pointer;
 }
 
 .TestCase__settings-menu-item_active {
-  background: var(--superlightgray);
+  background: var(--fill);
 }
 
 .TestCase__settings-detail {
@@ -533,24 +534,24 @@ export default {
 }
 
 .TestCase__settings-detail-label {
-  font: var(--font-text-s);
-  color: var(--text-secondary);
+  font: var(--font-basic);
+  color: var(--darkgray);
   margin-bottom: 4px;
 }
 
 .TestCase__settings-detail-value {
-  font: var(--font-text-m);
+  font: var(--font-basic);
   margin-bottom: 8px;
 }
 
 .TestCase__settings-detail-link {
-  font: var(--font-text-m);
+  font: var(--font-basic);
   margin-bottom: 4px;
 }
 
 .TestCase__settings-detail-action {
-  font: var(--font-text-m);
-  color: var(--text-secondary);
+  font: var(--font-basic);
+  color: var(--darkgray);
   margin-top: 12px;
   cursor: pointer;
 }

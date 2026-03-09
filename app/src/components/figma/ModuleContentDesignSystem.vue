@@ -53,7 +53,7 @@ export default {
 
 <style lang="scss">
 .ModuleContentDesignSystem {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   padding: 8px;
   display: flex;
@@ -82,26 +82,26 @@ export default {
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
 
     &_selected {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
 
     &-name {
-      font: var(--font-text-m);
+      font: var(--font-basic);
       flex: 1;
     }
 
     &-browse {
-      font: var(--font-text-s);
-      color: var(--text-secondary);
+      font: var(--font-basic);
+      color: var(--darkgray);
       cursor: pointer;
       transition: opacity 150ms ease;
 
       &:hover {
-        color: var(--text-primary);
+        color: var(--black);
       }
     }
   }
@@ -110,11 +110,11 @@ export default {
     margin-top: auto;
     padding: 10px 24px;
     text-align: center;
-    background: var(--bg-panel);
+    background: var(--white);
     border: none;
     border-radius: var(--radius-pill);
-    color: var(--text-primary);
-    font: var(--font-text-m);
+    color: var(--black);
+    font: var(--font-basic);
     cursor: pointer;
     flex-shrink: 0;
     align-self: flex-start;
@@ -122,7 +122,7 @@ export default {
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
   }
 }

@@ -112,7 +112,7 @@ export default {
   min-height: 600px;
   padding: var(--sp-5);
   box-sizing: border-box;
-  background: var(--bg-page);
+  background: var(--fill);
   display: grid;
   overflow: hidden;
 
@@ -171,7 +171,7 @@ export default {
     &::before {
       content: "";
       position: absolute;
-      background: var(--accent-divider);
+      background: var(--lightgray);
       border-radius: 1px;
     }
 
@@ -293,7 +293,7 @@ export default {
 
   /* ----- Preview panel styles ----- */
   &__preview-panel {
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: var(--radius-lg);
     padding: var(--sp-3);
     box-sizing: border-box;
@@ -303,7 +303,7 @@ export default {
   }
 
   &__preview-panel_mobile {
-    background: var(--bg-panel);
+    background: var(--white);
     padding: 0;
     border: 2px solid #000;
     border-radius: var(--radius-phone);
@@ -329,7 +329,7 @@ export default {
     overflow: hidden;
     position: relative;
     height: 100%;
-    background: var(--bg-panel);
+    background: var(--white);
 
     .Preview {
       position: absolute;
@@ -346,11 +346,11 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-panel);
+    background: var(--white);
 
     &-text {
-      font: var(--font-text-m);
-      color: var(--text-secondary);
+      font: var(--font-basic);
+      color: var(--darkgray);
       text-align: center;
     }
   }
@@ -372,7 +372,7 @@ export default {
   /* Legacy import styles */
   &__import {
     width: 480px;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: var(--radius-pill);
     box-sizing: border-box;
     padding: 40px;
@@ -406,9 +406,9 @@ export default {
 
     &-button {
       border-radius: var(--radius-pill);
-      background: var(--accent-primary);
+      background: var(--black);
       text-align: center;
-      color: var(--text-on-dark);
+      color: var(--white);
       font-size: 16px;
       line-height: 20px;
       padding: 16px 0;

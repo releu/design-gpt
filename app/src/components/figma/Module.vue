@@ -19,7 +19,7 @@ export default {
 
 <style lang="scss">
 .Module {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   padding: var(--sp-3);
   display: flex;
@@ -28,8 +28,8 @@ export default {
   box-sizing: border-box;
 
   &__label {
-    font: var(--font-text-s);
-    color: var(--text-primary);
+    font: var(--font-basic);
+    color: var(--black);
     margin-bottom: var(--sp-2);
     flex-shrink: 0;
   }

@@ -28,7 +28,7 @@ export default {
 
 <style lang="scss">
 .ModeSelector {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-pill);
   display: flex;
   padding: 2px;
@@ -42,7 +42,7 @@ export default {
   &__item {
     padding: 3px 6px;
     border-radius: 70px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     white-space: nowrap;
     height: 100%;
@@ -57,7 +57,7 @@ export default {
     transition: background-color 100ms ease;
 
     &_active {
-      background: var(--bg-chip-active);
+      background: var(--fill);
     }
   }
 }

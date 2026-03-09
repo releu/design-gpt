@@ -63,14 +63,14 @@ export default {
   }
 
   &__panel {
-    background: var(--superlightgray);
+    background: var(--fill);
     border-radius: 12px;
     overflow: hidden;
   }
 
   &__panel-label {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 8px 12px;
@@ -89,8 +89,8 @@ export default {
   &__placeholder {
     padding: 40px;
     text-align: center;
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   &__match {
@@ -99,7 +99,8 @@ export default {
   }
 
   &__score {
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
     padding: 4px 16px;
     border-radius: 16px;
 

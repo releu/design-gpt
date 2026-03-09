@@ -37,13 +37,13 @@ export default {
 
 <style lang="scss">
 .DesignSelector {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: 24px;
   position: relative;
   width: 320px;
   height: 48px;
   box-sizing: border-box;
-  font: var(--font-text-m);
+  font: var(--font-basic);
   cursor: pointer;
 
   &__label {

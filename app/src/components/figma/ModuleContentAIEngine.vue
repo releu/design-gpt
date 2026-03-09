@@ -35,27 +35,27 @@ export default {
     display: grid;
     grid-template-columns: max-content;
     grid-template-rows: max-content;
-    font: var(--font-text-m);
+    font: var(--font-basic);
   }
 
   &__value {
-    font: var(--font-text-m);
-    color: var(--text-primary);
+    font: var(--font-basic);
+    color: var(--black);
   }
 
   &__note {
-    font: var(--font-text-m);
-    color: var(--text-secondary);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   &__btn {
-    background: var(--accent-primary);
-    color: var(--text-on-dark);
+    background: var(--black);
+    color: var(--white);
     border: none;
     border-radius: var(--radius-pill);
     width: 120px;
     height: 42px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     display: flex;
     align-items: center;

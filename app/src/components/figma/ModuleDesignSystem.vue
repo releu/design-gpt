@@ -494,7 +494,7 @@ export default {
 .ModuleDesignSystem {
   position: fixed;
   inset: 0;
-  background: var(--bg-modal-overlay);
+  background: var(--fill);
   padding: var(--sp-5);
   box-sizing: border-box;
   display: flex;
@@ -512,7 +512,7 @@ export default {
   &__close {
     width: 36px;
     height: 36px;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -520,7 +520,7 @@ export default {
     cursor: pointer;
     font-size: 20px;
     line-height: 1;
-    color: var(--text-primary);
+    color: var(--black);
     transition: transform 150ms ease;
 
     &:active {
@@ -533,7 +533,7 @@ export default {
     flex: 1;
     width: 65vw;
     max-height: 70vh;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: 24px;
     padding: 40px;
     box-sizing: border-box;
@@ -547,7 +547,9 @@ export default {
   }
 
   &__title {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
     margin-bottom: 32px;
   }
 
@@ -561,13 +563,13 @@ export default {
   &__source-btn {
     padding: 10px 20px;
     border-radius: 32px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     border: 1px solid var(--lightgray);
     cursor: pointer;
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
 
     &_disabled {
@@ -590,21 +592,21 @@ export default {
     align-items: center;
     gap: 16px;
     padding: 12px 16px;
-    background: var(--superlightgray);
+    background: var(--fill);
     border-radius: 12px;
   }
 
   &__url-text {
     flex: 1;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   &__url-remove {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     cursor: pointer;
     flex-shrink: 0;
 
@@ -617,10 +619,10 @@ export default {
   &__do-import {
     display: inline-flex;
     padding: 14px 36px;
-    background: var(--accent-primary);
-    color: var(--text-on-dark);
+    background: var(--black);
+    color: var(--white);
     border-radius: var(--radius-pill);
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     transition: transform 200ms ease;
 
@@ -648,8 +650,8 @@ export default {
   }
 
   &__importing-desc {
-    font: var(--font-text-m);
-    color: var(--superdarkgray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -657,8 +659,8 @@ export default {
   }
 
   &__importing-count {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -673,7 +675,7 @@ export default {
 
   &__menu {
     overflow-y: auto;
-    border-right: 1px solid var(--superlightgray);
+    border-right: 1px solid var(--fill);
     padding-right: 20px;
 
     &::-webkit-scrollbar {
@@ -684,21 +686,21 @@ export default {
   &__menu-item {
     padding: 7px 10px;
     border-radius: 8px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
 
     &_active {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
   }
 
   &__menu-subtitle {
-    font: var(--font-text-s);
-    color: var(--text-secondary);
+    font: var(--font-basic);
+    color: var(--darkgray);
     text-transform: none;
     letter-spacing: 0;
     padding: 16px 10px 6px;
@@ -722,7 +724,9 @@ export default {
   }
 
   &__overview-title {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
     margin-bottom: 8px;
   }
 
@@ -731,13 +735,13 @@ export default {
     padding: 12px 16px;
     border: 1px solid var(--lightgray);
     border-radius: 12px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     box-sizing: border-box;
     outline: none;
     transition: border-color 150ms ease;
 
     &:focus {
-      border-color: var(--orange);
+      border-color: var(--black);
     }
   }
 
@@ -746,17 +750,18 @@ export default {
     justify-content: space-between;
     align-items: center;
     padding: 14px 16px;
-    background: var(--superlightgray);
+    background: var(--fill);
     border-radius: 12px;
   }
 
   &__overview-file-name {
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
   }
 
   &__overview-file-count {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   &__update-btn {
@@ -764,13 +769,13 @@ export default {
     padding: 10px 24px;
     border: 1px solid var(--lightgray);
     border-radius: 32px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     margin-top: 8px;
     transition: background 150ms ease;
 
     &:hover {
-      background: var(--superlightgray);
+      background: var(--fill);
     }
 
     &_loading {
@@ -792,19 +797,21 @@ export default {
   }
 
   &__detail-name {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
   }
 
   &__type-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
-    background: var(--superlightgray);
-    color: var(--gray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 
   &__match-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
     font-weight: 600;
@@ -826,16 +833,16 @@ export default {
   }
 
   &__detail-description {
-    font: var(--font-text-m);
-    color: var(--superdarkgray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     margin-top: 8px;
   }
 
   &__figma-link {
     display: inline-block;
     margin-top: 6px;
-    font: var(--font-text-s);
-    color: var(--orange);
+    font: var(--font-basic);
+    color: var(--black);
     text-decoration: none;
 
     &:hover {
@@ -845,7 +852,7 @@ export default {
 
   // Collapsible sections
   &__section {
-    border-top: 1px solid var(--superlightgray);
+    border-top: 1px solid var(--fill);
     padding-top: 4px;
     margin-bottom: 4px;
   }
@@ -856,11 +863,12 @@ export default {
     align-items: center;
     padding: 10px 0;
     cursor: pointer;
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
     user-select: none;
 
     &:hover {
-      color: var(--orange);
+      color: var(--black);
     }
   }
 
@@ -870,7 +878,7 @@ export default {
 
   &__chevron {
     font-size: 10px;
-    color: var(--gray);
+    color: var(--darkgray);
     transition: transform 200ms ease;
 
     &_open {
@@ -882,7 +890,7 @@ export default {
   &__preview-frame {
     width: 100%;
     height: 200px;
-    border: 1px solid var(--superlightgray);
+    border: 1px solid var(--fill);
     border-radius: 12px;
     background: #fafafa;
   }
@@ -899,12 +907,12 @@ export default {
     display: contents;
 
     > span {
-      font: var(--font-text-s);
-      color: var(--text-secondary);
+      font: var(--font-basic);
+      color: var(--darkgray);
       text-transform: none;
       letter-spacing: 0;
       padding: 6px 12px 6px 0;
-      border-bottom: 1px solid var(--superlightgray);
+      border-bottom: 1px solid var(--fill);
     }
   }
 
@@ -912,9 +920,9 @@ export default {
     display: contents;
 
     > span {
-      font: var(--font-text-m);
+      font: var(--font-basic);
       padding: 8px 12px 8px 0;
-      border-bottom: 1px solid var(--superlightgray);
+      border-bottom: 1px solid var(--fill);
     }
   }
 
@@ -923,7 +931,7 @@ export default {
   }
 
   &__prop-type-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 1px 8px;
     border-radius: 4px;
     background: #e3f2fd;
@@ -932,14 +940,14 @@ export default {
   }
 
   &__prop-default {
-    color: var(--gray);
+    color: var(--darkgray);
   }
 
   // Code section
   &__code-wrap {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid var(--superlightgray);
+    border: 1px solid var(--fill);
     border-radius: 12px;
 
     &::-webkit-scrollbar {
@@ -949,7 +957,9 @@ export default {
 
   // Old detail name kept for overview usage
   &__detail-name-solo {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
     margin-bottom: 20px;
   }
 
@@ -962,11 +972,11 @@ export default {
   &__detail-row {
     display: flex;
     gap: 16px;
-    font: var(--font-text-m);
+    font: var(--font-basic);
   }
 
   &__detail-key {
-    color: var(--gray);
+    color: var(--darkgray);
     min-width: 80px;
     flex-shrink: 0;
   }
@@ -978,30 +988,30 @@ export default {
   }
 
   &__detail-value {
-    background: var(--superlightgray);
+    background: var(--fill);
     border-radius: 6px;
     padding: 2px 10px;
-    font: var(--font-text-s);
+    font: var(--font-basic);
   }
 
   &__detail-empty {
-    font: var(--font-text-m);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   // Interactive configuration
   &__config {
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid var(--superlightgray);
+    border-top: 1px solid var(--fill);
   }
 
   &__root-badge {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
-    background: var(--superlightgray);
-    color: var(--superdarkgray);
+    background: var(--fill);
+    color: var(--darkgray);
     display: inline-block;
     margin-bottom: 8px;
   }
@@ -1011,7 +1021,8 @@ export default {
   }
 
   &__children-label {
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
     margin-bottom: 8px;
   }
 
@@ -1022,21 +1033,21 @@ export default {
   }
 
   &__children-item {
-    font: var(--font-text-s);
+    font: var(--font-basic);
     padding: 2px 10px;
     border-radius: 6px;
-    background: var(--superlightgray);
-    color: var(--superdarkgray);
+    background: var(--fill);
+    color: var(--darkgray);
   }
 
   // Save button
   &__save-btn {
     display: inline-flex;
     padding: 14px 36px;
-    background: var(--accent-primary);
-    color: var(--text-on-dark);
+    background: var(--black);
+    color: var(--white);
     border-radius: var(--radius-pill);
-    font: var(--font-text-m);
+    font: var(--font-basic);
     cursor: pointer;
     margin-top: 24px;
     transition: transform 200ms ease;

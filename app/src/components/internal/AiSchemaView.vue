@@ -55,13 +55,15 @@ export default {
 <style lang="scss">
 .AiSchemaView {
   &__title {
-    font: var(--font-header-m);
+    font: var(--font-basic);
+    font-weight: 700;
+    font-size: 20px;
     margin-bottom: 8px;
   }
 
   &__subtitle {
-    font: var(--font-text-m);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     margin-bottom: 24px;
   }
 
@@ -72,11 +74,11 @@ export default {
   }
 
   &__empty {
-    font: var(--font-text-m);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
 
     code {
-      background: var(--superlightgray);
+      background: var(--fill);
       padding: 1px 6px;
       border-radius: 4px;
       font-size: 0.9em;

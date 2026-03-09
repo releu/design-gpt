@@ -99,7 +99,7 @@ export default {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     background: #fff;
     color: #111827;
   }

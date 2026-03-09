@@ -41,21 +41,21 @@ export default {
 .ProgressBar {
   &__track {
     height: 6px;
-    background: var(--superlightgray);
+    background: var(--fill);
     border-radius: 3px;
     overflow: hidden;
   }
 
   &__fill {
     height: 100%;
-    background: var(--orange);
+    background: var(--black);
     border-radius: 3px;
     transition: width 300ms ease;
   }
 
   &__label {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     margin-top: 4px;
   }
 }

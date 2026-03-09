@@ -69,7 +69,7 @@ export default {
     height: 100%;
     box-sizing: border-box;
     overflow: auto;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: 0;
 
     &::-webkit-scrollbar {
@@ -84,7 +84,7 @@ export default {
     height: 100%;
     box-sizing: border-box;
     overflow: auto;
-    background: var(--bg-panel);
+    background: var(--white);
     border-radius: 0;
 
     &::-webkit-scrollbar {

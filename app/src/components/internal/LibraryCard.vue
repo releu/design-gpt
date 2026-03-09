@@ -57,11 +57,12 @@ export default {
   }
 
   &_selected {
-    border-color: var(--orange);
+    border-color: var(--black);
   }
 
   &__name {
-    font: var(--font-bold-m);
+    font: var(--font-basic);
+    font-weight: 700;
     margin-bottom: 8px;
   }
 
@@ -73,13 +74,13 @@ export default {
   }
 
   &__count {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 
   &__source {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
   }
 }
 </style>

@@ -119,7 +119,7 @@ export default {
 
 <style lang="scss">
 .ModuleChat {
-  background: var(--bg-panel);
+  background: var(--white);
   border-radius: var(--radius-lg);
   padding: 8px;
   display: flex;
@@ -162,10 +162,10 @@ export default {
       .ModuleChat__message-body {
         flex: 1 0 0;
         background-color: transparent;
-        color: var(--text-primary);
+        color: var(--black);
         padding: 9px 0;
         border-radius: 18px;
-        font: var(--font-text-m);
+        font: var(--font-basic);
       }
     }
 
@@ -177,7 +177,7 @@ export default {
       .ModuleChat__message-body {
         flex: 1 0 0;
         background-color: #EDECE8;
-        color: var(--text-primary);
+        color: var(--black);
         border-radius: 18px;
         padding: 9px 14px;
       }
@@ -185,20 +185,20 @@ export default {
   }
 
   &__message-body {
-    font: var(--font-text-m);
+    font: var(--font-basic);
     line-height: normal;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
 
   &__reset-btn {
-    font: var(--font-text-s);
-    color: var(--gray);
+    font: var(--font-basic);
+    color: var(--darkgray);
     cursor: pointer;
     margin-top: 4px;
 
     &:hover {
-      color: var(--orange);
+      color: var(--black);
     }
   }
 
@@ -207,7 +207,7 @@ export default {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    background: var(--bg-chip-active);
+    background: var(--fill);
     border-radius: var(--radius-pill);
     height: 48px;
     padding: 0 6px 0 var(--sp-3);
@@ -218,15 +218,15 @@ export default {
     flex: 1;
     border: none;
     background: transparent;
-    font: var(--font-text-m);
+    font: var(--font-basic);
     outline: none;
     height: 100%;
     padding: 0;
-    color: var(--text-primary);
+    color: var(--black);
     min-width: 0;
 
     &::placeholder {
-      color: var(--text-secondary);
+      color: var(--darkgray);
     }
 
     &:disabled {
@@ -244,7 +244,7 @@ export default {
     border-radius: 50%;
     border: none;
     padding: 0;
-    background: var(--accent-primary);
+    background: var(--black);
     display: flex;
     align-items: center;
     justify-content: center;
