@@ -218,6 +218,10 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    > * {
+      width: 100%;
+    }
   }
 
   /* ===== LAYOUT 2: PHONE (Two columns) ===== */

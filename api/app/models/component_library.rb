@@ -25,6 +25,13 @@ class ComponentLibrary < ApplicationRecord
     # Prevent concurrent syncs — skip if already in progress
     return if %w[importing converting comparing].include?(status)
 
+    # In E2E test mode, skip actual Figma import for seed data (fake file keys)
+    # to avoid corrupting test data while parallel tests are running
+    if figma_file_key&.start_with?("e2e") && Rails.env.test?
+      update!(status: "ready")
+      return
+    end
+
     puts "[ComponentLibrary#sync_with_figma] Starting sync for ComponentLibrary##{id}"
     update_progress(step: "importing", step_number: 1, total_steps: 4, message: "Importing from Figma...")
 

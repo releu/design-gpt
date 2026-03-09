@@ -1,6 +1,5 @@
 <template>
   <div class="ModuleContentDesignSystem" qa="library-selector">
-    <div class="ModuleContentDesignSystem__label">prompt</div>
     <div class="ModuleContentDesignSystem__list">
       <div
         :class="['ModuleContentDesignSystem__item', { 'ModuleContentDesignSystem__item_selected': modelValue === lib.id }]"
@@ -56,20 +55,11 @@ export default {
 .ModuleContentDesignSystem {
   background: var(--bg-panel);
   border-radius: var(--radius-lg);
-  padding: var(--sp-3);
+  padding: 8px;
   display: flex;
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-
-  &__label {
-    font: var(--font-text-s);
-    color: var(--text-primary);
-    text-transform: none;
-    letter-spacing: 0;
-    margin-bottom: var(--sp-2);
-    flex-shrink: 0;
-  }
 
   &__list {
     flex-grow: 1;

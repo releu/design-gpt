@@ -35,7 +35,7 @@ The palette is intentionally minimal -- five values only. No brand color. The de
 ### Fonts
 
 - **Body font**: `Suisse Int'l` -- used for ALL text (labels, body, captions, headings, everything)
-- **Code font**: `Menlo` -- used for CodeMirror, code views, monospace contexts
+- **Code font**: `Suisse Int'l Mono` -- used for CodeMirror, code views, monospace contexts
 
 ### Size
 

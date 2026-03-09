@@ -1,3 +1,143 @@
+## [9] 2026-03-09T12:00 -- CTO (updated 2026-03-09T13:00)
+
+Re: CRITICAL -- Dev and test databases not properly separated at runtime
+
+### Problem
+
+The `database.yml` correctly defines separate databases (`jan_designer_api_development` for development, `jan_designer_api_test` for test). However, at runtime the E2E tests silently connect to the development database when `make dev` is already running.
+
+### Root cause
+
+All four Playwright configs (`.hats/qa/playwright.config.js`, `playwright.fast.config.js`, `playwright.workflow.config.js`, `playwright.render.config.js`) define a webServer entry that starts Rails on port 3000 with `RAILS_ENV=test E2E_TEST_MODE=true`. They all set `reuseExistingServer: true` for the Rails server.
+
+When a developer has `make dev` running (which starts Rails in `development` mode on port 3000), Playwright detects port 3000 is occupied and **reuses the existing development server** instead of starting a new one in test mode. The `e2e:setup` rake task seeds data into `jan_designer_api_test` (because it runs with `RAILS_ENV=test`), but HTTP requests from the tests hit the dev server which reads from `jan_designer_api_development`. The seeded test data is invisible to the tests, and any writes from tests corrupt the development database.
+
+Additionally, `setup.md` line 99 says E2E tests require "Dev servers running (`make dev`)" -- this instruction actively causes the bug.
+
+### Decision: Two domains, two port sets, one Caddy instance
+
+Dev and test get fully separate domains and backend ports so they can run simultaneously without any interference.
+
+- **Dev**: `https://design-gpt.localtest.me` -> Rails 3000 + Vite 5173
+- **Test**: `https://design-gpt-test.localtest.me` -> Rails 3001 + Vite 5174
+
+Both `*.localtest.me` subdomains resolve to `127.0.0.1` via DNS (this is what localtest.me does -- all subdomains resolve to loopback).
+
+**For Developer -- changes required:**
+
+#### 1. `caddy/Caddyfile` -- add a second site block for the test domain
+
+```
+design-gpt.localtest.me {
+  tls internal
+
+  @api path /api*
+  handle @api {
+    reverse_proxy 127.0.0.1:3000 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto https
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Port 443
+    }
+  }
+
+  handle {
+    reverse_proxy 127.0.0.1:5173
+  }
+}
+
+design-gpt-test.localtest.me {
+  tls internal
+
+  @api path /api*
+  handle @api {
+    reverse_proxy 127.0.0.1:3001 {
+      header_up Host {host}
+      header_up X-Forwarded-Proto https
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Port 443
+    }
+  }
+
+  handle {
+    reverse_proxy 127.0.0.1:5174
+  }
+}
+```
+
+Both site blocks live in the same Caddyfile, served by one Caddy process on port 443. The dev block routes to 3000/5173, the test block routes to 3001/5174. No env var templating needed -- plain static config.
+
+#### 2. All four Playwright configs (`.hats/qa/playwright*.config.js`)
+
+**Rails webServer**:
+- Command: `cd ../../api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails server -p 3001 -b 127.0.0.1`
+- `port: 3001`
+- `reuseExistingServer: false`
+
+**Vite webServer**:
+- Command: `cd ../../app && VITE_E2E_TEST=true npx vite --port 5174`
+- `port: 5174`
+- `reuseExistingServer: false`
+
+**Caddy webServer**:
+- Command stays: `cd ../../caddy && caddy run --config Caddyfile`
+- `port: 443`
+- `reuseExistingServer: true` (keep as-is -- single Caddy serves both domains; if dev Caddy is already running, tests reuse it and that is correct because the same Caddy routes both domains)
+
+**baseURL**: Change from `https://design-gpt.localtest.me` to `https://design-gpt-test.localtest.me` in all four configs.
+
+#### 3. `app/vite.config.js` -- add test domain to allowedHosts
+
+```js
+allowedHosts: [
+  "design-gpt.localtest.me",
+  "design-gpt-test.localtest.me",
+],
+```
+
+The test Vite instance runs on port 5174. Caddy sends requests with `Host: design-gpt-test.localtest.me`. Vite must allow that hostname or it will reject the connection.
+
+#### 4. `api/config/environments/test.rb` -- add test domain to hosts
+
+Add inside the `configure` block:
+
+```ruby
+config.hosts << "design-gpt-test.localtest.me"
+```
+
+Rails test environment currently has NO `config.hosts` entries, which means it accepts all hostnames. This is fine for now -- Rails defaults to allowing all hosts when the list is empty. However, if someone later adds a `config.hosts` entry for another reason, the test domain would break. Adding it explicitly is defensive and cheap. **This is optional but recommended.**
+
+#### 5. CORS -- no change needed
+
+The CORS initializer (`api/config/initializers/cors.rb`) controls cross-origin requests. Since both frontend and API are served through the same Caddy domain (`design-gpt-test.localtest.me`), all requests are same-origin. CORS does not apply to same-origin requests. No change needed.
+
+#### 6. `setup.md` -- fix the E2E prerequisites
+
+Remove the instruction "Dev servers running (`make dev`)" from E2E test prerequisites. Replace with: "Playwright starts its own servers automatically. `make dev` can be running simultaneously -- they use separate ports and domains."
+
+#### 7. `Makefile` -- no changes needed
+
+The `dev` target starts Rails on 3000 and Vite on 5173 (unchanged). The `test-e2e` target runs `db:test:prepare`, `e2e:setup`, then `npx playwright test` -- Playwright starts its own servers on 3001/5174 via webServer config.
+
+### Port and domain allocation
+
+| Service | Dev (`make dev`) | E2E tests (Playwright) |
+|---------|-----------------|----------------------|
+| Domain  | `design-gpt.localtest.me` | `design-gpt-test.localtest.me` |
+| Rails   | 3000            | 3001                 |
+| Vite    | 5173            | 5174                 |
+| Caddy   | 443 (shared, one instance serves both domains) | (same) |
+
+### Why this approach
+
+- **Full coexistence**: Dev and test run simultaneously without any conflict. Different ports for Rails and Vite, different domains for Caddy routing, single Caddy instance.
+- **No env var templating**: The Caddyfile uses plain static config. Two site blocks, no `{env.VAR}` complexity.
+- **Same HTTPS topology as production**: Tests go through Caddy with `tls internal`, exercising the same proxy layer. No "skip Caddy in tests" divergence.
+- **One Caddy process**: Both site blocks are served by the same Caddy instance on port 443. Starting `make dev` or Playwright first doesn't matter -- whichever starts Caddy first, the other reuses it.
+- **Loud failure on misconfiguration**: `reuseExistingServer: false` on Rails and Vite means Playwright will fail fast if port 3001 or 5174 is already taken, rather than silently reusing a wrong server.
+
+---
+
 ## [8] 2026-03-07T22:30 -- CTO
 
 Re: API keys policy -- real keys are available for dev and testing

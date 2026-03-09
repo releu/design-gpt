@@ -19,9 +19,6 @@ class DesignsController < ApplicationController
 
   def create
     library_ids = resolve_component_library_ids
-    if library_ids.empty?
-      return render json: { error: "Component libraries are required" }, status: :unprocessable_entity
-    end
 
     design = current_user.designs.create!(prompt: design_params[:prompt], name: design_params[:name], status: "draft")
 
@@ -29,11 +26,15 @@ class DesignsController < ApplicationController
       design.design_component_libraries.create!(component_library_id: id)
     end
 
-    begin
-      design.generate
-    rescue => e
-      design.update!(status: "error")
-      Rails.logger.error("Design generation failed: #{e.message}")
+    if library_ids.any?
+      begin
+        design.generate
+      rescue => e
+        design.update!(status: "error")
+        Rails.logger.error("Design generation failed: #{e.message}")
+      end
+    else
+      design.update!(status: "ready")
     end
 
     render json: { id: design.id, status: design.status }, status: :created
@@ -145,12 +146,15 @@ class DesignsController < ApplicationController
   end
 
   def resolve_component_library_ids
-    if params[:design][:design_system_id].present?
-      ds = current_user.design_systems.find(params[:design][:design_system_id])
+    ds_id = params.dig(:design, :design_system_id)
+    if ds_id.present?
+      ds = current_user.design_systems.find(ds_id)
       ds.component_library_ids
     else
-      Array(params[:design][:component_library_ids])
+      Array(params.dig(:design, :component_library_ids))
     end
+  rescue ActiveRecord::RecordNotFound
+    []
   end
 
   def design_update_params

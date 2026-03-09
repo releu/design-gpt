@@ -43,7 +43,7 @@
 
           <!-- Preview: render the empty state panel (matches Figma) -->
           <template v-else-if="name === 'Preview'">
-            <div class="Layout__preview-panel Layout__preview-panel_mobile TestCase__preview-phone">
+            <div class="TestCase__preview-standalone">
               <div class="Layout__preview-empty">
                 <div class="Layout__preview-empty-text">preview</div>
               </div>
@@ -87,14 +87,9 @@
               <ModuleContentDesignSystem :libraries="mockLibraries" modelValue="1" />
             </template>
             <template #ai-engine-info>
-              <div class="TestCase__ai-info">
-                <div class="TestCase__ai-info-label">ai engine</div>
-                <div class="TestCase__ai-info-value">ChatGPT</div>
-                <div class="TestCase__ai-info-note">don't share nda for now</div>
-              </div>
-            </template>
-            <template #ai-engine>
-              <button class="TestCase__generate-btn">generate <span>✦</span></button>
+              <Module label="ai engine">
+                <ModuleContentAIEngine />
+              </Module>
             </template>
             <template #preview>
               <div class="Layout__preview-panel Layout__preview-panel_mobile">
@@ -275,14 +270,9 @@
               <ModuleContentDesignSystem :libraries="mockLibraries" modelValue="1" />
             </template>
             <template #ai-engine-info>
-              <div class="TestCase__ai-info">
-                <div class="TestCase__ai-info-label">ai engine</div>
-                <div class="TestCase__ai-info-value">ChatGPT</div>
-                <div class="TestCase__ai-info-note">don't share nda for now</div>
-              </div>
-            </template>
-            <template #ai-engine>
-              <button class="TestCase__generate-btn">generate <span>✦</span></button>
+              <Module label="ai engine">
+                <ModuleContentAIEngine />
+              </Module>
             </template>
             <template #preview>
               <div class="Layout__preview-panel Layout__preview-panel_mobile">
@@ -421,10 +411,15 @@ export default {
 }
 
 /* Preview empty state for isolated component test */
-.TestCase__preview-phone {
+.TestCase__preview-standalone {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+  background: var(--bg-panel);
+  border-radius: 20px;
+  border: 1px solid #1B1B1F;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Frame container: constrain Layout to exact Figma size */

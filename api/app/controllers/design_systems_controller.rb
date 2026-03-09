@@ -30,7 +30,12 @@ class DesignSystemsController < ApplicationController
     Array(dp[:component_library_ids]).each do |lib_id|
       ds.design_system_libraries.create!(component_library_id: lib_id)
     end
-    render json: { id: ds.id, name: ds.name }, status: :created
+    render json: {
+      id: ds.id,
+      name: ds.name,
+      component_library_ids: ds.component_library_ids,
+      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name } }
+    }, status: :created
   end
 
   def show

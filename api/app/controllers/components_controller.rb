@@ -198,7 +198,7 @@ class ComponentsController < ApplicationController
   private
 
   def component_params
-    params.require(:component).permit(:enabled, :status)
+    params.require(:component).permit(:enabled, :status, :match_percent)
   end
 
   def serve_image(path, label)

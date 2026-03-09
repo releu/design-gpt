@@ -36,21 +36,40 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def create
+    url = params[:url] || params.dig(:component_library, :url)
+    name = params[:name] || params.dig(:component_library, :name)
+
     # De-duplicate: reuse existing library with the same Figma URL for this user
-    cl = current_user.component_libraries.find_by(figma_url: params[:url])
+    cl = current_user.component_libraries.find_by(figma_url: url)
     if cl
       # Update name if provided and library has no name yet
-      cl.update!(name: params[:name]) if params[:name].present? && cl.name.blank?
+      cl.update!(name: name) if name.present? && cl.name.blank?
       return render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :ok
     end
 
-    attrs = { figma_url: params[:url], name: params[:name] }
+    attrs = { figma_url: url, name: name }
     cl = current_user.component_libraries.create!(attrs)
+
+    # Link to design system if provided
+    ds_id = params[:design_system_id] || params.dig(:component_library, :design_system_id)
+    if ds_id.present?
+      ds = current_user.design_systems.find(ds_id)
+      DesignSystemLibrary.find_or_create_by!(design_system: ds, component_library: cl)
+    end
 
     render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :created
   rescue ActiveRecord::RecordNotUnique
-    existing = current_user.component_libraries.find_by!(figma_url: params[:url])
-    render json: { id: existing.id, status: existing.status, figma_file_key: existing.figma_file_key }, status: :ok
+    # Unique index is on (user_id, figma_file_key), so find by extracted key
+    file_key = url&.match(%r{figma\.com/(?:file|design)/([a-zA-Z0-9]+)})&.[](1)
+    existing = current_user.component_libraries.find_by(figma_file_key: file_key) ||
+               current_user.component_libraries.find_by(figma_url: url)
+    if existing
+      render json: { id: existing.id, status: existing.status, figma_file_key: existing.figma_file_key }, status: :ok
+    else
+      render json: { error: "Duplicate record" }, status: :conflict
+    end
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
@@ -105,6 +124,7 @@ class ComponentLibrariesController < ApplicationController
         type: "component_set",
         name: cs.name,
         node_id: cs.node_id,
+        component_library_id: cl.id,
         is_vector: cs.vector?,
         is_root: cs.is_root,
         slots: cs.slots,
@@ -121,7 +141,8 @@ class ComponentLibrariesController < ApplicationController
             name: v.name,
             is_default: v.is_default,
             has_html: v.html_code.present?,
-            has_react: v.react_code.present?
+            has_react: v.react_code.present?,
+            match_percent: v.match_percent
           }
         }
       }
@@ -133,6 +154,7 @@ class ComponentLibrariesController < ApplicationController
         type: "component",
         name: c.name,
         node_id: c.node_id,
+        component_library_id: cl.id,
         is_vector: c.vector?,
         is_root: c.is_root,
         slots: c.slots,

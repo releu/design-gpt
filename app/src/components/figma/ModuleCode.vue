@@ -20,16 +20,16 @@ import { EditorView, placeholder, highlightWhitespace } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { githubLight } from "@uiw/codemirror-theme-github";
 
-// const noGutterNoActiveLine = EditorView.theme(
-//   {
-//     ".cm-gutters": { display: "none" },
-//     ".cm-content": { paddingLeft: "0 !important" },
-//     ".cm-activeLine": { backgroundColor: "transparent" },
-//     ".cm-activeLineGutter": { backgroundColor: "transparent" },
-//     "&.cm-editor.cm-focused": { outline: "none" },
-//   },
-//   { dark: false },
-// );
+const noGutterNoActiveLine = EditorView.theme(
+  {
+    ".cm-gutters": { display: "none" },
+    ".cm-content": { paddingLeft: "0 !important" },
+    ".cm-activeLine": { backgroundColor: "transparent" },
+    ".cm-activeLineGutter": { backgroundColor: "transparent" },
+    "&.cm-editor.cm-focused": { outline: "none" },
+  },
+  { dark: false },
+);
 
 export default {
   name: "ModuleCode",
@@ -65,7 +65,7 @@ export default {
       const exts = [
         basicSetup,
         githubLight,
-        // noGutterNoActiveLine,
+        noGutterNoActiveLine,
         langExt.value,
         EditorView.lineWrapping,
       ];

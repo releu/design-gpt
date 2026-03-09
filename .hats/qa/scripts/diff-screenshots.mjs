@@ -95,7 +95,7 @@ function main() {
       // Save diff image
       writeFileSync(`${DIFF_DIR}/${file}`, PNG.sync.write(diff));
 
-      const status = parseFloat(matchPct) >= 95 ? "PASS" : "FAIL";
+      const status = parseFloat(matchPct) >= 99 ? "PASS" : "FAIL";
       results.push({
         file,
         status,
@@ -135,7 +135,7 @@ function main() {
   console.log(`Diff images saved to: ${DIFF_DIR}`);
 
   if (failing.length > 0) {
-    console.log("\nFailing components (below 95% match):");
+    console.log("\nFailing components (below 99% match):");
     for (const r of failing) {
       console.log(`  ${r.file}: ${r.matchPct}% (${r.diffPixels}/${r.totalPixels} pixels differ)`);
     }

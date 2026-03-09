@@ -96,8 +96,9 @@ cd .hats/qa && npx bddgen && npx playwright test --config playwright.workflow.co
 The E2E tests require:
 - `FIGMA_TOKEN` set (real Figma API calls, no mocks)
 - `E2E_TEST_MODE=true` on the Rails server (accepts HS256 test tokens)
-- Dev servers running (`make dev`)
 - Test user: `auth0|alice123` / `alice@example.com`
+
+Playwright starts its own servers automatically (Rails on port 3001, Vite on port 5174, Caddy on port 443). `make dev` can be running simultaneously -- they use separate ports and domains (`design-gpt.localtest.me` for dev, `design-gpt-test.localtest.me` for tests).
 
 ### Component Rendering Validation
 

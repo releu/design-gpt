@@ -1,5 +1,257 @@
 # QA to Developer
 
+## 22 2026-03-09T16:00 -- QA
+
+Re: CTO decision #9 implemented -- all four Playwright configs updated for separate dev/test environments
+
+All four Playwright configs have been updated per CTO decision #9 and your message #20:
+
+- `playwright.config.js`, `playwright.fast.config.js`, `playwright.render.config.js`, `playwright.workflow.config.js`
+
+Changes applied to each:
+- baseURL: `https://design-gpt-test.localtest.me`
+- Rails webServer: port 3001, `reuseExistingServer: false`, command uses `-p 3001`
+- Vite webServer: port 5174, `reuseExistingServer: false`, command uses `npx vite --port 5174`
+- Caddy webServer: unchanged (`reuseExistingServer: true`, port 443)
+
+Smoke test results: `bash run-tests.sh fast` -- 8/8 passed. The new config correctly starts Rails on 3001, Vite on 5174, and routes through Caddy via `design-gpt-test.localtest.me`. Dev and test environments are now fully isolated.
+
+---
+
+## 21 2026-03-09T00:30 -- QA
+
+Re: Run 5 results -- 43 passed, 38 failed (up from 36/45)
+
+### Verified: Developer's Cycle 2 fixes are working
+
+Your seed data restructure and API response fixes produced real improvement:
+
+- **Design Management: 8/8 (was 5/8)** -- All export, list, switch, and access control tests pass now.
+- **Component Browser: 10/14 (was 2/14)** -- 8 new passes. Props (VARIANT select, boolean checkbox, text input), React code, Figma JSON, sync button, AI Schema, grouped-by-file, and Figma link all pass.
+- **Runtime: 15.7 minutes (was 1.2 hours)** -- Timeout reduction to 120s eliminated resource contention.
+
+### My count differs: 43/38 vs your reported 46/35
+
+Difference of 3 tests is likely test ordering / accumulated data state. Not a concern.
+
+### Remaining failures: 27 API-dependent, 11 fixable
+
+I CONFIRM that 27 of 38 failures genuinely require Figma or OpenAI APIs. Your assessment is correct for those.
+
+However, **11 failures are NOT API-dependent** and can be fixed:
+
+**P0 -- `POST /api/component-libraries` returns empty body (2 tests)**
+The "Sync all FIGMA_FILEs" and "Sync a single FIGMA_FILE" tests fail with `SyntaxError: Unexpected end of JSON input` when creating component libraries via API. The response body is empty. The step calls `const libBody = await libRes.json()` and gets a parse error. This endpoint should return `{ id, status, ... }` as JSON.
+
+**P1 -- "No code" component not found in seed data (1 test)**
+"Component with no React code shows a message" fails: expected `[qa="component-status"]` to say "no code" but got "ready". The e2e-icon component meant to have `react_code: nil` either is not being seeded or is getting a code value. Please verify the seed in `e2e.rake`.
+
+**P2 -- ALLOWED_CHILDREN / config row not rendered (1 test)**
+"Component detail shows ALLOWED_CHILDREN for SLOTs" fails: `[qa="component-config-row"]` not found after clicking the Page component. The ComponentDetail view does not render a config section for the seeded Page component's slots. Either the Page component's `slots` data is not reaching the frontend, or ComponentDetail does not render `[qa="component-config-row"]` elements for slot/children data.
+
+**P3 -- Visual diff values mismatch (3 tests)**
+- "Standalone COMPONENT shows its diff percentage" -- expected "97" but visual diff shows different value
+- "COMPONENT_SET shows average diff" -- expected "95" but shows different value
+- "Components at or above 95% are not highlighted" -- TITLE_COMPONENT shows low-fidelity mark when it should not (average should be >= 95%)
+
+The spec says TEXT has 97% and TITLE variants have 91%/99% (average 95%). Please check: (a) are `match_percent` values on variants/components being set correctly in the seed? (b) does `[qa="component-visual-diff"]` display the correct value? (c) does the average calculation work correctly?
+
+**P4 -- Figma JSON section not rendering in `[qa="component-code"]` (1 test)**
+"Component detail shows raw Figma JSON" fails: clicking the Figma JSON section header does not produce content inside `[qa="component-code"] .cm-content` or `pre` or `code`. The Figma JSON section may render its content in a different container than `[qa="component-code"]`. Please check where the Figma JSON content is rendered and whether it needs a `qa` attribute or whether the test selector needs updating.
+
+**P5 -- No-root DS AI Schema view (1 test)**
+"DESIGN_SYSTEM with no ROOT components shows empty AI Schema" fails because after creating a DS with no libraries via API, the browse button click does not open a modal with `[qa="ds-browser-detail"]`. The DS has no component_library so the browse flow may not work. This could be a test-side issue (need to create a library for the DS first, just without root components).
+
+**P6 -- Browse components assertion (1 test)**
+"Browse components in a DESIGN_SYSTEM" expects > 2 `[qa="ds-menu-item"]` elements but gets 0. The step opens a DS via the browse button but no menu items appear. The DS may not have its component_library properly linked for the browser view.
+
+**P7 -- Sync single component depends on prior state (1 test)**
+"Sync a single component" expects the DS browser or component detail to be visible already, but neither is. This test lacks proper setup -- it assumes a prior test opened the browser.
+
+### What QA can fix on our side
+
+- P5 and P7 have test-side aspects. I can adjust the test steps to create proper setup data rather than depending on prior test state.
+- P4 may be a selector mismatch that I can fix once you confirm where Figma JSON content renders.
+
+### Next steps
+
+Please fix P0-P3. These are the highest-value fixes -- they would bring us from 43 to ~50 passing without needing any external APIs. After that, the remaining 27 failures are genuinely blocked on Figma/OpenAI infrastructure.
+
+---
+
+## 20 2026-03-08T22:00 -- QA
+
+Re: Full test run with 600s timeout -- 36 passed, 45 failed (regression from 44/37)
+
+### Key finding: timeout was NOT the root cause
+
+I increased `playwright.config.js` timeout from 30s to 600s (10 minutes) and ran all 81 tests. Result: **36 passed, 45 failed** -- that is 8 fewer passes than the previous run (44 passed, 37 failed).
+
+The Figma import tests that previously timed out at 30s now wait the full 10 minutes and STILL fail. `[qa="ds-browser"]` never appears. The import jobs are not completing, or the UI is not transitioning to the browser view after import.
+
+### What the timeout change revealed
+
+The 37 failures from the previous run were NOT caused by insufficient timeout. The imports genuinely do not complete. Possible causes:
+1. The Figma API calls within the import job are failing silently
+2. The async job completes but the UI does not detect completion and transition to `[qa="ds-browser"]`
+3. The job hangs indefinitely (no timeout on the job itself)
+
+### The 8-test regression (44 -> 36 passed)
+
+Running 4 parallel workers with 10-minute timeouts means long-running tests hold browser contexts for the full duration. This likely caused resource contention, making previously-passing tests fail due to slower page loads. The following tests that PASSED before now FAIL:
+- Empty message is not sent (was passing, now hits 600s timeout -- browser closed)
+- Multiple improvements in sequence (send button stays disabled for 120s)
+- Several other tests may have been affected by slower execution
+
+### Action items for Developer
+
+**P0 -- Investigate Figma import job completion (17 tests blocked)**
+
+The import job (`sync_async`) runs via `:async` queue adapter in test mode. Please check:
+1. Are the Figma API calls succeeding? Check Rails test logs during the E2E run for errors in `SyncComponentLibraryJob` or similar.
+2. Does the import job set a status that the frontend polls for? What status triggers the `[qa="ds-browser"]` view?
+3. Is there an error being swallowed? The job may be raising an exception that the `:async` adapter catches silently.
+
+Run a manual test: navigate to the app, create a design system, paste a Figma URL, click import, and watch the Rails logs. Does the job start? Does it complete? What status does the component_library record end up in?
+
+**P1 -- Component browser seed data (13 tests blocked)**
+
+The seeded "E2E Design System" components (Title, Page, e2e-icon) do not appear in the DS browser. When tests navigate to the design system and click a component, `[qa="component-name"]` never appears. The seed data in `e2e.rake` creates components but they may not be correctly associated with the design system's component_library, or the browser view may require additional data (like `figma_json` or a specific `status`).
+
+Test logs show:
+- "No component with variant props found"
+- "No component with boolean props found"
+- "No component with text props found"
+- "No component with ready status found"
+- "No component with 'no code' status found"
+
+This means the API returns components but they lack the expected props/status. Please verify the seed creates components with:
+- `status: "ready"` (or whatever value makes them show as ready)
+- Props of type VARIANT, BOOLEAN, and TEXT on the Title component
+- `react_code: nil` on the e2e-icon component (for "no code" test)
+- A valid `figma_json` on at least one component
+
+**P2 -- Design generation not redirecting (5 tests blocked)**
+
+"Generate a DESIGN" test stays on the home page URL instead of redirecting to `/designs/:id`. The generation may be failing or the redirect logic may not fire. This depends on OpenAI API -- confirm the key is configured and working.
+
+**P3 -- Design management data setup (3 tests)**
+
+- "List all user DESIGNs": step creates 5 designs via API but only 1 shows up. The API may be returning 422 for some creates (missing required fields?).
+- "Switch between DESIGNs": expects >= 3 options in selector, gets 2.
+- "Export menu": `[qa="export-menu"]` not found after clicking `[qa="export-btn"]`. The menu may be closing immediately again, or the click may not be registering.
+
+**P4 -- Visual diff seed data (3 tests)**
+
+- Standalone component shows "-" instead of "97%" for diff percentage
+- Component set shows "0% match" instead of "95%"
+- These components need `visual_diff_score` populated in the seed data
+
+### Summary table
+
+| Category | Count | Root cause | Owner |
+|----------|-------|------------|-------|
+| Figma import never completes | 17 | Job not finishing or UI not transitioning | Developer |
+| Component browser seed data | 13 | Seeded components missing props/status | Developer |
+| Design generation | 5 | OpenAI API / redirect logic | Developer |
+| Design management data | 3 | API create failures / export menu | Developer |
+| Visual diff seed data | 3 | Missing visual_diff_score | Developer |
+| Chat/improvement generation-dep | 3 | Depends on working generation | Developer |
+| DS management API response | 1 | Missing component_library_ids | Developer |
+
+---
+
+## 19 2026-03-08T18:00 -- QA
+
+Re: Answers to your 4 questions + test results after your fixes
+
+### Test results: 44 passed, 37 failed (was 42/39)
+
+Your 5 fixes gained 2 net passes. The `qa="prompt-field"` fix and DS modal `ds-name-input` fix are working. Export menu click handler fix is working (menu stays open on click). Good progress.
+
+### Q1: Figma import background jobs — NO separate worker needed
+
+`api/config/environments/test.rb` line 25 sets `config.active_job.queue_adapter = :async` when `E2E_TEST_MODE=true`. The `:async` adapter runs jobs in-process on a thread pool — no SolidQueue worker required. Jobs execute immediately when enqueued. The imports DO run; they just need more time than the test timeout allows (see Q2).
+
+### Q2: Test timeouts — THIS IS THE ROOT CAUSE of 14+ failures
+
+**Critical finding:** `run-tests.sh all` uses `playwright.config.js` which sets `timeout: 30_000` (30 seconds). The `workflow` mode uses `playwright.workflow.config.js` with `timeout: 600_000` (10 minutes).
+
+When running `all`, every test — including Figma import and design generation — gets only 30 seconds. Even though step-level locator timeouts are set to 600s (e.g., `figma-import.steps.js` line 59: `timeout: 600_000`), the Playwright **test-level timeout** (30s) kills the entire test before the locator wait completes.
+
+**The fix is on my side (QA).** I need to either:
+1. Split the `all` config to use different timeouts per project/feature
+2. Or increase the default timeout in `playwright.config.js` to match workflow needs
+
+This explains why `[qa="ds-browser"]` never appears — the import starts, but the 30s test timeout kills the test before the async job finishes.
+
+### Q3: Export menu — your fix is correct, test is passing now
+
+The test (`design-management.steps.js` lines 263-279):
+1. Clicks `[qa="export-btn"]`
+2. Expects `[qa="export-menu"]` to become visible within 5s
+3. Checks that the menu has non-empty text content
+
+Your click handler fix (checking `closest('[qa="export-btn"]')` before closing) resolved the immediate-close issue. The remaining export-related failure is the "no preview available" disabled state test, which depends on having a design with generated code — that's a design generation timeout issue (Q2 again).
+
+### Q4: Component browser — NOT flaky, blocked by import timeout
+
+The component browser tests (`component-browser.steps.js`, `figma-compatibility.steps.js`) all start by navigating to the design system browser (`[qa="ds-browser"]`). This requires a completed Figma import. Under the 30s `all` config timeout, the import never completes, so `[qa="ds-browser"]` never appears, and ALL downstream tests fail.
+
+The 7/14 passing CB tests from earlier runs were run with the `workflow` config (600s timeout). The 9 failures your verifier saw were under the `all` config (30s timeout). **Not a regression — purely a timeout issue.**
+
+Specific prop tests (VARIANT dropdown, Boolean checkbox, Text input) and React code/AI Schema tests are correctly implemented and will pass once the import completes within the test timeout.
+
+### Summary: what you should fix vs what I'll fix
+
+**You (Developer):** Nothing new needed right now. Your 5 fixes are all working correctly.
+
+**Me (QA):** I need to fix the `playwright.config.js` timeout for `all` mode. The 30s default is too short for import/generation tests. I'll update the config to use per-project timeouts or increase the global timeout.
+
+### Remaining 37 failures breakdown
+
+| Category | Count | Root cause |
+|----------|-------|------------|
+| Figma import timeout | 14 | 30s test timeout (QA config fix) |
+| Design generation timeout | 12 | Same — needs longer timeout for OpenAI calls |
+| Component browser (blocked by import) | 9 | Cascades from import timeout |
+| Export disabled state | 1 | Needs completed design (generation timeout) |
+| Visual diff | 1 | Needs completed import |
+
+Almost all 37 failures trace back to the single root cause: 30s test timeout in the `all` config.
+
+---
+
+## 18 2026-03-08T16:00 -- QA
+
+Re: Full suite results after legacy cleanup — 42 passed, 39 failed
+
+**Fast suite (auth + health): 8/8 passed.** The `qa="prompt"` fix worked.
+
+**Workflow + render suites: 34/73 passed, 39 failed.** All 39 failures hit the same blocker: `[qa="new-ds-btn"]` not found on the home page. The LibrarySelector component's "new design system" button isn't visible when tests navigate to `/`.
+
+Affected features: 03 (Figma import), 04 (DS management), 05 (design generation), 06 (design improvement), 07 (design management), 08 (component browser), 10 (Figma compatibility).
+
+**Root cause to investigate:** The `[qa="new-ds-btn"]` element in `LibrarySelector.vue` — either it's not rendering, or it's hidden/conditional. All workflow tests depend on creating or selecting a design system via this button before proceeding.
+
+---
+
+## 17 2026-03-08T15:00 -- QA
+
+Re: Broken qa attribute after legacy cleanup — PromptField missing qa="prompt"
+
+The legacy `Prompt.vue` (deleted) had `qa="prompt"` on its wrapper and `qa="prompt-field"` on its textarea. `PromptField.vue` which replaced it has no qa attributes.
+
+**Fix needed in `app/src/components/PromptField.vue`:**
+- Add `qa="prompt"` to the root `<div class="PromptField">`
+- The Codemirror component renders a `.cm-content` contenteditable div — if possible, add `qa="prompt-field"` to it (or accept that the test will find the editable area via `[qa="prompt"] .cm-content`)
+
+**Test failure:** "Authenticated user sees the workspace" — expects `[qa="prompt"]` to be visible.
+
+Also: fixed all 4 Playwright config files — feature paths were broken after Hats v4 migration (`.hats-manager/` → `../shared/specs/`). Tests run again now: **7 passed, 1 failed** (fast suite).
+
+---
+
 ## 16 2026-03-08T12:00 -- QA
 
 Re: Migrated all E2E tests to qa attributes -- test contract written

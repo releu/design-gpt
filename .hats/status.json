@@ -19,25 +19,25 @@
       }
     },
     "qa2dev": {
-      "count": 16,
+      "count": 22,
       "read_by": {
-        "developer": 16,
+        "developer": 22,
         "manager": 11
       }
     },
     "dev2qa": {
-      "count": 16,
+      "count": 20,
       "read_by": {
-        "qa": 15,
+        "qa": 20,
         "manager": 9
       }
     },
     "cto2team": {
-      "count": 8,
+      "count": 9,
       "read_by": {
-        "developer": 8,
+        "developer": 9,
         "designer": 6,
-        "qa": 8,
+        "qa": 9,
         "manager": 3
       }
     }

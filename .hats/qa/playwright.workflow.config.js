@@ -4,14 +4,15 @@ import { defineBddConfig } from "playwright-bdd";
 // Workflow config: runs full design workflow (import, generate, improve, export).
 // Requires Figma import + OpenAI API. Long timeouts.
 const testDir = defineBddConfig({
+  featuresRoot: "../shared/specs",
   features: [
-    ".hats-manager/03-figma-import.feature",
-    ".hats-manager/04-design-system-management.feature",
-    ".hats-manager/05-design-generation.feature",
-    ".hats-manager/06-design-improvement.feature",
-    ".hats-manager/07-design-management.feature",
-    ".hats-manager/08-component-library-browser.feature",
-    ".hats-manager/09-visual-diff.feature",
+    "../shared/specs/03-figma-import.feature",
+    "../shared/specs/04-design-system-management.feature",
+    "../shared/specs/05-design-generation.feature",
+    "../shared/specs/06-design-improvement.feature",
+    "../shared/specs/07-design-management.feature",
+    "../shared/specs/08-component-library-browser.feature",
+    "../shared/specs/09-visual-diff.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen-workflow",
@@ -22,22 +23,22 @@ export default defineConfig({
   timeout: 600_000,
   retries: 0,
   use: {
-    baseURL: "https://design-gpt.localtest.me",
+    baseURL: "https://design-gpt-test.localtest.me",
     ignoreHTTPSErrors: true,
   },
 
   webServer: [
     {
       command:
-        "cd ../../api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails server -p 3000 -b 127.0.0.1",
-      port: 3000,
-      reuseExistingServer: true,
+        "cd ../../api && RAILS_ENV=test E2E_TEST_MODE=true bundle exec rails server -p 3001 -b 127.0.0.1",
+      port: 3001,
+      reuseExistingServer: false,
       timeout: 30_000,
     },
     {
-      command: "cd ../../app && VITE_E2E_TEST=true npm run dev",
-      port: 5173,
-      reuseExistingServer: true,
+      command: "cd ../../app && VITE_E2E_TEST=true npx vite --port 5174",
+      port: 5174,
+      reuseExistingServer: false,
       timeout: 15_000,
     },
     {
