@@ -105,6 +105,7 @@ module Figma
           node = default_variant.figma_json
 
           @current_props = extract_props(prop_definitions)
+          @slot_map = build_slot_map(node, prop_definitions)
 
           collect_nested_instance_props(node)
 
@@ -162,6 +163,7 @@ module Figma
       @rendered_list_slots = []
 
       @current_props = extract_props(component.prop_definitions || {})
+      @slot_map = build_slot_map(node, @prop_definitions)
 
       instances, detached_nodes = collect_instances(node)
       imports = generate_imports(instances, detached_nodes)
@@ -293,7 +295,7 @@ module Figma
       key.to_s.gsub(/#[\d:]+$/, "").strip
     end
 
-    # Returns true if this INSTANCE node should be replaced with {props.children}.
+    # Returns true if this INSTANCE node should be replaced with slot content.
     # Detection: bound to an INSTANCE_SWAP prop that has preferredValues.
     def slot_instance?(node)
       ref = node["componentPropertyReferences"]&.dig("mainComponent")
@@ -301,6 +303,45 @@ module Figma
 
       defn = find_prop_definition(ref)
       defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+    end
+
+    # Pre-scan the component tree to build a map of node IDs to slot prop names.
+    # Used to emit {props.children} for single-slot or {props.slotName} for multi-slot.
+    def build_slot_map(node, prop_definitions)
+      entries = []
+
+      # Collect SLOT and INSTANCE_SWAP slot nodes
+      walk = ->(n) do
+        return unless n.is_a?(Hash)
+        if n["type"] == "SLOT"
+          ref = n.dig("componentPropertyReferences", "slotContentId")
+          entries << { ref: ref, node_id: n["id"] } if ref
+        elsif n["type"] == "INSTANCE"
+          ref = n.dig("componentPropertyReferences", "mainComponent")
+          if ref
+            defn = prop_definitions[ref] || prop_definitions[strip_ref_suffix(ref)]
+            if defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+              entries << { ref: ref, node_id: n["id"] }
+            end
+          end
+        end
+        (n["children"] || []).each { |c| walk.call(c) }
+      end
+      walk.call(node)
+
+      # Deduplicate by ref key — same ref = same logical slot
+      unique_refs = entries.map { |e| strip_ref_suffix(e[:ref]) }.uniq
+
+      map = {}
+      if unique_refs.size <= 1
+        entries.each { |e| map[e[:node_id]] = "children" }
+      else
+        entries.each do |e|
+          name = to_prop_name(strip_ref_suffix(e[:ref]))
+          map[e[:node_id]] = name
+        end
+      end
+      map
     end
 
     # Returns true if the given componentPropertyReferences key points to an
@@ -464,6 +505,10 @@ module Figma
           generate_text(node, root_name, class_name, css_rules, depth)
         when *VECTOR_TYPES
           generate_shape(node, root_name, class_name, css_rules, depth)
+        when "SLOT"
+          @has_slot = true
+          slot_name = @slot_map[node["id"]] || "children"
+          "{props.#{slot_name}}"
         when "INSTANCE"
           ref = node["componentPropertyReferences"]&.dig("mainComponent")
           if @is_list_component && ref && instance_swap_ref?(ref)
@@ -472,11 +517,13 @@ module Figma
             else
               @rendered_list_slots << ref
               @has_slot = true
-              "{props.children}"
+              slot_name = @slot_map[node["id"]] || "children"
+              "{props.#{slot_name}}"
             end
           elsif slot_instance?(node)
             @has_slot = true
-            "{props.children}"
+            slot_name = @slot_map[node["id"]] || "children"
+            "{props.#{slot_name}}"
           else
             generate_instance(node, root_name, class_name, css_rules, depth)
           end

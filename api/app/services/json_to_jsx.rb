@@ -29,8 +29,16 @@ class JsonToJsx
 
     # Render all slot content (children first, then named slots)
     inner_parts = []
-    slot_props.each do |_slot_name, slot_content|
-      inner_parts << render_children(slot_content, depth + 1)
+    slot_props.each do |slot_name, slot_content|
+      rendered = render_children(slot_content, slot_name == "children" ? depth + 1 : depth + 2)
+      next if rendered.empty?
+
+      if slot_name == "children"
+        inner_parts << rendered
+      else
+        slot_indent = "  " * (depth + 1)
+        inner_parts << "#{slot_indent}<Slot name=\"#{slot_name}\">\n#{rendered}#{slot_indent}</Slot>\n"
+      end
     end
     inner = inner_parts.join
 

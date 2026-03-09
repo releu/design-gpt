@@ -242,6 +242,8 @@ class DesignGenerator
   def has_slot?(node, prop_definitions = {})
     return false unless node.is_a?(Hash)
 
+    return true if node["type"] == "SLOT"
+
     if node["type"] == "INSTANCE"
       ref = node["componentPropertyReferences"]&.dig("mainComponent")
       if ref

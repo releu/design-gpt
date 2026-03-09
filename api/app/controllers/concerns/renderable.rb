@@ -71,17 +71,41 @@ module Renderable
         <div id="root"></div>
         #{component_scripts}
         <script>
-          // Wrap container components to forward props.children
+          // Slot component: groups children under a name for multi-slot components
+          window.Slot = function Slot(props) {
+            return props.children || null;
+          };
+
+          // Wrap container components to forward slot content
           var _containers = #{container_names_json};
           _containers.forEach(function(name) {
             if (window[name]) {
               var Orig = window[name];
               window[name] = function(props) {
-                var result = Orig(props);
-                if (props && props.children) {
-                  return React.createElement(React.Fragment, null, result, props.children);
+                if (!props || !props.children) return Orig(props);
+
+                // Extract named slots from children
+                var slotProps = {};
+                var defaultChildren = [];
+                var kids = Array.isArray(props.children) ? props.children : [props.children];
+
+                kids.forEach(function(child) {
+                  if (child && child.type === Slot && child.props && child.props.name) {
+                    slotProps[child.props.name] = child.props.children;
+                  } else {
+                    defaultChildren.push(child);
+                  }
+                });
+
+                // Merge: named slots as props, unslotted children as props.children
+                var merged = Object.assign({}, props, slotProps);
+                if (defaultChildren.length > 0) {
+                  merged.children = defaultChildren.length === 1 ? defaultChildren[0] : defaultChildren;
+                } else {
+                  delete merged.children;
                 }
-                return result;
+
+                return Orig(merged);
               };
               window[name].displayName = name;
             }
