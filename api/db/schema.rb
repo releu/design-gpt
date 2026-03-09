@@ -51,9 +51,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
     t.string "figma_file_name"
     t.jsonb "prop_definitions", default: {}
     t.boolean "is_root", default: false, null: false
-    t.jsonb "slots", default: []
     t.string "status", default: "pending"
     t.text "error_message"
+    t.jsonb "slots", default: []
     t.index ["component_library_id", "node_id"], name: "index_component_sets_on_component_library_id_and_node_id", unique: true
     t.index ["component_library_id"], name: "index_component_sets_on_component_library_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -102,12 +102,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
     t.text "error_message"
     t.boolean "enabled", default: true
     t.boolean "is_root", default: false, null: false
-    t.jsonb "slots", default: []
     t.string "diff_image_path"
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
+    t.jsonb "slots", default: []
   end
 
   create_table "design_component_libraries", force: :cascade do |t|
