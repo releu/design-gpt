@@ -1,34 +1,40 @@
 <template>
-  <div class="DesignSystemModal" qa="ds-modal" @click.self="$emit('close')">
-    <div class="DesignSystemModal__top-bar">
-      <div class="DesignSystemModal__close" @click="$emit('close')">×</div>
+  <div class="ModuleDesignSystem" qa="ds-modal" @click.self="$emit('close')">
+    <div class="ModuleDesignSystem__top-bar">
+      <div class="ModuleDesignSystem__close" @click="$emit('close')">×</div>
     </div>
 
-    <div ref="modalCard" class="DesignSystemModal__box DesignSystemModal__card modal-card" data-testid="modal-card">
-      <div class="DesignSystemModal__title">{{ designSystem ? designSystem.name : 'New design system' }}</div>
+    <div ref="modalCard" class="ModuleDesignSystem__box ModuleDesignSystem__card modal-card" data-testid="modal-card">
+      <div class="ModuleDesignSystem__title">{{ designSystem ? designSystem.name : 'New design system' }}</div>
 
       <!-- Phase: add — source buttons + URL list + Import -->
       <template v-if="phase === 'add'">
-        <div class="DesignSystemModal__source-btns">
-          <div class="DesignSystemModal__source-btn" qa="ds-add-figma-btn" @click="addFigmaUrl">+ Figma</div>
+        <input
+          class="ModuleDesignSystem__overview-name-input"
+          qa="ds-name-input"
+          v-model="designSystemName"
+          placeholder="Design system name"
+        />
+        <div class="ModuleDesignSystem__source-btns">
+          <div class="ModuleDesignSystem__source-btn" qa="ds-add-figma-btn" @click="addFigmaUrl">+ Figma</div>
         </div>
 
-        <div class="DesignSystemModal__url-list" v-if="pendingUrls.length">
+        <div class="ModuleDesignSystem__url-list" v-if="pendingUrls.length">
           <div
-            class="DesignSystemModal__url-item"
+            class="ModuleDesignSystem__url-item"
             v-for="(url, index) in pendingUrls"
             :key="index"
           >
-            <span class="DesignSystemModal__url-text" qa="ds-url-text">{{ url }}</span>
-            <div class="DesignSystemModal__url-remove" @click="removeUrl(index)">Remove</div>
+            <span class="ModuleDesignSystem__url-text" qa="ds-url-text">{{ url }}</span>
+            <div class="ModuleDesignSystem__url-remove" @click="removeUrl(index)">Remove</div>
           </div>
         </div>
 
         <div
           v-if="pendingUrls.length"
-          class="DesignSystemModal__do-import"
+          class="ModuleDesignSystem__do-import"
           qa="ds-import-btn"
-          :class="{ 'DesignSystemModal__do-import_loading': importing }"
+          :class="{ 'ModuleDesignSystem__do-import_loading': importing }"
           @click="importAll"
         >
           Import
@@ -37,9 +43,9 @@
 
       <!-- Phase: importing — single aggregated progress bar -->
       <template v-else-if="phase === 'importing'">
-        <div class="DesignSystemModal__importing" qa="ds-box">
-          <div class="DesignSystemModal__importing-header">
-            <span class="DesignSystemModal__importing-desc">
+        <div class="ModuleDesignSystem__importing" qa="ds-box">
+          <div class="ModuleDesignSystem__importing-header">
+            <span class="ModuleDesignSystem__importing-desc">
               <template v-if="activeLib">
                 {{ activeLib.name }}
                 <template v-if="activeLib.progress && activeLib.progress.message">
@@ -48,7 +54,7 @@
               </template>
               <template v-else>Preparing import…</template>
             </span>
-            <span class="DesignSystemModal__importing-count" v-if="totalSteps > 0">
+            <span class="ModuleDesignSystem__importing-count" v-if="totalSteps > 0">
               {{ doneSteps }}/{{ totalSteps }}
             </span>
           </div>
@@ -58,34 +64,34 @@
 
       <!-- Phase: done — two-column browser -->
       <template v-else-if="phase === 'done'">
-        <div class="DesignSystemModal__browser" qa="ds-browser">
+        <div class="ModuleDesignSystem__browser" qa="ds-browser">
           <!-- Left: menu -->
-          <div class="DesignSystemModal__menu">
+          <div class="ModuleDesignSystem__menu">
             <div
-              class="DesignSystemModal__menu-item"
+              class="ModuleDesignSystem__menu-item"
               qa="ds-menu-item"
-              :class="{ 'DesignSystemModal__menu-item_active': selectedItem === 'overview' }"
+              :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'overview' }"
               @click="selectedItem = 'overview'"
             >
               Overview
             </div>
             <div
-              class="DesignSystemModal__menu-item"
+              class="ModuleDesignSystem__menu-item"
               qa="ds-menu-item"
-              :class="{ 'DesignSystemModal__menu-item_active': selectedItem === 'ai-schema' }"
+              :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'ai-schema' }"
               @click="selectedItem = 'ai-schema'"
             >
               AI Schema
             </div>
 
             <template v-for="lib in libraries" :key="lib.id">
-              <div class="DesignSystemModal__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
+              <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
               <div
                 v-for="comp in lib.components"
                 :key="comp.type + comp.id"
-                class="DesignSystemModal__menu-item"
+                class="ModuleDesignSystem__menu-item"
                 qa="ds-menu-item"
-                :class="{ 'DesignSystemModal__menu-item_active': isSelected(comp) }"
+                :class="{ 'ModuleDesignSystem__menu-item_active': isSelected(comp) }"
                 @click="selectedItem = comp"
               >
                 {{ comp.name }}
@@ -94,29 +100,29 @@
           </div>
 
           <!-- Right: detail -->
-          <div class="DesignSystemModal__browser-detail" qa="ds-browser-detail">
+          <div class="ModuleDesignSystem__browser-detail" qa="ds-browser-detail">
             <!-- Overview panel -->
-            <div class="DesignSystemModal__overview" v-if="selectedItem === 'overview'">
-              <div class="DesignSystemModal__overview-title">Overview</div>
+            <div class="ModuleDesignSystem__overview" v-if="selectedItem === 'overview'">
+              <div class="ModuleDesignSystem__overview-title">Overview</div>
               <input
-                class="DesignSystemModal__overview-name-input"
+                class="ModuleDesignSystem__overview-name-input"
                 qa="ds-name-input"
                 v-model="designSystemName"
                 placeholder="Design system name"
               />
               <div
-                class="DesignSystemModal__overview-file"
+                class="ModuleDesignSystem__overview-file"
                 v-for="lib in libraries"
                 :key="lib.id"
               >
-                <span class="DesignSystemModal__overview-file-name">{{ lib.name }}</span>
-                <span class="DesignSystemModal__overview-file-count">
+                <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
+                <span class="ModuleDesignSystem__overview-file-count">
                   {{ lib.components.length }} components
                 </span>
               </div>
               <div
-                class="DesignSystemModal__update-btn"
-                :class="{ 'DesignSystemModal__update-btn_loading': syncing }"
+                class="ModuleDesignSystem__update-btn"
+                :class="{ 'ModuleDesignSystem__update-btn_loading': syncing }"
                 @click="syncAll"
               >
                 Update from Figma
@@ -138,31 +144,31 @@
               />
 
               <!-- Read-only configuration (auto-detected from Figma) -->
-              <div class="DesignSystemModal__config" v-if="selectedItem.is_root || selectedItemChildren.length">
-                <div v-if="selectedItem.is_root" class="DesignSystemModal__root-badge">Root component</div>
-                <div v-if="selectedItemChildren.length" class="DesignSystemModal__children-section">
-                  <div class="DesignSystemModal__children-label">Allowed children</div>
-                  <div class="DesignSystemModal__children-list">
+              <div class="ModuleDesignSystem__config" v-if="selectedItem.is_root || selectedItemChildren.length">
+                <div v-if="selectedItem.is_root" class="ModuleDesignSystem__root-badge">Root component</div>
+                <div v-if="selectedItemChildren.length" class="ModuleDesignSystem__children-section">
+                  <div class="ModuleDesignSystem__children-label">Allowed children</div>
+                  <div class="ModuleDesignSystem__children-list">
                     <div
                       v-for="child in selectedItemChildren"
                       :key="child"
-                      class="DesignSystemModal__children-item"
+                      class="ModuleDesignSystem__children-item"
                     >{{ child }}</div>
                   </div>
                 </div>
               </div>
             </template>
 
-            <div v-else class="DesignSystemModal__detail-empty">
+            <div v-else class="ModuleDesignSystem__detail-empty">
               Select a component to view details
             </div>
           </div>
         </div>
 
         <div
-          class="DesignSystemModal__save-btn"
+          class="ModuleDesignSystem__save-btn"
           qa="ds-save-btn"
-          :class="{ 'DesignSystemModal__save-btn_loading': saving }"
+          :class="{ 'ModuleDesignSystem__save-btn_loading': saving }"
           @click="saveAndClose"
         >
           {{ designSystem ? 'Close' : 'Save' }}
@@ -176,7 +182,7 @@
 import { useAuth0 } from "@auth0/auth0-vue";
 
 export default {
-  name: "DesignSystemModal",
+  name: "ModuleDesignSystem",
   setup() {
     const { getAccessTokenSilently } = useAuth0();
     return { getAccessTokenSilently };
@@ -485,7 +491,7 @@ export default {
 </script>
 
 <style lang="scss">
-.DesignSystemModal {
+.ModuleDesignSystem {
   position: fixed;
   inset: 0;
   background: var(--bg-modal-overlay);

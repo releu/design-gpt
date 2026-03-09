@@ -12,10 +12,25 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "suiss-mono";
+  src: url("../assets/SuisseIntlMono-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "suiss-mono";
+  src: url("../assets/SuisseIntlMono-Bold.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
 :root {
   /* Font families -- system stack per designer spec */
-  --ff-text: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
-  --ff-header: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --ff-text: 'suiss', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --ff-header: 'suiss', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --ff-mono: 'suiss-mono', 'Menlo', monospace;
 
   /* Typography scale */
   --font-text-s: 500 13px/16px var(--ff-text);
@@ -27,22 +42,22 @@
   --font-header-m: 700 20px/24px var(--ff-header);
 
   /* Backgrounds */
-  --bg-page: #EBEBEA;
+  --bg-page: #EDECE8;
   --bg-panel: #FFFFFF;
   --bg-input: #FFFFFF;
-  --bg-bubble-user: #F0EFED;
+  --bg-bubble-user: #EDECE8;
   --bg-bubble-ai: transparent;
   --bg-chip-inactive: transparent;
-  --bg-chip-active: #EBEBEA;
-  --bg-modal-overlay: #EBEBEA;
+  --bg-chip-active: #EDECE8;
+  --bg-modal-overlay: #EDECE8;
 
   /* Foreground / Text */
-  --text-primary: #1A1A1A;
+  --text-primary: #1B1B1F;
   --text-secondary: #999999;
   --text-on-dark: #FFFFFF;
 
   /* Accents */
-  --accent-primary: #1A1A1A;
+  --accent-primary: #1B1B1F;
   --accent-border: #D4D4D4;
   --accent-divider: #E0E0E0;
 
@@ -51,7 +66,7 @@
   --sp-2: 8px;
   --sp-3: 16px;
   --sp-4: 24px;
-  --sp-5: 32px;
+  --sp-5: 40px;
   --sp-6: 48px;
 
   /* Border Radius */
@@ -62,14 +77,14 @@
   --radius-phone: 72px;
 
   /* Legacy color aliases */
-  --black: #1A1A1A;
+  --black: #1B1B1F;
   --blue: #a0c7fe;
   --gray: #999999;
   --green: #4cd964;
   --lightgray: #D4D4D4;
-  --orange: #1A1A1A;
+  --orange: #1B1B1F;
   --superdarkgray: #565553;
-  --superlightgray: #EBEBEA;
+  --superlightgray: #EDECE8;
   --violet: #e26de9;
   --white: #FFFFFF;
   --yellow: #f8ed32;

@@ -1,5 +1,5 @@
 <template>
-  <div class="PromptField">
+  <div class="ModuleContentPrompt" qa="prompt" ref="root">
     <Codemirror
       v-model="localValue"
       :extensions="extensions"
@@ -10,7 +10,7 @@
 </template>
 
 <script>
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted, nextTick, ref as vueRef } from "vue";
 import { Codemirror } from "vue-codemirror";
 import { basicSetup } from "codemirror";
 import { markdown } from "@codemirror/lang-markdown";
@@ -30,7 +30,7 @@ const noGutterNoActiveLine = EditorView.theme(
 );
 
 export default {
-  name: "PromptField",
+  name: "ModuleContentPrompt",
   components: { Codemirror },
   props: {
     modelValue: { type: String, default: "" },
@@ -40,6 +40,7 @@ export default {
   },
   emits: ["update:modelValue", "change"],
   setup(props, { emit }) {
+    const root = vueRef(null);
     const localValue = ref(props.modelValue);
     watch(
       () => props.modelValue,
@@ -79,13 +80,22 @@ export default {
       emit("change", val);
     }
 
-    return { localValue, extensions, onChange };
+    onMounted(() => {
+      nextTick(() => {
+        if (root.value) {
+          const cm = root.value.querySelector('.cm-content');
+          if (cm) cm.setAttribute('qa', 'prompt-field');
+        }
+      });
+    });
+
+    return { root, localValue, extensions, onChange };
   },
 };
 </script>
 
 <style lang="scss">
-.PromptField {
+.ModuleContentPrompt {
   .cm-editor {
     border: 0;
     width: 100%;
@@ -99,7 +109,7 @@ export default {
   .cm-scroller {
     padding: 8px 6px;
     overflow: auto;
-    font-family: Menlo, monospace !important;
+    font-family: var(--ff-mono) !important;
     font-size: 14px;
   }
 

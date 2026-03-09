@@ -1,40 +1,42 @@
 <template>
-  <div class="ChatPanel" qa="chat-panel">
-    <div class="ChatPanel__messages" qa="chat-messages" ref="messagesList">
-      <div class="ChatPanel__messages-spacer" />
+  <div class="ModuleChat" qa="chat-panel">
+    <div class="ModuleChat__messages" qa="chat-messages" ref="messagesList">
+      <div class="ModuleChat__messages-spacer" />
       <div
         v-for="msg in messages"
         :key="msg.id"
-        :class="['ChatPanel__message', `ChatPanel__message_${msg.author}`]"
-        :qa="msg.author === 'user' ? 'chat-message-user' : 'chat-message-ai'"
+        qa="chat-message"
       >
-        <div class="ChatPanel__message-body" v-html="msg.html || msg.content || msg.body || ''" />
         <div
-          v-if="msg.author === 'designer' && msg.iteration_id"
-          class="ChatPanel__reset-btn"
-          @click="$emit('reset', msg.iteration_id)"
-        >revert to this version</div>
+          :class="['ModuleChat__message', `ModuleChat__message_${msg.author}`]"
+          :qa="msg.author === 'user' ? 'chat-message-user' : 'chat-message-ai'"
+        >
+          <div class="ModuleChat__message-body" v-html="msg.html || msg.content || msg.body || ''" />
+          <div
+            v-if="msg.author === 'designer' && msg.iteration_id"
+            class="ModuleChat__reset-btn"
+            @click="$emit('reset', msg.iteration_id)"
+          >revert to this version</div>
+        </div>
       </div>
     </div>
-    <div class="ChatPanel__input-area">
+    <div class="ModuleChat__input-area">
       <input
         type="text"
-        class="ChatPanel__input"
+        class="ModuleChat__input"
         qa="chat-input"
         v-model="inputText"
-        placeholder="Type a message..."
+        placeholder="Enter text..."
         :disabled="sending || generating"
         @keydown="onKeydown"
       />
       <button
-        class="ChatPanel__send"
+        class="ModuleChat__send"
         qa="chat-send"
         :disabled="!canSend"
         @click="send"
       >
-        <svg class="ChatPanel__send-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M1 13L13 7L1 1V5.5L8 7L1 8.5V13Z" fill="currentColor"/>
-        </svg>
+        <Icon class="ModuleChat__send-icon" type="ai" />
       </button>
     </div>
   </div>
@@ -44,7 +46,7 @@
 import { useAuth0 } from "@auth0/auth0-vue";
 
 export default {
-  name: "ChatPanel",
+  name: "ModuleChat",
   setup() {
     const { getAccessTokenSilently } = useAuth0();
     return { getAccessTokenSilently };
@@ -116,15 +118,16 @@ export default {
 </script>
 
 <style lang="scss">
-.ChatPanel {
+.ModuleChat {
   background: var(--bg-panel);
   border-radius: var(--radius-lg);
-  padding: var(--sp-3);
+  padding: 8px;
   display: flex;
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
   gap: 0;
+  max-width: 640px;
   overflow: hidden;
 
   &__messages {
@@ -132,9 +135,9 @@ export default {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     min-height: 0;
-    padding-bottom: var(--sp-3);
+    padding-bottom: 0;
 
     &::-webkit-scrollbar {
       display: none;
@@ -148,43 +151,42 @@ export default {
 
   &__message {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     flex-shrink: 0;
+    width: 100%;
 
-    /* CRITICAL: User = LEFT, plain text, no bubble */
+    /* User = LEFT, plain text, no bubble, right padding */
     &_user {
-      align-items: flex-start;
-      text-align: left;
+      padding-right: 40px;
 
-      .ChatPanel__message-body {
+      .ModuleChat__message-body {
+        flex: 1 0 0;
         background-color: transparent;
         color: var(--text-primary);
-        padding: 0;
-        border-radius: 0;
+        padding: 9px 0;
+        border-radius: 18px;
         font: var(--font-text-m);
-        text-align: left;
       }
     }
 
-    /* AI/designer = RIGHT, gray bubble */
+    /* AI/designer = RIGHT, gray bubble, left padding */
     &_designer {
-      align-items: flex-end;
-      text-align: right;
+      justify-content: flex-end;
+      padding-left: 40px;
 
-      .ChatPanel__message-body {
-        background-color: #F0EFED;
+      .ModuleChat__message-body {
+        flex: 1 0 0;
+        background-color: #EDECE8;
         color: var(--text-primary);
-        border-radius: 16px;
-        padding: 8px 16px;
-        text-align: left;
+        border-radius: 18px;
+        padding: 9px 14px;
       }
     }
   }
 
   &__message-body {
     font: var(--font-text-m);
-    max-width: 75%;
-    line-height: 1.5;
+    line-height: normal;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
@@ -207,7 +209,7 @@ export default {
     align-items: center;
     background: var(--bg-chip-active);
     border-radius: var(--radius-pill);
-    height: 44px;
+    height: 48px;
     padding: 0 6px 0 var(--sp-3);
     gap: var(--sp-2);
   }
@@ -236,9 +238,9 @@ export default {
   &__send {
     position: relative;
     z-index: 1;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
     border-radius: 50%;
     border: none;
     padding: 0;
@@ -262,7 +264,8 @@ export default {
   }
 
   &__send-icon {
-    color: var(--text-on-dark);
+    width: 20px;
+    height: 20px;
   }
 }
 </style>

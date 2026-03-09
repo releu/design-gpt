@@ -1,27 +1,27 @@
 <template>
-  <div class="LibrarySelector" qa="library-selector">
-    <div class="LibrarySelector__label">design system</div>
-    <div class="LibrarySelector__list">
+  <div class="ModuleContentDesignSystem" qa="library-selector">
+    <div class="ModuleContentDesignSystem__label">prompt</div>
+    <div class="ModuleContentDesignSystem__list">
       <div
-        :class="['LibrarySelector__item', { 'LibrarySelector__item_selected': modelValue === lib.id }]"
+        :class="['ModuleContentDesignSystem__item', { 'ModuleContentDesignSystem__item_selected': modelValue === lib.id }]"
         v-for="lib in fileList"
         :key="lib.id"
         @click="$emit('update:modelValue', lib.id)"
         qa="library-item"
       >
-        <div class="LibrarySelector__item-name" qa="library-item-name">{{ lib.name || 'Unnamed' }}</div>
-        <div class="LibrarySelector__item-browse" qa="library-browse-btn" @click.stop="openDesignSystem(lib)">edit</div>
+        <div class="ModuleContentDesignSystem__item-name" qa="library-item-name">{{ lib.name || 'Unnamed' }}</div>
+        <div class="ModuleContentDesignSystem__item-browse" qa="library-browse-btn" @click.stop="openDesignSystem(lib)">edit</div>
       </div>
     </div>
-    <div class="LibrarySelector__new-ds" qa="new-ds-btn" @click="showModal = true">new design system</div>
+    <div class="ModuleContentDesignSystem__new-ds" qa="new-ds-btn" @click="showModal = true">new</div>
 
-    <DesignSystemModal v-if="showModal" :designSystem="editingDS" @close="showModal = false; editingDS = null" @saved="onSaved" />
+    <ModuleDesignSystem v-if="showModal" :designSystem="editingDS" @close="showModal = false; editingDS = null" @saved="onSaved" />
   </div>
 </template>
 
 <script>
 export default {
-  name: "LibrarySelector",
+  name: "ModuleContentDesignSystem",
   emits: ["saved", "update:modelValue"],
   props: {
     libraries: Array,
@@ -53,7 +53,7 @@ export default {
 </script>
 
 <style lang="scss">
-.LibrarySelector {
+.ModuleContentDesignSystem {
   background: var(--bg-panel);
   border-radius: var(--radius-lg);
   padding: var(--sp-3);

@@ -1,72 +1,44 @@
 <template>
-  <MainLayout :layout="effectiveLayout">
+  <Layout :layout="effectiveLayout">
     <!-- Design selector -->
     <template #design-selector>
-      <div class="MainLayout__design-selector MainLayout__history" v-if="design">
-        {{ design.name || `design #${id}` }}
-        <select qa="design-selector" :value="id" @change="onDesignSelect">
-          <option value="new">(+) new design</option>
-          <option v-for="d in allDesigns" :key="d.id" :value="String(d.id)">
-            {{ d.name || `design #${d.id}` }}
-          </option>
-        </select>
-      </div>
+      <DesignSelector
+        v-if="design"
+        :designs="allDesigns"
+        :modelValue="id"
+        :displayLabel="design.name || `design #${id}`"
+        @update:modelValue="onDesignSelect"
+      />
     </template>
 
     <!-- Mode selector (chat / settings) -->
     <template #mode-selector>
-      <div class="MainLayout__mode-selector MainLayout__panel-switcher">
-        <div
-          :class="['MainLayout__mode-item MainLayout__switcher-item', { 'MainLayout__mode-item_active MainLayout__switcher-item_active': panelMode === 'chat' }]"
-          @click="panelMode = 'chat'"
-        >chat</div>
-        <div
-          :class="['MainLayout__mode-item MainLayout__switcher-item', { 'MainLayout__mode-item_active MainLayout__switcher-item_active': panelMode === 'settings' }]"
-          qa="switcher-settings"
-          @click="panelMode = 'settings'"
-        >settings</div>
-      </div>
+      <ModeSelector :modelValue="panelMode === 'chat' ? 0 : 1" @update:modelValue="panelMode = $event === 0 ? 'chat' : 'settings'" />
     </template>
 
     <!-- More button -->
     <template #more-button>
-      <button class="MainLayout__more-button MainLayout__more-btn" qa="export-btn" @click.stop="showExportMenu = !showExportMenu">
+      <MoreButton @click.stop="showExportMenu = !showExportMenu">
         ...
-        <div v-if="showExportMenu" class="MainLayout__export-dropdown" qa="export-menu">
+        <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
           <template v-if="code">
-            <div class="MainLayout__export-item" @click="exportReact">Download React project</div>
-            <div class="MainLayout__export-item" @click="exportImage">Download image</div>
-            <div class="MainLayout__export-item" @click="exportFigma">Figma (alpha)</div>
+            <div class="DesignView__export-item" @click="exportReact">Download React project</div>
+            <div class="DesignView__export-item" @click="exportImage">Download image</div>
+            <div class="DesignView__export-item" @click="exportFigma">Figma (alpha)</div>
           </template>
-          <div v-else class="MainLayout__export-item MainLayout__export-item_disabled">No preview available</div>
+          <div v-else class="DesignView__export-item DesignView__export-item_disabled">No preview available</div>
         </div>
-      </button>
+      </MoreButton>
     </template>
 
     <!-- Preview selector -->
     <template #preview-selector>
-      <div class="MainLayout__preview-selector MainLayout__switcher" qa="preview-switcher">
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'mobile' }]"
-          qa="switcher-mobile"
-          @click="viewMode = 'mobile'"
-        >phone</div>
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'desktop' }]"
-          qa="switcher-desktop"
-          @click="viewMode = 'desktop'"
-        >desktop</div>
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': viewMode === 'code' }]"
-          qa="switcher-code"
-          @click="viewMode = 'code'"
-        >code</div>
-      </div>
+      <PreviewSelector :modelValue="viewMode === 'mobile' ? 'phone' : viewMode" @update:modelValue="viewMode = $event === 'phone' ? 'mobile' : $event" />
     </template>
 
     <!-- Left panel (chat or settings) -->
     <template #left-panel>
-      <ChatPanel
+      <ModuleChat
         v-if="panelMode === 'chat'"
         :messages="design ? design.chat : []"
         :designId="id"
@@ -85,8 +57,8 @@
 
     <!-- Code editor (for code layout) -->
     <template #code-editor>
-      <div class="MainLayout__preview-panel" style="height: 100%;">
-        <CodeField v-model="code" language="javascript" @change="onCodeChange" />
+      <div class="Layout__preview-panel" style="height: 100%;">
+        <ModuleCode v-model="code" language="javascript" @change="onCodeChange" />
       </div>
     </template>
 
@@ -94,14 +66,14 @@
     <template #preview>
       <div
         v-if="viewMode === 'mobile' || viewMode === 'code'"
-        class="MainLayout__preview-panel MainLayout__preview-panel_mobile"
+        class="Layout__preview-panel Layout__preview-panel_mobile"
         qa="preview-panel-mobile"
       >
-        <div class="MainLayout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
-          <div class="MainLayout__preview-empty-text">Generation failed. Send a new message to retry.</div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
+          <div class="Layout__preview-empty-text">Generation failed. Send a new message to retry.</div>
         </div>
-        <div class="MainLayout__preview-empty" qa="preview-empty" v-else-if="!code">
-          <div class="MainLayout__preview-empty-text">preview</div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-else-if="!code">
+          <div class="Layout__preview-empty-text">preview</div>
         </div>
         <Preview
           v-else
@@ -112,14 +84,14 @@
       </div>
       <div
         v-else
-        class="MainLayout__preview-panel MainLayout__preview-panel_desktop"
+        class="Layout__preview-panel Layout__preview-panel_desktop"
         qa="preview-panel-desktop"
       >
-        <div class="MainLayout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
-          <div class="MainLayout__preview-empty-text">Generation failed. Send a new message to retry.</div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
+          <div class="Layout__preview-empty-text">Generation failed. Send a new message to retry.</div>
         </div>
-        <div class="MainLayout__preview-empty" qa="preview-empty" v-else-if="!code">
-          <div class="MainLayout__preview-empty-text">preview</div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-else-if="!code">
+          <div class="Layout__preview-empty-text">preview</div>
         </div>
         <Preview
           v-else
@@ -132,7 +104,7 @@
 
     <template #design-system><span /></template>
     <template #ai-engine><span /></template>
-  </MainLayout>
+  </Layout>
 </template>
 
 <script>
@@ -177,8 +149,7 @@ export default {
     },
   },
   methods: {
-    onDesignSelect(e) {
-      const val = e.target.value;
+    onDesignSelect(val) {
       if (val === "new") {
         this.$router.push({ name: "home" });
       } else {
@@ -279,10 +250,44 @@ export default {
     this.fetchDesign();
     this.fetchAllDesigns();
     this.startPolling();
-    document.addEventListener("click", () => { this.showExportMenu = false; });
+    this._closeExportMenu = (e) => {
+      if (this.$el && !e.target.closest('[qa="export-btn"]')) {
+        this.showExportMenu = false;
+      }
+    };
+    document.addEventListener("click", this._closeExportMenu);
   },
   beforeUnmount() {
     this.stopPolling();
+    document.removeEventListener("click", this._closeExportMenu);
   },
 };
 </script>
+
+<style lang="scss">
+.DesignView__export-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-panel);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  min-width: 200px;
+  padding: var(--sp-2) 0;
+  margin-top: var(--sp-1);
+}
+
+.DesignView__export-item {
+  padding: var(--sp-2) var(--sp-3);
+  font: var(--font-text-m);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 100ms ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--bg-chip-active);
+  }
+}
+</style>

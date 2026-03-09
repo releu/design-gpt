@@ -1,77 +1,70 @@
 <template>
   <div :class="rootClasses">
     <!-- Header bar -->
-    <div class="MainLayout__header MainLayout__top-bar">
-      <div class="MainLayout__header-group MainLayout__header-group_left MainLayout__top-bar-left">
-        <slot name="design-selector" />
-        <slot name="top-bar-left" />
-      </div>
-      <div class="MainLayout__header-group MainLayout__header-group_center-left">
-        <slot name="mode-selector" />
-      </div>
-      <div class="MainLayout__header-group MainLayout__header-group_center-right">
-        <slot name="more-button" />
-      </div>
-      <div class="MainLayout__header-group MainLayout__header-group_right MainLayout__top-bar-right">
-        <slot name="preview-selector" />
-        <slot name="top-bar-right" />
-      </div>
-    </div>
+    <Header>
+      <template #design-selector><slot name="design-selector" /></template>
+      <template #top-bar-left><slot name="top-bar-left" /></template>
+      <template #mode-selector><slot name="mode-selector" /></template>
+      <template #more-button><slot name="more-button" /></template>
+      <template #preview-selector><slot name="preview-selector" /></template>
+      <template #top-bar-right><slot name="top-bar-right" /></template>
+    </Header>
 
     <!-- Layout 1: Home (three columns + bottom bar) -->
     <template v-if="layout === 'home'">
-      <div class="MainLayout__col MainLayout__col_left MainLayout__prompt">
+      <div class="Layout__col Layout__col_left Layout__prompt">
         <slot name="prompt" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_v" />
-      <div class="MainLayout__col MainLayout__col_center MainLayout__design-system">
+      <div class="Layout__divider Layout__divider_v" />
+      <div class="Layout__col Layout__col_center Layout__design-system">
         <slot name="design-system" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_v MainLayout__divider_to-preview" />
-      <div class="MainLayout__col MainLayout__col_right MainLayout__col_preview MainLayout__preview">
+      <div class="Layout__divider Layout__divider_v Layout__divider_to-preview" />
+      <div class="Layout__col Layout__col_right Layout__col_preview Layout__preview">
         <slot name="preview" />
       </div>
-      <div class="MainLayout__bottom-bar MainLayout__ai-engine">
+      <div class="Layout__bottom-bar">
+        <slot name="ai-engine-info" />
         <slot name="ai-engine" />
       </div>
     </template>
 
     <!-- Layout 2: Phone (two columns) -->
     <template v-else-if="layout === 'phone'">
-      <div class="MainLayout__col MainLayout__col_chat MainLayout__prompt">
+      <div class="Layout__col Layout__col_chat Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_v" />
-      <div class="MainLayout__col MainLayout__col_phone-preview MainLayout__preview">
+      <div class="Layout__divider Layout__divider_v" />
+      <div class="Layout__col Layout__col_phone-preview Layout__preview">
         <slot name="preview" />
       </div>
     </template>
 
     <!-- Layout 3: Desktop (stacked) -->
     <template v-else-if="layout === 'desktop'">
-      <div class="MainLayout__row MainLayout__row_chat MainLayout__prompt">
+      <div class="Layout__row Layout__row_chat Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_h" />
-      <div class="MainLayout__row MainLayout__row_desktop-preview MainLayout__preview">
+      <div class="Layout__divider Layout__divider_h" />
+      <div class="Layout__row Layout__row_desktop-preview Layout__preview">
         <slot name="preview" />
       </div>
     </template>
 
     <!-- Layout 4: Code (three columns) -->
     <template v-else-if="layout === 'code'">
-      <div class="MainLayout__col MainLayout__col_code-chat MainLayout__prompt">
+      <div class="Layout__col Layout__col_code-chat Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_v" />
-      <div class="MainLayout__col MainLayout__col_code-editor">
+      <div class="Layout__divider Layout__divider_v" />
+      <div class="Layout__col Layout__col_code-editor">
         <slot name="code-editor" />
       </div>
-      <div class="MainLayout__divider MainLayout__divider_v" />
-      <div class="MainLayout__col MainLayout__col_code-preview MainLayout__preview">
+      <div class="Layout__divider Layout__divider_v" />
+      <div class="Layout__col Layout__col_code-preview Layout__preview">
         <slot name="preview" />
       </div>
     </template>
@@ -83,7 +76,7 @@
 
 <script>
 export default {
-  name: "MainLayout",
+  name: "Layout",
   props: {
     layout: {
       type: String,
@@ -103,11 +96,11 @@ export default {
     },
     rootClasses() {
       return [
-        "MainLayout",
-        `MainLayout_layout-${this.effectiveLayout}`,
+        "Layout",
+        `Layout_layout-${this.effectiveLayout}`,
         /* Legacy class for backward compat */
-        this.viewMode ? `MainLayout_view-${this.viewMode}` : null,
-        this.leftWide ? "MainLayout_left-wide" : null,
+        this.viewMode ? `Layout_view-${this.viewMode}` : null,
+        this.leftWide ? "Layout_left-wide" : null,
       ].filter(Boolean);
     },
   },
@@ -115,7 +108,7 @@ export default {
 </script>
 
 <style lang="scss">
-.MainLayout {
+.Layout {
   height: 100vh;
   min-width: 1200px;
   min-height: 600px;
@@ -125,26 +118,9 @@ export default {
   display: grid;
   overflow: hidden;
 
-  /* ----- Header (shared across all layouts) ----- */
-  &__header, &__top-bar {
+  /* Header gets grid-area from the Header component */
+  .Header {
     grid-area: header;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 48px;
-    min-height: 48px;
-    gap: var(--sp-2);
-  }
-
-  &__header-group {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-
-    &_left { flex: 0 0 auto; }
-    &_center-left { flex: 0 0 auto; }
-    &_center-right { flex: 1 1 auto; display: flex; justify-content: flex-end; }
-    &_right { flex: 0 0 auto; }
   }
 
   /* ----- Drag-handle dividers ----- */
@@ -230,12 +206,18 @@ export default {
     gap: 0;
     row-gap: var(--sp-3);
 
-    .MainLayout__col_left { grid-area: left; }
-    .MainLayout__col_center { grid-area: center; }
-    .MainLayout__col_preview { grid-area: right; }
-    .MainLayout__divider:nth-of-type(1) { grid-area: div1; }
-    .MainLayout__divider_to-preview { grid-area: div2; }
-    .MainLayout__bottom-bar { grid-area: bottom; }
+    .Layout__col_left { grid-area: left; }
+    .Layout__col_center { grid-area: center; }
+    .Layout__col_preview { grid-area: right; }
+    .Layout__divider:nth-of-type(1) { grid-area: div1; }
+    .Layout__divider_to-preview { grid-area: div2; }
+    .Layout__bottom-bar { grid-area: bottom; }
+  }
+
+  &__bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   /* ===== LAYOUT 2: PHONE (Two columns) ===== */
@@ -248,8 +230,8 @@ export default {
     gap: 0;
     row-gap: var(--sp-3);
 
-    .MainLayout__col_chat { grid-area: chat; }
-    .MainLayout__col_phone-preview {
+    .Layout__col_chat { grid-area: chat; }
+    .Layout__col_phone-preview {
       grid-area: preview;
       display: flex;
       align-items: center;
@@ -269,9 +251,9 @@ export default {
     gap: 0;
     row-gap: 0;
 
-    .MainLayout__row_chat { grid-area: chat; }
-    .MainLayout__divider_h { grid-area: divh; }
-    .MainLayout__row_desktop-preview { grid-area: preview; }
+    .Layout__row_chat { grid-area: chat; }
+    .Layout__divider_h { grid-area: divh; }
+    .Layout__row_desktop-preview { grid-area: preview; }
   }
 
   /* ===== LAYOUT 4: CODE (Three columns) ===== */
@@ -284,9 +266,9 @@ export default {
     gap: 0;
     row-gap: var(--sp-3);
 
-    .MainLayout__col_code-chat { grid-area: chat; }
-    .MainLayout__col_code-editor { grid-area: code; }
-    .MainLayout__col_code-preview {
+    .Layout__col_code-chat { grid-area: chat; }
+    .Layout__col_code-editor { grid-area: code; }
+    .Layout__col_code-preview {
       grid-area: preview;
       display: flex;
       align-items: center;
@@ -355,163 +337,6 @@ export default {
       font: var(--font-text-m);
       color: var(--text-secondary);
       text-align: center;
-    }
-  }
-
-  /* ----- Design selector (pill dropdown) ----- */
-  &__design-selector, &__history {
-    background: var(--bg-panel);
-    border-radius: var(--radius-pill);
-    padding: 8px 36px 8px 16px;
-    text-align: center;
-    position: relative;
-    min-width: 160px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font: var(--font-text-m);
-    cursor: pointer;
-
-    &::after {
-      content: "";
-      width: 20px;
-      height: 20px;
-      background: url("../assets/chevron.down.svg") no-repeat center;
-      background-size: 16px 16px;
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      opacity: 0.4;
-    }
-
-    select {
-      opacity: 0;
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      right: 0;
-      -webkit-appearance: none;
-      cursor: pointer;
-      width: 100%;
-    }
-  }
-
-  /* ----- Mode selector (chat/settings pill toggles) ----- */
-  &__mode-selector, &__panel-switcher {
-    background: var(--bg-panel);
-    border-radius: var(--radius-pill);
-    display: flex;
-    padding: 3px;
-    gap: var(--sp-1);
-  }
-
-  &__mode-item, &__switcher-item {
-    padding: 8px 16px;
-    border-radius: var(--radius-pill);
-    font: var(--font-text-m);
-    cursor: pointer;
-    white-space: nowrap;
-    height: 36px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    transition: background-color 100ms ease;
-    min-width: 54px;
-    justify-content: center;
-
-    &_active {
-      background: var(--bg-chip-active);
-      font-weight: 700;
-    }
-
-    &_code {
-      font-size: 13px;
-      letter-spacing: 0;
-    }
-
-    &_mobile {
-      background-image: url("../assets/mobile.svg");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 35%;
-    }
-
-    &_desktop {
-      background-image: url("../assets/desktop.svg");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 35%;
-    }
-  }
-
-  /* ----- More button ----- */
-  &__more-button {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font: var(--font-text-m);
-    color: var(--text-primary);
-    background: none;
-    border: none;
-    position: relative;
-  }
-
-  &__export-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: var(--bg-panel);
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    z-index: 100;
-    min-width: 200px;
-    padding: var(--sp-2) 0;
-    margin-top: var(--sp-1);
-  }
-
-  &__export-item {
-    padding: var(--sp-2) var(--sp-3);
-    font: var(--font-text-m);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: background 100ms ease;
-    white-space: nowrap;
-
-    &:hover {
-      background: var(--bg-chip-active);
-    }
-  }
-
-  /* ----- Preview selector (phone/desktop/code pill toggles) ----- */
-  &__preview-selector, &__switcher {
-    background: var(--bg-panel);
-    border-radius: var(--radius-pill);
-    display: flex;
-    padding: 3px;
-    gap: var(--sp-1);
-  }
-
-  &__preview-item {
-    padding: 8px 16px;
-    border-radius: var(--radius-pill);
-    font: var(--font-text-m);
-    cursor: pointer;
-    white-space: nowrap;
-    height: 36px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    transition: background-color 100ms ease;
-
-    &_active {
-      background: var(--bg-chip-active);
-      font-weight: 700;
     }
   }
 

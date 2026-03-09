@@ -16,6 +16,7 @@ export default defineConfig(() => {
       port: 5173,
       allowedHosts: [
         "design-gpt.localtest.me",
+        "design-gpt-test.localtest.me",
       ],
       proxy: {
         "/api": {

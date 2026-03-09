@@ -22,6 +22,21 @@
           qa="component-low-fidelity"
         >low fidelity</span>
       </div>
+      <!-- Per-variant visual diff percentages -->
+      <div v-if="variantDiffs.length" class="ComponentDetail__variant-diffs">
+        <div
+          v-for="vd in variantDiffs"
+          :key="vd.name"
+          class="ComponentDetail__variant-diff-row"
+        >
+          <span class="ComponentDetail__variant-diff-name">{{ vd.name }}</span>
+          <span
+            class="ComponentDetail__match-badge"
+            qa="component-visual-diff"
+            :class="vd.badgeClass"
+          >{{ vd.percent != null ? Math.round(vd.percent) + '% match' : '-' }}</span>
+        </div>
+      </div>
       <div v-if="comp.description" class="ComponentDetail__description">{{ comp.description }}</div>
       <a
         v-if="comp.figma_url"
@@ -118,7 +133,7 @@
       </div>
       <div v-if="expandedSections.code" class="ComponentDetail__section-body">
         <div class="ComponentDetail__code-wrap" qa="component-code">
-          <CodeField :modelValue="reactCode" language="javascript" :readOnly="true" height="300px" />
+          <ModuleCode :modelValue="reactCode" language="javascript" :readOnly="true" height="300px" />
         </div>
       </div>
     </div>
@@ -130,7 +145,7 @@
         <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.figmaJson }">&#9654;</span>
       </div>
       <div v-if="expandedSections.figmaJson" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__code-wrap">
+        <div class="ComponentDetail__code-wrap" qa="component-code">
           <pre class="ComponentDetail__figma-json">{{ figmaJsonText }}</pre>
         </div>
       </div>
@@ -159,6 +174,16 @@ export default {
     allAllowedChildren() {
       return (this.comp.slots || []).flatMap((s) => s.allowed_children || []);
     },
+    variantDiffs() {
+      if (!this.comp.variants || this.comp.type !== "component_set") return [];
+      return this.comp.variants
+        .filter((v) => v.match_percent != null)
+        .map((v) => ({
+          name: v.name,
+          percent: v.match_percent,
+          badgeClass: v.match_percent >= 95 ? "ComponentDetail__match-badge_high" : v.match_percent >= 50 ? "ComponentDetail__match-badge_medium" : "ComponentDetail__match-badge_low",
+        }));
+    },
     typeLabel() {
       if (this.comp.is_vector) return "Vector";
       if (this.comp.type === "component_set") return "Component Set";
@@ -172,6 +197,14 @@ export default {
       );
     },
     matchPercent() {
+      // For component sets with variant-level diffs, compute average
+      if (this.comp.type === "component_set" && this.comp.variants?.length) {
+        const withDiff = this.comp.variants.filter((v) => v.match_percent != null);
+        if (withDiff.length > 0) {
+          const sum = withDiff.reduce((acc, v) => acc + v.match_percent, 0);
+          return sum / withDiff.length;
+        }
+      }
       return this.comp.default_variant_match_percent ?? this.comp.match_percent ?? null;
     },
     matchBadgeClass() {

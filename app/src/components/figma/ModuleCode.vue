@@ -1,5 +1,5 @@
 <template>
-  <div class="CodeField">
+  <div class="ModuleCode">
     <Codemirror
       v-model="localValue"
       :extensions="extensions"
@@ -32,7 +32,7 @@ import { githubLight } from "@uiw/codemirror-theme-github";
 // );
 
 export default {
-  name: "CodeField",
+  name: "ModuleCode",
   components: { Codemirror },
   props: {
     modelValue: { type: String, default: "" },
@@ -93,7 +93,7 @@ export default {
 </script>
 
 <style lang="scss">
-.CodeField {
+.ModuleCode {
   .cm-editor {
     border: 0;
     width: 100%;

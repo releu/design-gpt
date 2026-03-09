@@ -4,16 +4,19 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 
-const components = import.meta.glob("./components/*.vue", { eager: true });
+const figmaComponents = import.meta.glob("./components/figma/*.vue", { eager: true });
+const internalComponents = import.meta.glob("./components/internal/*.vue", { eager: true });
 
 const app = createApp(App);
 
-for (const path in components) {
-  const component = components[path].default;
-  app.component(
-    component.name || path.split("/").pop().replace(".vue", ""),
-    component,
-  );
+for (const modules of [figmaComponents, internalComponents]) {
+  for (const path in modules) {
+    const component = modules[path].default;
+    app.component(
+      component.name || path.split("/").pop().replace(".vue", ""),
+      component,
+    );
+  }
 }
 
 if (import.meta.env.VITE_E2E_TEST === "true" || import.meta.env.DEV) {

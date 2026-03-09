@@ -1,69 +1,58 @@
 <template>
-  <MainLayout layout="home">
+  <Layout layout="home">
     <template #design-selector>
-      <div class="MainLayout__design-selector">
-        new design
-        <select qa="design-selector" value="new" @change="onDesignSelect">
-          <option value="new">(+) new design</option>
-          <option v-for="d in allDesigns" :key="d.id" :value="String(d.id)">
-            {{ d.name || `design #${d.id}` }}
-          </option>
-        </select>
-      </div>
+      <DesignSelector
+        :designs="allDesigns"
+        modelValue="new"
+        :displayLabel="'✦ new design'"
+        @update:modelValue="onDesignSelect"
+      />
     </template>
 
     <template #mode-selector>
-      <div class="MainLayout__mode-selector">
-        <div class="MainLayout__mode-item MainLayout__mode-item_active">chat</div>
-        <div class="MainLayout__mode-item">settings</div>
-      </div>
+      <ModeSelector :modelValue="0" />
     </template>
 
     <template #more-button>
-      <button class="MainLayout__more-button MainLayout__more-btn" qa="export-btn">...</button>
+      <MoreButton />
     </template>
 
     <template #preview-selector>
-      <div class="MainLayout__preview-selector MainLayout__switcher" qa="preview-switcher">
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_mobile', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'phone' }]"
-          qa="switcher-mobile"
-          @click="previewMode = 'phone'"
-        >phone</div>
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_desktop', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'desktop' }]"
-          qa="switcher-desktop"
-          @click="previewMode = 'desktop'"
-        >desktop</div>
-        <div
-          :class="['MainLayout__preview-item MainLayout__switcher-item MainLayout__switcher-item_code', { 'MainLayout__preview-item_active MainLayout__switcher-item_active': previewMode === 'code' }]"
-          qa="switcher-code"
-          @click="previewMode = 'code'"
-        >code</div>
-      </div>
+      <PreviewSelector v-model="previewMode" />
     </template>
 
     <template #prompt>
-      <PromptField v-model="prompt" />
+      <div class="HomeView__panel">
+        <div class="HomeView__panel-label">prompt</div>
+        <ModuleContentPrompt v-model="prompt" placeholder="describe what you want to create" />
+      </div>
     </template>
 
     <template #design-system>
-      <LibrarySelector :libraries="designSystems" v-model="currentDesignSystemId" @saved="refreshDesignSystems" />
+      <ModuleContentDesignSystem :libraries="designSystems" v-model="currentDesignSystemId" @saved="refreshDesignSystems" />
+    </template>
+
+    <template #ai-engine-info>
+      <div class="HomeView__ai-info">
+        <div class="HomeView__ai-info-label">ai engine</div>
+        <div class="HomeView__ai-info-value">ChatGPT</div>
+        <div class="HomeView__ai-info-note">don't share nda for now</div>
+      </div>
     </template>
 
     <template #ai-engine>
-      <button qa="generate-btn" :disabled="!currentDesignSystemId" @click="generateView">generate</button>
+      <button class="HomeView__generate-btn" qa="generate-btn" :disabled="!currentDesignSystemId" @click="generateView">generate <span class="HomeView__generate-sparkle">✦</span></button>
     </template>
 
     <template #preview>
       <div :class="previewPanelClass" :qa="previewMode === 'desktop' ? 'preview-panel-desktop' : 'preview-panel-mobile'">
-        <div class="MainLayout__preview-empty" qa="preview-empty">
-          <div class="MainLayout__preview-empty-text">preview</div>
+        <div class="Layout__preview-empty" qa="preview-empty">
+          <div class="Layout__preview-empty-text">preview</div>
         </div>
       </div>
     </template>
 
-  </MainLayout>
+  </Layout>
 </template>
 
 <script>
@@ -85,13 +74,12 @@ export default {
   },
   computed: {
     previewPanelClass() {
-      if (this.previewMode === "desktop") return "MainLayout__preview-panel MainLayout__preview-panel_desktop";
-      return "MainLayout__preview-panel MainLayout__preview-panel_mobile";
+      if (this.previewMode === "desktop") return "Layout__preview-panel Layout__preview-panel_desktop";
+      return "Layout__preview-panel Layout__preview-panel_mobile";
     },
   },
   methods: {
-    onDesignSelect(e) {
-      const val = e.target.value;
+    onDesignSelect(val) {
       if (val !== "new") {
         this.$router.push({ name: "design", params: { id: val } });
       }
@@ -155,3 +143,75 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" scoped>
+.HomeView__panel {
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.HomeView__panel-label {
+  font: var(--font-text-s);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.HomeView__generate-btn {
+  background: var(--accent-primary);
+  color: var(--text-on-dark);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 24px;
+  font: var(--font-text-m);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 100ms ease;
+}
+
+.HomeView__generate-btn:active {
+  transform: scale(0.96);
+}
+
+.HomeView__generate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.HomeView__generate-sparkle {
+  color: inherit;
+}
+
+.HomeView__ai-info {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font: var(--font-text-m);
+}
+
+.HomeView__ai-info-label {
+  font: var(--font-text-s);
+  color: var(--text-secondary);
+}
+
+.HomeView__ai-info-value {
+  font: var(--font-bold-m);
+}
+
+.HomeView__ai-info-note {
+  font: var(--font-text-m);
+  color: var(--text-secondary);
+}
+
+.HomeView__design-sparkle {
+  color: #4cd964;
+  margin-right: 4px;
+}
+</style>
