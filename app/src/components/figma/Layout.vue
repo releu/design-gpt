@@ -12,18 +12,16 @@
 
     <!-- Layout 1: Home (three columns + bottom bar) -->
     <template v-if="layout === 'home'">
-      <div class="Layout__col Layout__col_left Layout__prompt">
+      <div class="Layout__col Layout__col_left Layout__prompt Layout__connector_down">
         <slot name="prompt" />
       </div>
-      <div class="Layout__divider Layout__divider_v" />
-      <div class="Layout__col Layout__col_center Layout__design-system">
+      <div class="Layout__col Layout__col_center Layout__design-system Layout__connector_down">
         <slot name="design-system" />
       </div>
-      <div class="Layout__divider Layout__divider_v Layout__divider_to-preview" />
       <div class="Layout__col Layout__col_right Layout__col_preview Layout__preview">
         <slot name="preview" />
       </div>
-      <div class="Layout__bottom-bar">
+      <div class="Layout__bottom-bar Layout__connector_right">
         <slot name="ai-engine-info" />
         <slot name="ai-engine" />
       </div>
@@ -123,7 +121,46 @@ export default {
     grid-area: header;
   }
 
-  /* ----- Drag-handle dividers ----- */
+  /* ----- Connectors between panels ----- */
+  &__col#{&}__connector_down,
+  &__row#{&}__connector_down,
+  &__bottom-bar#{&}__connector_right {
+    overflow: visible;
+  }
+
+  &__connector_down {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: calc(-1 * var(--sp-3));
+      left: 50%;
+      width: 2px;
+      height: var(--sp-3);
+      background: var(--black);
+      border-radius: 1px;
+      transform: translateX(-50%);
+    }
+  }
+
+  &__connector_right {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: calc(-1 * var(--sp-3));
+      top: 50%;
+      height: 2px;
+      width: var(--sp-3);
+      background: var(--black);
+      border-radius: 1px;
+      transform: translateY(-50%);
+    }
+  }
+
+  /* Legacy divider (used by phone/desktop/code layouts) */
   &__divider {
     position: relative;
     display: flex;
@@ -135,30 +172,14 @@ export default {
       content: "";
       position: absolute;
       background: var(--accent-divider);
-    }
-
-    &::after {
-      content: "";
-      position: absolute;
-      background: var(--accent-divider);
-      border-radius: 2px;
-      z-index: 1;
+      border-radius: 1px;
     }
 
     &_v {
       width: var(--sp-3);
-      cursor: col-resize;
 
       &::before {
-        width: 1px;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-0.5px);
-      }
-
-      &::after {
-        width: 4px;
+        width: 2px;
         height: 20px;
         top: 50%;
         left: 50%;
@@ -168,18 +189,9 @@ export default {
 
     &_h {
       height: var(--sp-3);
-      cursor: row-resize;
 
       &::before {
-        height: 1px;
-        left: 0;
-        right: 0;
-        top: 50%;
-        transform: translateY(-0.5px);
-      }
-
-      &::after {
-        height: 4px;
+        height: 2px;
         width: 20px;
         left: 50%;
         top: 50%;
@@ -197,20 +209,18 @@ export default {
 
   /* ===== LAYOUT 1: HOME (Three columns + bottom bar) ===== */
   &_layout-home {
-    grid-template-columns: 1fr auto 1fr auto 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
-      "header   header   header   header   header"
-      "left     div1     center   div2     right"
-      "bottom   bottom   bottom   div2     right";
-    gap: 0;
+      "header  header  header"
+      "left    center  right"
+      "bottom  bottom  right";
+    column-gap: var(--sp-3);
     row-gap: var(--sp-3);
 
     .Layout__col_left { grid-area: left; }
     .Layout__col_center { grid-area: center; }
     .Layout__col_preview { grid-area: right; }
-    .Layout__divider:nth-of-type(1) { grid-area: div1; }
-    .Layout__divider_to-preview { grid-area: div2; }
     .Layout__bottom-bar { grid-area: bottom; }
   }
 
