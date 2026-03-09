@@ -67,6 +67,16 @@
       </div>
     </template>
 
+    <!-- Layout 5: Overlay (centered content + close button) -->
+    <template v-if="effectiveLayout === 'overlay'">
+      <div v-if="!hideClose" class="Layout__overlay-close" @click="$emit('close')">
+        <Icon type="xmark" />
+      </div>
+      <div class="Layout__overlay-content">
+        <slot name="content" />
+      </div>
+    </template>
+
     <!-- Overlay slot -->
     <slot name="overlay" />
   </div>
@@ -75,10 +85,15 @@
 <script>
 export default {
   name: "Layout",
+  emits: ["close"],
   props: {
     layout: {
       type: String,
       default: "home",
+    },
+    hideClose: {
+      type: Boolean,
+      default: false,
     },
     /* Legacy props -- kept for backward compat, mapped to layout */
     viewMode: String,
@@ -352,6 +367,38 @@ export default {
       font: var(--font-basic);
       color: var(--darkgray);
       text-align: center;
+    }
+  }
+
+  /* ===== LAYOUT 5: OVERLAY ===== */
+  &_layout-overlay {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    grid-template-areas: "content";
+    place-items: center;
+  }
+
+  &__overlay-content {
+    grid-area: content;
+  }
+
+  &__overlay-close {
+    position: absolute;
+    top: var(--sp-5);
+    left: var(--sp-5);
+    width: 48px;
+    height: 48px;
+    background: var(--white);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 150ms ease;
+
+    &:active {
+      transform: scale(0.93);
     }
   }
 

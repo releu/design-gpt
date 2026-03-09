@@ -1,5 +1,12 @@
 <template>
-  <Layout layout="home">
+  <ModuleDesignSystem
+    v-if="dsModal"
+    :designSystem="editingDS"
+    @close="dsModal = false; editingDS = null"
+    @saved="onDsSaved"
+  />
+
+  <Layout v-else layout="home">
     <template #design-selector>
       <DesignSelector
         :designs="allDesigns"
@@ -16,7 +23,13 @@
 
     <template #design-system>
       <Module label="design system">
-        <ModuleContentDesignSystem :libraries="designSystems" v-model="currentDesignSystemId" @saved="refreshDesignSystems" />
+        <ModuleContentDesignSystem
+          :libraries="designSystems"
+          v-model="currentDesignSystemId"
+          @saved="refreshDesignSystems"
+          @new="dsModal = true; editingDS = null"
+          @edit="openDesignSystem"
+        />
       </Module>
     </template>
 
@@ -51,9 +64,23 @@ export default {
       allDesigns: [],
       currentDesignSystemId: null,
       designSystems: [],
+      dsModal: false,
+      editingDS: null,
     };
   },
   methods: {
+    openDesignSystem(ds) {
+      this.editingDS = ds;
+      this.dsModal = true;
+    },
+    async onDsSaved(newId) {
+      this.dsModal = false;
+      this.editingDS = null;
+      await this.refreshDesignSystems();
+      if (newId) {
+        this.currentDesignSystemId = newId;
+      }
+    },
     onDesignSelect(val) {
       if (val !== "new") {
         this.$router.push({ name: "design", params: { id: val } });
@@ -96,20 +123,15 @@ export default {
       const token = await this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
-      fetch(`/api/design-systems`, {
-        method: "GET",
+      const res = await fetch(`/api/design-systems`, {
         credentials: "include",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => (res.ok ? res.json() : []))
-        .then((data) => {
-          this.designSystems = data;
-          if (data.length > 0) {
-            this.currentDesignSystemId = data[0].id;
-          }
-        });
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = res.ok ? await res.json() : [];
+      this.designSystems = data;
+      if (!this.currentDesignSystemId && data.length > 0) {
+        this.currentDesignSystemId = data[0].id;
+      }
     },
   },
   mounted() {

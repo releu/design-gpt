@@ -12,25 +12,17 @@
         <div class="ModuleContentDesignSystem__item-browse" qa="library-browse-btn" @click.stop="openDesignSystem(lib)">edit</div>
       </div>
     </div>
-    <div class="ModuleContentDesignSystem__new-ds" qa="new-ds-btn" @click="showModal = true">new</div>
-
-    <ModuleDesignSystem v-if="showModal" :designSystem="editingDS" @close="showModal = false; editingDS = null" @saved="onSaved" />
+    <div class="ModuleContentDesignSystem__new-ds" qa="new-ds-btn" @click="$emit('new')">new</div>
   </div>
 </template>
 
 <script>
 export default {
   name: "ModuleContentDesignSystem",
-  emits: ["saved", "update:modelValue"],
+  emits: ["saved", "update:modelValue", "new", "edit"],
   props: {
     libraries: Array,
     modelValue: [Number, String],
-  },
-  data() {
-    return {
-      showModal: false,
-      editingDS: null,
-    };
   },
   computed: {
     fileList() {
@@ -38,14 +30,8 @@ export default {
     },
   },
   methods: {
-    onSaved() {
-      this.showModal = false;
-      this.editingDS = null;
-      this.$emit("saved");
-    },
     openDesignSystem(ds) {
-      this.editingDS = ds;
-      this.showModal = true;
+      this.$emit("edit", ds);
     },
   },
 };

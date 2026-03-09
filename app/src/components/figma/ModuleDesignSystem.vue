@@ -1,43 +1,45 @@
 <template>
-  <div class="ModuleDesignSystem" qa="ds-modal" @click.self="$emit('close')">
-    <div class="ModuleDesignSystem__top-bar">
-      <div class="ModuleDesignSystem__close" @click="$emit('close')">×</div>
-    </div>
+  <Layout layout="overlay" :hideClose="phase === 'importing'" @close="$emit('close')">
+    <template #content>
+    <div ref="modalCard" class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
+      <div class="ModuleDesignSystem__title">{{ designSystem ? designSystem.name : 'new design system' }}</div>
 
-    <div ref="modalCard" class="ModuleDesignSystem__box ModuleDesignSystem__card modal-card" data-testid="modal-card">
-      <div class="ModuleDesignSystem__title">{{ designSystem ? designSystem.name : 'New design system' }}</div>
-
-      <!-- Phase: add — source buttons + URL list + Import -->
+      <!-- Phase: add — name + URLs + Import -->
       <template v-if="phase === 'add'">
-        <input
-          class="ModuleDesignSystem__overview-name-input"
-          qa="ds-name-input"
-          v-model="designSystemName"
-          placeholder="Design system name"
-        />
-        <div class="ModuleDesignSystem__source-btns">
-          <div class="ModuleDesignSystem__source-btn" qa="ds-add-figma-btn" @click="addFigmaUrl">+ Figma</div>
-        </div>
-
-        <div class="ModuleDesignSystem__url-list" v-if="pendingUrls.length">
-          <div
-            class="ModuleDesignSystem__url-item"
-            v-for="(url, index) in pendingUrls"
-            :key="index"
-          >
-            <span class="ModuleDesignSystem__url-text" qa="ds-url-text">{{ url }}</span>
-            <div class="ModuleDesignSystem__url-remove" @click="removeUrl(index)">Remove</div>
+        <div class="ModuleDesignSystem__add-form">
+          <div class="ModuleDesignSystem__field">
+            <input
+              class="ModuleDesignSystem__pill-input"
+              qa="ds-name-input"
+              v-model="designSystemName"
+              placeholder='name it like "Depot", "Cubes", "Gravity"'
+            />
           </div>
-        </div>
 
-        <div
-          v-if="pendingUrls.length"
-          class="ModuleDesignSystem__do-import"
-          qa="ds-import-btn"
-          :class="{ 'ModuleDesignSystem__do-import_loading': importing }"
-          @click="importAll"
-        >
-          Import
+          <div class="ModuleDesignSystem__field">
+            <div class="ModuleDesignSystem__field-label">figma files</div>
+            <div class="ModuleDesignSystem__url-list">
+              <input
+                v-for="(url, index) in urlFields"
+                :key="index"
+                class="ModuleDesignSystem__pill-input"
+                qa="ds-url-text"
+                :value="url"
+                placeholder="figma.com/..."
+                @input="onUrlInput(index, $event.target.value)"
+                @blur="cleanupUrls"
+              />
+            </div>
+          </div>
+
+          <div
+            class="ModuleDesignSystem__do-import"
+            qa="ds-import-btn"
+            :class="{ 'ModuleDesignSystem__do-import_loading': importing }"
+            @click="importAll"
+          >
+            import
+          </div>
         </div>
       </template>
 
@@ -175,7 +177,8 @@
         </div>
       </template>
     </div>
-  </div>
+    </template>
+  </Layout>
 </template>
 
 <script>
@@ -194,7 +197,7 @@ export default {
   data() {
     return {
       phase: "add", // 'add' | 'importing' | 'done'
-      pendingUrls: [],
+      urlFields: [""],
       importing: false,
       libraries: [],
       selectedItem: "overview",
@@ -246,8 +249,14 @@ export default {
   watch: {
     allImported(val) {
       if (val && this.phase === "importing") {
-        this.phase = "done";
-        this.selectedItem = "overview";
+        if (this.designSystem) {
+          // Editing existing — go to browser
+          this.phase = "done";
+          this.selectedItem = "overview";
+        } else {
+          // New DS — auto-save and return to home
+          this.saveAndClose();
+        }
       }
     },
   },
@@ -257,22 +266,29 @@ export default {
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
     },
-    addFigmaUrl() {
-      const url = window.prompt("Enter Figma file URL:");
-      if (url && url.trim()) {
-        this.pendingUrls.push(url.trim());
+    onUrlInput(index, value) {
+      this.urlFields[index] = value;
+      // If the last field now has content, append a new empty one
+      if (index === this.urlFields.length - 1 && value.trim()) {
+        this.urlFields.push("");
       }
     },
-    removeUrl(index) {
-      this.pendingUrls.splice(index, 1);
+    cleanupUrls() {
+      // Remove empty fields except the last one
+      const cleaned = this.urlFields.filter((u, i) => u.trim() || i === this.urlFields.length - 1);
+      // Ensure at least one empty field at the end
+      if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
+        cleaned.push("");
+      }
+      this.urlFields = cleaned;
     },
     async importAll() {
       if (this.importing) return;
       this.phase = "importing";
       this.importing = true;
 
-      const urlsToImport = [...this.pendingUrls];
-      this.pendingUrls = [];
+      const urlsToImport = this.urlFields.filter(u => u.trim());
+      this.urlFields = [""];
 
       for (const url of urlsToImport) {
         try {
@@ -432,8 +448,7 @@ export default {
       this.saving = true;
       try {
         const token = await this.getToken();
-        // Create design system grouping libraries
-        await fetch("/api/design-systems", {
+        const res = await fetch("/api/design-systems", {
           method: "POST",
           credentials: "include",
           headers: {
@@ -447,7 +462,8 @@ export default {
             },
           }),
         });
-        this.$emit("saved");
+        const data = res.ok ? await res.json() : {};
+        this.$emit("saved", data.id || null);
       } finally {
         this.saving = false;
       }
@@ -492,90 +508,62 @@ export default {
 
 <style lang="scss">
 .ModuleDesignSystem {
-  position: fixed;
-  inset: 0;
-  background: var(--fill);
-  padding: var(--sp-5);
+  width: 540px;
+  background: var(--white);
+  border-radius: 24px;
+  padding: 24px;
   box-sizing: border-box;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--sp-3);
-  z-index: 200;
+  gap: 20px;
 
-  &__top-bar {
-    flex-shrink: 0;
-    width: 100%;
-    max-width: 65vw;
-  }
-
-  &__close {
-    width: 36px;
-    height: 36px;
-    background: var(--white);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 20px;
-    line-height: 1;
-    color: var(--black);
-    transition: transform 150ms ease;
-
-    &:active {
-      transform: scale(0.93);
-    }
-  }
-
-  &__box,
-  &__card {
-    flex: 1;
-    width: 65vw;
-    max-height: 70vh;
-    background: var(--white);
-    border-radius: 24px;
-    padding: 40px;
-    box-sizing: border-box;
-    overflow-y: auto;
-    min-height: 0;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
+  &::-webkit-scrollbar {
+    display: none;
   }
 
   &__title {
     font: var(--font-basic);
-    font-weight: 700;
-    font-size: 20px;
-    margin-bottom: 32px;
+    color: var(--black);
   }
 
-  // Source buttons (+ Figma / + React)
-  &__source-btns {
+  // Add phase form
+  &__add-form {
     display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
+    flex-direction: column;
+    gap: 16px;
   }
 
-  &__source-btn {
-    padding: 10px 20px;
-    border-radius: 32px;
-    font: var(--font-basic);
-    border: 1px solid var(--lightgray);
-    cursor: pointer;
-    transition: background 150ms ease;
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
-    &:hover {
-      background: var(--fill);
+  &__field-label {
+    font: var(--font-basic);
+    color: var(--darkgray);
+  }
+
+  &__pill-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--fill);
+    border: none;
+    border-radius: 67px;
+    font: var(--font-basic);
+    color: var(--black);
+    box-sizing: border-box;
+    outline: none;
+
+    &::placeholder {
+      color: var(--lightgray);
     }
 
-    &_disabled {
-      opacity: 0.35;
-      cursor: default;
-      pointer-events: none;
+    &_filled {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -583,44 +571,18 @@ export default {
   &__url-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-
-  &__url-item {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
-    background: var(--fill);
-    border-radius: 12px;
-  }
-
-  &__url-text {
-    flex: 1;
-    font: var(--font-basic);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__url-remove {
-    font: var(--font-basic);
-    color: var(--darkgray);
-    cursor: pointer;
-    flex-shrink: 0;
-
-    &:hover {
-      color: var(--black);
-    }
+    gap: 2px;
   }
 
   // Import button
   &__do-import {
-    display: inline-flex;
-    padding: 14px 36px;
+    width: 120px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: var(--black);
-    color: var(--white);
+    color: var(--fill);
     border-radius: var(--radius-pill);
     font: var(--font-basic);
     cursor: pointer;
@@ -733,15 +695,16 @@ export default {
   &__overview-name-input {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid var(--lightgray);
-    border-radius: 12px;
+    background: var(--fill);
+    border: none;
+    border-radius: 67px;
     font: var(--font-basic);
+    color: var(--black);
     box-sizing: border-box;
     outline: none;
-    transition: border-color 150ms ease;
 
-    &:focus {
-      border-color: var(--black);
+    &::placeholder {
+      color: var(--lightgray);
     }
   }
 
