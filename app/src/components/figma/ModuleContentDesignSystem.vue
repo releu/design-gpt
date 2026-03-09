@@ -110,7 +110,7 @@ export default {
     margin-top: auto;
     padding: 10px 24px;
     text-align: center;
-    background: var(--white);
+    background: var(--fill);
     border: none;
     border-radius: var(--radius-pill);
     color: var(--black);
@@ -118,7 +118,6 @@ export default {
     cursor: pointer;
     flex-shrink: 0;
     align-self: flex-start;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     transition: background 150ms ease;
 
     &:hover {
