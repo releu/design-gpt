@@ -100,8 +100,8 @@ export default {
     height: 100%;
     box-sizing: border-box;
     font: var(--font-basic);
-    background: #fff;
-    color: #111827;
+    background: var(--white);
+    color: var(--black);
   }
 
   .cm-gutters {
@@ -119,8 +119,8 @@ export default {
   .cm-scroller {
     padding: 0;
     overflow: auto;
-    font-family: Menlo, monospace !important;
-    font-size: 15px;
+    font-family: var(--ff-mono) !important;
+    font-size: 14px;
   }
 
   .cm-activeLine {

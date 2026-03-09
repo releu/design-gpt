@@ -176,7 +176,7 @@ export default {
 
       .ModuleChat__message-body {
         flex: 1 0 0;
-        background-color: #EDECE8;
+        background-color: var(--fill);
         color: var(--black);
         border-radius: 18px;
         padding: 9px 14px;

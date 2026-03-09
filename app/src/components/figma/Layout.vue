@@ -305,8 +305,8 @@ export default {
   &__preview-panel_mobile {
     background: var(--white);
     padding: 0;
-    border: 2px solid #000;
-    border-radius: var(--radius-phone);
+    border: 4px solid var(--black);
+    border-radius: 32px;
     width: 340px;
     max-height: 100%;
     aspect-ratio: 9 / 16;
@@ -323,8 +323,8 @@ export default {
   }
 
   &__preview-panel_desktop {
-    border: 2px solid #000;
-    border-radius: var(--radius-lg);
+    border: 4px solid var(--black);
+    border-radius: 32px;
     padding: 0;
     overflow: hidden;
     position: relative;

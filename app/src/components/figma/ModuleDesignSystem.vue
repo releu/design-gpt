@@ -892,7 +892,7 @@ export default {
     height: 200px;
     border: 1px solid var(--fill);
     border-radius: 12px;
-    background: #fafafa;
+    background: var(--fill);
   }
 
   // Props table

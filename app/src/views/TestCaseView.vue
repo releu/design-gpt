@@ -382,7 +382,7 @@ export default {
 
 <style>
 .TestCase {
-  background: #F5F5F5;
+  background: var(--fill);
   min-height: 100vh;
   padding: 24px;
   box-sizing: border-box;
@@ -395,7 +395,7 @@ export default {
 .TestCase__variant-label {
   font-family: monospace;
   font-size: 12px;
-  color: #999;
+  color: var(--darkgray);
   margin-bottom: 8px;
 }
 
@@ -407,7 +407,7 @@ export default {
   padding: 48px;
   text-align: center;
   font-family: monospace;
-  color: #999;
+  color: var(--darkgray);
 }
 
 /* Preview empty state for isolated component test */
@@ -417,7 +417,7 @@ export default {
   box-sizing: border-box;
   background: var(--white);
   border-radius: 20px;
-  border: 1px solid #1B1B1F;
+  border: 1px solid var(--black);
   position: relative;
   overflow: hidden;
 }
