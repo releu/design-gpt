@@ -6,11 +6,16 @@
 
     <template v-else-if="authorized === false">
       <div class="App__signin sign-in">
-        <div class="App__signin-card sign-in-card" qa="sign-in-card" @click="handleLogin">
+        <div
+          class="App__signin-card sign-in-card"
+          qa="sign-in-card"
+          @click="handleLogin"
+        >
           <img class="App__signin-icon" src="./assets/hand.png" alt="wave" />
         </div>
-        <div class="App__signin-label">Sign in to continue</div>
-        <div v-if="authError" class="App__signin-error">{{ authError.message || 'Authentication error' }}</div>
+        <div v-if="authError" class="App__signin-error">
+          {{ authError.message || "Authentication error" }}
+        </div>
       </div>
     </template>
   </div>
@@ -147,6 +152,7 @@ export default {
     justify-content: center;
     cursor: pointer;
     transition: transform 200ms ease;
+    cursor: hand;
 
     &:hover {
       transform: scale(1.03);
@@ -162,21 +168,6 @@ export default {
     height: 80px;
     object-fit: contain;
     pointer-events: none;
-  }
-
-  &__signin-label {
-    margin-top: var(--sp-3);
-    font: var(--font-basic);
-    color: var(--darkgray);
-    text-align: center;
-  }
-
-  &__signin-error {
-    margin-top: var(--sp-2);
-    font: 400 12px/16px var(--ff-text);
-    color: #991b1b;
-    text-align: center;
-    max-width: 300px;
   }
 }
 </style>
