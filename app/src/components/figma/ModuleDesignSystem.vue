@@ -1,8 +1,8 @@
 <template>
   <Layout layout="overlay" :hideClose="phase === 'importing'" @close="$emit('close')">
     <template #content>
-    <div ref="modalCard" class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
-      <div class="ModuleDesignSystem__title">{{ designSystem ? designSystem.name : 'new design system' }}</div>
+    <div ref="modalCard" class="ModuleDesignSystem" :class="{ 'ModuleDesignSystem_wide': phase === 'done' }" qa="ds-modal" data-testid="modal-card">
+      <div v-if="phase !== 'done'" class="ModuleDesignSystem__title">new design system</div>
 
       <!-- Phase: add — name + URLs + Import -->
       <template v-if="phase === 'add'">
@@ -69,24 +69,18 @@
         <div class="ModuleDesignSystem__browser" qa="ds-browser">
           <!-- Left: menu -->
           <div class="ModuleDesignSystem__menu">
-            <div
-              class="ModuleDesignSystem__menu-item"
-              qa="ds-menu-item"
-              :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'overview' }"
-              @click="selectedItem = 'overview'"
-            >
-              Overview
+            <div class="ModuleDesignSystem__menu-group">
+              <div class="ModuleDesignSystem__menu-subtitle">general</div>
+              <div
+                class="ModuleDesignSystem__menu-item"
+                qa="ds-menu-item"
+                :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'overview' }"
+                @click="selectedItem = 'overview'; editing = false"
+              >
+                overview
+              </div>
             </div>
-            <div
-              class="ModuleDesignSystem__menu-item"
-              qa="ds-menu-item"
-              :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'ai-schema' }"
-              @click="selectedItem = 'ai-schema'"
-            >
-              AI Schema
-            </div>
-
-            <template v-for="lib in libraries" :key="lib.id">
+            <div class="ModuleDesignSystem__menu-group" v-for="lib in libraries" :key="lib.id">
               <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
               <div
                 v-for="comp in lib.components"
@@ -98,44 +92,70 @@
               >
                 {{ comp.name }}
               </div>
-            </template>
+            </div>
           </div>
 
           <!-- Right: detail -->
           <div class="ModuleDesignSystem__browser-detail" qa="ds-browser-detail">
             <!-- Overview panel -->
             <div class="ModuleDesignSystem__overview" v-if="selectedItem === 'overview'">
-              <div class="ModuleDesignSystem__overview-title">Overview</div>
-              <input
-                class="ModuleDesignSystem__overview-name-input"
-                qa="ds-name-input"
-                v-model="designSystemName"
-                placeholder="Design system name"
-              />
-              <div
-                class="ModuleDesignSystem__overview-file"
-                v-for="lib in libraries"
-                :key="lib.id"
-              >
-                <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
-                <span class="ModuleDesignSystem__overview-file-count">
-                  {{ lib.components.length }} components
-                </span>
-              </div>
-              <div
-                class="ModuleDesignSystem__update-btn"
-                :class="{ 'ModuleDesignSystem__update-btn_loading': syncing }"
-                @click="syncAll"
-              >
-                Update from Figma
-              </div>
-            </div>
+              <!-- Read-only view -->
+              <template v-if="!editing">
+                <div class="ModuleDesignSystem__overview-field">
+                  <div class="ModuleDesignSystem__overview-label">system name</div>
+                  <div class="ModuleDesignSystem__overview-value">{{ designSystemName }}</div>
+                </div>
+                <div class="ModuleDesignSystem__overview-field">
+                  <div class="ModuleDesignSystem__overview-label">figma files</div>
+                  <div class="ModuleDesignSystem__overview-files">
+                    <a
+                      class="ModuleDesignSystem__overview-file-row"
+                      v-for="lib in libraries"
+                      :key="lib.id"
+                      :href="lib.figma_url"
+                      target="_blank"
+                    >
+                      <Icon type="link" />
+                      <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
+                    </a>
+                  </div>
+                </div>
+                <div class="ModuleDesignSystem__overview-edit" @click="startEditing">Edit</div>
+              </template>
 
-            <!-- AI Schema -->
-            <AiSchemaView
-              v-else-if="selectedItem === 'ai-schema'"
-              :libraries="libraries"
-            />
+              <!-- Edit view -->
+              <template v-else>
+                <div class="ModuleDesignSystem__overview-field">
+                  <div class="ModuleDesignSystem__overview-label">system name</div>
+                  <input
+                    class="ModuleDesignSystem__pill-input"
+                    qa="ds-name-input"
+                    v-model="designSystemName"
+                  />
+                </div>
+                <div class="ModuleDesignSystem__overview-field">
+                  <div class="ModuleDesignSystem__overview-label">figma files</div>
+                  <div class="ModuleDesignSystem__url-list">
+                    <input
+                      v-for="(url, index) in editUrlFields"
+                      :key="index"
+                      class="ModuleDesignSystem__pill-input"
+                      :value="url"
+                      placeholder="figma.com/..."
+                      @input="onEditUrlInput(index, $event.target.value)"
+                      @blur="cleanupEditUrls"
+                    />
+                  </div>
+                </div>
+                <div
+                  class="ModuleDesignSystem__do-import"
+                  :class="{ 'ModuleDesignSystem__do-import_loading': saving }"
+                  @click="saveEdits"
+                >
+                  save
+                </div>
+              </template>
+            </div>
 
             <!-- Component detail -->
             <template v-else-if="selectedItem && selectedItem !== 'overview'">
@@ -144,21 +164,6 @@
                 :renderer-url="rendererUrl"
                 @sync="syncComponent"
               />
-
-              <!-- Read-only configuration (auto-detected from Figma) -->
-              <div class="ModuleDesignSystem__config" v-if="selectedItem.is_root || selectedItemChildren.length">
-                <div v-if="selectedItem.is_root" class="ModuleDesignSystem__root-badge">Root component</div>
-                <div v-if="selectedItemChildren.length" class="ModuleDesignSystem__children-section">
-                  <div class="ModuleDesignSystem__children-label">Allowed children</div>
-                  <div class="ModuleDesignSystem__children-list">
-                    <div
-                      v-for="child in selectedItemChildren"
-                      :key="child"
-                      class="ModuleDesignSystem__children-item"
-                    >{{ child }}</div>
-                  </div>
-                </div>
-              </div>
             </template>
 
             <div v-else class="ModuleDesignSystem__detail-empty">
@@ -167,14 +172,7 @@
           </div>
         </div>
 
-        <div
-          class="ModuleDesignSystem__save-btn"
-          qa="ds-save-btn"
-          :class="{ 'ModuleDesignSystem__save-btn_loading': saving }"
-          @click="saveAndClose"
-        >
-          {{ designSystem ? 'Close' : 'Save' }}
-        </div>
+
       </template>
     </div>
     </template>
@@ -205,6 +203,8 @@ export default {
       saving: false,
       syncing: false,
       designSystemName: "",
+      editing: false,
+      editUrlFields: [""],
     };
   },
   computed: {
@@ -250,7 +250,8 @@ export default {
     allImported(val) {
       if (val && this.phase === "importing") {
         if (this.designSystem) {
-          // Editing existing — go to browser
+          // Editing existing — save updated library list, go to browser
+          this.updateDesignSystem();
           this.phase = "done";
           this.selectedItem = "overview";
         } else {
@@ -468,6 +469,102 @@ export default {
         this.saving = false;
       }
     },
+    startEditing() {
+      this.editUrlFields = [
+        ...this.libraries.map((l) => l.figma_url || ""),
+        "",
+      ];
+      this.editing = true;
+    },
+    onEditUrlInput(index, value) {
+      this.editUrlFields[index] = value;
+      if (index === this.editUrlFields.length - 1 && value.trim()) {
+        this.editUrlFields.push("");
+      }
+    },
+    cleanupEditUrls() {
+      const cleaned = this.editUrlFields.filter((u, i) => u.trim() || i === this.editUrlFields.length - 1);
+      if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
+        cleaned.push("");
+      }
+      this.editUrlFields = cleaned;
+    },
+    async saveEdits() {
+      if (this.saving) return;
+      this.saving = true;
+
+      const newUrls = [...new Set(this.editUrlFields.filter((u) => u.trim()))];
+      const existingUrls = this.libraries.map((l) => l.figma_url);
+      const urlsToImport = newUrls.filter((u) => !existingUrls.includes(u));
+
+      // Remove libraries whose URLs were deleted
+      this.libraries = this.libraries.filter((l) => newUrls.includes(l.figma_url));
+
+      // Import new URLs
+      for (const url of urlsToImport) {
+        try {
+          const token = await this.getToken();
+          const createRes = await fetch("/api/component-libraries", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+          });
+          if (!createRes.ok) continue;
+          const lib = await createRes.json();
+          if (!lib.id) continue;
+
+          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+            method: "POST",
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          this.libraries.push({
+            id: lib.id,
+            name: lib.name || lib.figma_file_name || url,
+            figma_url: url,
+            status: lib.status || "pending",
+            loading: true,
+            error: null,
+            progress: null,
+            components: [],
+          });
+          this.pollLibrary(lib.id);
+        } catch { /* continue */ }
+      }
+
+      if (this.libraries.some((l) => l.loading)) {
+        this.phase = "importing";
+      } else {
+        await this.updateDesignSystem();
+      }
+
+      this.saving = false;
+      this.editing = false;
+    },
+    async updateDesignSystem() {
+      try {
+        const token = await this.getToken();
+        await fetch(`/api/design-systems/${this.designSystem.id}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            design_system: {
+              name: this.designSystemName,
+              component_library_ids: this.libraries.map((l) => l.id),
+            },
+          }),
+        });
+      } catch { /* continue */ }
+    },
     isSelected(comp) {
       return (
         this.selectedItem &&
@@ -489,6 +586,7 @@ export default {
         this.libraries.push({
           id: lib.id,
           name: lib.name,
+          figma_url: lib.figma_url || "",
           status: "ready",
           loading: false,
           error: null,
@@ -517,6 +615,11 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+
+  &_wide {
+    width: 780px;
+    align-self: stretch;
+  }
 
   &::-webkit-scrollbar {
     display: none;
@@ -629,16 +732,18 @@ export default {
 
   // Browser (done phase)
   &__browser {
-    display: grid;
-    grid-template-columns: 240px 1fr;
+    display: flex;
+    gap: 20px;
     min-height: 400px;
-    gap: 0;
   }
 
   &__menu {
+    width: 160px;
+    flex-shrink: 0;
     overflow-y: auto;
-    border-right: 1px solid var(--fill);
-    padding-right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 
     &::-webkit-scrollbar {
       display: none;
@@ -646,8 +751,8 @@ export default {
   }
 
   &__menu-item {
-    padding: 7px 10px;
-    border-radius: 8px;
+    padding: 12px 16px;
+    border-radius: 900px;
     font: var(--font-basic);
     cursor: pointer;
 
@@ -660,18 +765,27 @@ export default {
     }
   }
 
+  &__menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   &__menu-subtitle {
     font: var(--font-basic);
-    color: var(--darkgray);
+    color: var(--black);
+    opacity: 0.4;
     text-transform: none;
     letter-spacing: 0;
-    padding: 16px 10px 6px;
   }
 
   // Right panel
   &__browser-detail {
-    padding-left: 32px;
+    flex: 1;
+    min-width: 0;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 
     &::-webkit-scrollbar {
       display: none;
@@ -682,69 +796,56 @@ export default {
   &__overview {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
   }
 
-  &__overview-title {
-    font: var(--font-basic);
-    font-weight: 700;
-    font-size: 20px;
-    margin-bottom: 8px;
-  }
-
-  &__overview-name-input {
-    width: 100%;
-    padding: 12px 16px;
-    background: var(--fill);
-    border: none;
-    border-radius: 67px;
-    font: var(--font-basic);
-    color: var(--black);
-    box-sizing: border-box;
-    outline: none;
-
-    &::placeholder {
-      color: var(--lightgray);
-    }
-  }
-
-  &__overview-file {
+  &__overview-field {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 16px;
-    background: var(--fill);
-    border-radius: 12px;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  &__overview-file-name {
-    font: var(--font-basic);
-    font-weight: 700;
-  }
-
-  &__overview-file-count {
+  &__overview-label {
     font: var(--font-basic);
     color: var(--darkgray);
   }
 
-  &__update-btn {
-    display: inline-flex;
-    padding: 10px 24px;
-    border: 1px solid var(--lightgray);
-    border-radius: 32px;
+  &__overview-value {
     font: var(--font-basic);
+    color: var(--black);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__overview-files {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__overview-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  &__overview-file-name {
+    font: var(--font-basic);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__overview-edit {
+    font: var(--font-basic);
+    color: var(--lightgray);
     cursor: pointer;
-    margin-top: 8px;
-    transition: background 150ms ease;
-
-    &:hover {
-      background: var(--fill);
-    }
-
-    &_loading {
-      opacity: 0.5;
-      pointer-events: none;
-    }
+    width: 120px;
   }
 
   // Component detail header
@@ -1003,26 +1104,5 @@ export default {
     color: var(--darkgray);
   }
 
-  // Save button
-  &__save-btn {
-    display: inline-flex;
-    padding: 14px 36px;
-    background: var(--black);
-    color: var(--white);
-    border-radius: var(--radius-pill);
-    font: var(--font-basic);
-    cursor: pointer;
-    margin-top: 24px;
-    transition: transform 200ms ease;
-
-    &:active {
-      transform: scale(0.95);
-    }
-
-    &_loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-  }
 }
 </style>

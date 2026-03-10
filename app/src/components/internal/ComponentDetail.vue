@@ -1,156 +1,85 @@
 <template>
   <div class="ComponentDetail">
+    <!-- Name -->
+    <div class="ComponentDetail__name" qa="component-name">{{ comp.name }}</div>
 
-    <!-- Header -->
-    <div class="ComponentDetail__header">
-      <div class="ComponentDetail__header-row">
-        <div class="ComponentDetail__name" qa="component-name">{{ comp.name }}</div>
-        <span class="ComponentDetail__type-badge" qa="component-type">{{ typeLabel }}</span>
-        <span
-          class="ComponentDetail__status-badge"
-          qa="component-status"
-          :class="isReady ? 'ComponentDetail__status-badge_ready' : 'ComponentDetail__status-badge_missing'"
-        >{{ isReady ? "ready" : "no code" }}</span>
-        <span
-          class="ComponentDetail__match-badge"
-          qa="component-visual-diff"
-          :class="matchBadgeClass"
-        >{{ matchPercent != null ? Math.round(matchPercent) + '% match' : '-' }}</span>
-        <span
-          v-if="matchPercent != null && matchPercent < 95"
-          class="ComponentDetail__match-badge ComponentDetail__match-badge_low"
-          qa="component-low-fidelity"
-        >low fidelity</span>
-      </div>
-      <!-- Per-variant visual diff percentages -->
-      <div v-if="variantDiffs.length" class="ComponentDetail__variant-diffs">
-        <div
-          v-for="vd in variantDiffs"
-          :key="vd.name"
-          class="ComponentDetail__variant-diff-row"
-        >
-          <span class="ComponentDetail__variant-diff-name">{{ vd.name }}</span>
-          <span
-            class="ComponentDetail__match-badge"
-            qa="component-visual-diff"
-            :class="vd.badgeClass"
-          >{{ vd.percent != null ? Math.round(vd.percent) + '% match' : '-' }}</span>
-        </div>
-      </div>
-      <div v-if="comp.description" class="ComponentDetail__description">{{ comp.description }}</div>
+    <!-- Actions row: figma, sync, diff -->
+    <div class="ComponentDetail__actions">
       <a
         v-if="comp.figma_url"
         :href="comp.figma_url"
         target="_blank"
         rel="noopener"
-        class="ComponentDetail__figma-link"
+        class="ComponentDetail__action"
         qa="component-figma-link"
-      >Open in Figma</a>
-      <button class="ComponentDetail__sync-btn" qa="component-sync-btn" @click="$emit('sync', comp)">sync</button>
+      >
+        <Icon type="link" />
+        <span>figma</span>
+      </a>
+      <div class="ComponentDetail__action" qa="component-sync-btn" @click="$emit('sync', comp)">
+        <Icon type="refresh" />
+        <span>sync</span>
+      </div>
+      <div v-if="matchPercent != null" class="ComponentDetail__action-text" qa="component-visual-diff">
+        {{ Math.round(matchPercent) }}% diff
+      </div>
     </div>
 
-    <!-- Props (interactive) -->
-    <div v-if="propRows.length" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('props')">
-        <span>Props</span>
-        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.props }">&#9654;</span>
-      </div>
-      <div v-if="expandedSections.props" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__props" qa="component-props">
-          <div v-for="prop in propRows" :key="prop.name" class="ComponentDetail__prop-row" qa="component-prop-row">
-            <span class="ComponentDetail__prop-name" qa="component-prop-name">{{ prop.name }}</span>
-            <span class="ComponentDetail__prop-info">
-              <template v-if="prop.type === 'VARIANT' && prop.values.length">
-                <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
-                  <option v-for="v in prop.values" :key="v" :value="v">{{ v }}</option>
-                </select>
-              </template>
-              <template v-else-if="prop.type === 'TEXT'">
-                <input type="text" v-model="selectedProps[prop.name]" @input="$nextTick(() => sendPreviewRender())" class="ComponentDetail__prop-input" placeholder="Enter text..." />
-              </template>
-              <template v-else-if="prop.type === 'BOOLEAN'">
-                <input type="checkbox" v-model="selectedProps[prop.name]" class="ComponentDetail__prop-checkbox" />
-              </template>
-              <template v-else-if="prop.values.length">
-                <span v-for="v in prop.values" :key="v" class="ComponentDetail__prop-value">{{ v }}</span>
-              </template>
-              <template v-else>
-                <span class="ComponentDetail__prop-type">{{ prop.type?.toLowerCase() || 'enum' }}</span>
-              </template>
-            </span>
-          </div>
+    <!-- Props -->
+    <div v-if="propRows.length" class="ComponentDetail__props-section">
+      <div class="ComponentDetail__label">props</div>
+      <div class="ComponentDetail__props">
+        <div v-for="prop in propRows" :key="prop.name" class="ComponentDetail__prop-row" qa="component-prop-row">
+          <span class="ComponentDetail__prop-name" qa="component-prop-name">{{ prop.name }}</span>
+          <span class="ComponentDetail__prop-value">
+            <template v-if="prop.type === 'VARIANT' && prop.values.length">
+              <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
+                <option v-for="v in prop.values" :key="v" :value="v">{{ v }}</option>
+              </select>
+              <Icon type="down" />
+            </template>
+            <template v-else-if="prop.type === 'TEXT'">
+              <span class="ComponentDetail__prop-text">{{ selectedProps[prop.name] || prop.defaultValue || 'default text' }}</span>
+            </template>
+            <template v-else-if="prop.type === 'BOOLEAN'">
+              <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
+                <option :value="true">true</option>
+                <option :value="false">false</option>
+              </select>
+              <Icon type="down" />
+            </template>
+            <template v-else-if="prop.type === 'INSTANCE_SWAP' && prop.values.length">
+              <div class="ComponentDetail__prop-links">
+                <div v-for="v in prop.values" :key="v" class="ComponentDetail__prop-link-row">
+                  <Icon type="link" />
+                  <span>{{ v }}</span>
+                </div>
+              </div>
+            </template>
+            <template v-else-if="prop.type === 'SLOT' && prop.children.length">
+              <div class="ComponentDetail__prop-links">
+                <div v-for="child in prop.children" :key="child" class="ComponentDetail__prop-link-row">
+                  <Icon type="link" />
+                  <span>{{ child }}</span>
+                </div>
+              </div>
+            </template>
+          </span>
         </div>
       </div>
     </div>
 
-    <!-- Preview (live, only if rendererUrl provided) -->
-    <div v-if="rendererUrl" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('preview')">
-        <span>Preview</span>
-        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.preview }">&#9654;</span>
-      </div>
-      <div v-if="expandedSections.preview" class="ComponentDetail__section-body">
-        <iframe
-          ref="previewIframe"
-          :src="rendererUrl"
-          class="ComponentDetail__preview-frame"
-          qa="component-preview-frame"
-          @load="onPreviewIframeLoad"
-        />
-      </div>
+    <!-- Live preview -->
+    <div v-if="rendererUrl" class="ComponentDetail__preview-section">
+      <div class="ComponentDetail__label">live preview</div>
+      <iframe
+        ref="previewIframe"
+        :src="rendererUrl"
+        class="ComponentDetail__preview-frame"
+        qa="component-preview-frame"
+        @load="onPreviewIframeLoad"
+      />
     </div>
-
-    <!-- Configuration (read-only — set via Figma conventions) -->
-    <div v-if="comp.is_root || allAllowedChildren.length" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('config')">
-        <span>Configuration</span>
-        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.config }">&#9654;</span>
-      </div>
-      <div v-if="expandedSections.config" class="ComponentDetail__section-body">
-        <div v-if="comp.is_root" class="ComponentDetail__config-row" qa="component-config-row">
-          <span class="ComponentDetail__config-key" qa="component-root-tag">Root</span>
-          <span class="ComponentDetail__config-tag ComponentDetail__config-tag_root">yes</span>
-        </div>
-        <div v-if="allAllowedChildren.length" class="ComponentDetail__config-row" qa="component-config-row">
-          <span class="ComponentDetail__config-key">Allowed children</span>
-          <div class="ComponentDetail__children-list" qa="component-children">
-            <span
-              v-for="child in allAllowedChildren"
-              :key="child"
-              class="ComponentDetail__children-item ComponentDetail__prop-value"
-              qa="component-child"
-            >{{ child }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- React Code -->
-    <div v-if="reactCode" class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" qa="component-section-header" @click="toggleSection('code')">
-        <span>React Code</span>
-        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.code }">&#9654;</span>
-      </div>
-      <div v-if="expandedSections.code" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__code-wrap" qa="component-code">
-          <ModuleCode :modelValue="reactCode" language="javascript" :readOnly="true" height="300px" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Figma JSON -->
-    <div class="ComponentDetail__section">
-      <div class="ComponentDetail__section-header" qa="component-section-header" @click="loadAndToggleFigmaJson">
-        <span>Figma JSON</span>
-        <span class="ComponentDetail__chevron" :class="{ 'ComponentDetail__chevron_open': expandedSections.figmaJson }">&#9654;</span>
-      </div>
-      <div v-if="expandedSections.figmaJson" class="ComponentDetail__section-body">
-        <div class="ComponentDetail__code-wrap" qa="component-code">
-          <pre class="ComponentDetail__figma-json">{{ figmaJsonText }}</pre>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
 
@@ -164,40 +93,12 @@ export default {
   },
   data() {
     return {
-      expandedSections: { preview: true, props: true, config: true, code: false, figmaJson: false },
       previewReady: false,
       selectedProps: {},
-      figmaJson: null,
     };
   },
   computed: {
-    allAllowedChildren() {
-      return (this.comp.slots || []).flatMap((s) => s.allowed_children || []);
-    },
-    variantDiffs() {
-      if (!this.comp.variants || this.comp.type !== "component_set") return [];
-      return this.comp.variants
-        .filter((v) => v.match_percent != null)
-        .map((v) => ({
-          name: v.name,
-          percent: v.match_percent,
-          badgeClass: v.match_percent >= 95 ? "ComponentDetail__match-badge_high" : v.match_percent >= 50 ? "ComponentDetail__match-badge_medium" : "ComponentDetail__match-badge_low",
-        }));
-    },
-    typeLabel() {
-      if (this.comp.is_vector) return "Vector";
-      if (this.comp.type === "component_set") return "Component Set";
-      return "Component";
-    },
-    isReady() {
-      return !!(
-        this.comp.default_variant_react_code ||
-        this.comp.has_react ||
-        this.comp.react_code
-      );
-    },
     matchPercent() {
-      // For component sets with variant-level diffs, compute average
       if (this.comp.type === "component_set" && this.comp.variants?.length) {
         const withDiff = this.comp.variants.filter((v) => v.match_percent != null);
         if (withDiff.length > 0) {
@@ -207,15 +108,7 @@ export default {
       }
       return this.comp.default_variant_match_percent ?? this.comp.match_percent ?? null;
     },
-    matchBadgeClass() {
-      const p = this.matchPercent;
-      if (p == null) return "";
-      if (p >= 95) return "ComponentDetail__match-badge_high";
-      if (p >= 50) return "ComponentDetail__match-badge_medium";
-      return "ComponentDetail__match-badge_low";
-    },
     propRows() {
-      // Build variant values map from variant names (e.g. "Size=M, State=default")
       const variantValues = {};
       (this.comp.variants || []).forEach((v) => {
         v.name.split(", ").forEach((part) => {
@@ -228,34 +121,44 @@ export default {
         });
       });
 
-      let rows;
-
-      // Prefer prop_definitions (structured, includes TEXT/BOOLEAN types)
+      const rows = [];
       const defs = this.comp.prop_definitions;
+
       if (defs && typeof defs === "object" && Object.keys(defs).length) {
-        rows = Object.entries(defs).map(([name, def]) => ({
-          name,
-          type: def?.type || "VARIANT",
-          values: variantValues[name.toLowerCase()] || [],
-          defaultValue: def?.defaultValue || def?.default_value || null,
-        }));
+        for (const [name, def] of Object.entries(defs)) {
+          rows.push({
+            name,
+            type: def?.type || "VARIANT",
+            values: variantValues[name.toLowerCase()] || [],
+            defaultValue: def?.defaultValue || def?.default_value || null,
+            children: [],
+          });
+        }
       } else {
-        // Fallback: derive from variant names only
-        rows = Object.entries(variantValues).map(([name, values]) => ({
-          name,
-          type: "VARIANT",
-          values,
-          defaultValue: null,
-        }));
+        for (const [name, values] of Object.entries(variantValues)) {
+          rows.push({ name, type: "VARIANT", values, defaultValue: null, children: [] });
+        }
       }
 
-      return rows.filter((p) => p.type !== "INSTANCE_SWAP");
+      // Add slots as prop rows
+      for (const slot of this.comp.slots || []) {
+        rows.push({
+          name: slot.name || "slot",
+          type: "SLOT",
+          values: [],
+          defaultValue: null,
+          children: slot.allowed_children || [],
+        });
+      }
+
+      return rows;
     },
     previewJsx() {
       const name = this.comp.react_name;
       if (!name) return "";
       const parts = [];
       for (const prop of this.propRows) {
+        if (prop.type === "SLOT" || prop.type === "INSTANCE_SWAP") continue;
         const val = this.selectedProps[prop.name];
         const reactName = this.toPropName(prop.name);
         if (prop.type === "BOOLEAN") {
@@ -267,39 +170,8 @@ export default {
       const propsStr = parts.length ? " " + parts.join(" ") : "";
       return `<${name}${propsStr} />`;
     },
-    reactCode() {
-      return this.comp.default_variant_react_code || this.comp.react_code || null;
-    },
-    figmaJsonText() {
-      if (!this.figmaJson) return "Loading…";
-      return JSON.stringify(this.figmaJson, null, 2);
-    },
   },
   methods: {
-    toggleSection(name) {
-      this.expandedSections[name] = !this.expandedSections[name];
-    },
-    async loadAndToggleFigmaJson() {
-      if (this.expandedSections.figmaJson) {
-        this.expandedSections.figmaJson = false;
-        return;
-      }
-      this.expandedSections.figmaJson = true;
-      if (this.figmaJson) return;
-      const endpoint = this.comp.type === "component_set"
-        ? `/api/component-sets/${this.comp.id}/figma_json`
-        : `/api/components/${this.comp.id}/figma_json`;
-      try {
-        const res = await fetch(endpoint);
-        if (res.ok) {
-          this.figmaJson = await res.json();
-        } else {
-          this.figmaJson = { error: `Failed to load (${res.status})` };
-        }
-      } catch {
-        this.figmaJson = { error: "Network error" };
-      }
-    },
     toPropName(name) {
       const clean = name.replace(/[^\w\s-]/g, "").trim();
       const words = clean.split(/[\s_-]+/).filter((w) => w.length > 0);
@@ -378,301 +250,122 @@ export default {
 
 <style lang="scss">
 .ComponentDetail {
-  // Sections
-  &__header {
-    margin-bottom: 8px;
-  }
-
-  &__header-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 6px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
   &__name {
     font: var(--font-basic);
-    font-weight: 700;
-    font-size: 20px;
-  }
-
-  &__type-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    background: var(--fill);
     color: var(--darkgray);
   }
 
-  &__status-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-
-    &_ready {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    &_missing {
-      background: #fef9c3;
-      color: #854d0e;
-    }
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
-  &__match-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-
-    &_high {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    &_medium {
-      background: #fef9c3;
-      color: #854d0e;
-    }
-
-    &_low {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-  }
-
-  &__description {
-    font: var(--font-basic);
-    color: var(--darkgray);
-    margin-bottom: 4px;
-  }
-
-  &__sync-btn {
-    display: inline-block;
-    font: var(--font-basic);
-    padding: 4px 12px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--lightgray);
-    background: var(--white);
-    color: var(--black);
-    cursor: pointer;
-    transition: background 150ms ease;
-
-    &:hover {
-      background: var(--fill);
-    }
-  }
-
-  &__figma-link {
-    display: inline-block;
+  &__action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font: var(--font-basic);
     color: var(--black);
     text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  // Collapsible sections
-  &__section {
-    border-top: 1px solid var(--fill);
-    padding-top: 4px;
-    margin-top: 4px;
-  }
-
-  &__section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
     cursor: pointer;
+
+    .Icon {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  &__action-text {
     font: var(--font-basic);
-    font-weight: 700;
-    user-select: none;
-
-    &:hover {
-      color: var(--black);
-    }
+    color: var(--black);
   }
 
-  &__section-body {
-    padding-bottom: 12px;
-  }
-
-  &__chevron {
-    font-size: 10px;
+  &__label {
+    font: var(--font-basic);
     color: var(--darkgray);
-    transition: transform 200ms ease;
-
-    &_open {
-      transform: rotate(90deg);
-    }
   }
 
-  // Preview iframe
-  &__preview-frame {
-    width: 100%;
-    height: 200px;
-    border: 1px solid var(--fill);
-    border-radius: 12px;
-    background: #fafafa;
+  &__props-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  // Props list
   &__props {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 10px;
   }
 
   &__prop-row {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--fill);
+    gap: 10px;
+    align-items: flex-start;
     font: var(--font-basic);
-
-    &:last-child {
-      border-bottom: none;
-    }
   }
 
   &__prop-name {
-    font-weight: 600;
-    min-width: 80px;
+    width: 148px;
     flex-shrink: 0;
-  }
-
-  &__prop-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-  }
-
-  &__prop-type {
-    font: var(--font-basic);
-    padding: 1px 8px;
-    border-radius: 4px;
-    background: #e3f2fd;
-    color: #1565c0;
-    white-space: nowrap;
+    color: var(--black);
   }
 
   &__prop-value {
-    font: var(--font-basic);
-    padding: 1px 8px;
-    border-radius: 4px;
-    background: var(--fill);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--black);
+  }
+
+  &__prop-text {
     color: var(--darkgray);
   }
 
   &__prop-select {
     font: var(--font-basic);
-    padding: 4px 8px;
-    border: 1px solid var(--lightgray);
-    border-radius: 6px;
-    background: white;
+    border: none;
+    background: none;
     outline: none;
     cursor: pointer;
-
-    &:focus {
-      border-color: var(--black);
-    }
+    padding: 0;
+    appearance: none;
+    color: var(--black);
   }
 
-  &__prop-input {
-    font: var(--font-basic);
-    padding: 4px 8px;
-    border: 1px solid var(--lightgray);
-    border-radius: 6px;
-    background: white;
-    outline: none;
-    min-width: 120px;
-
-    &:focus {
-      border-color: var(--black);
-    }
+  &__prop-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  &__prop-checkbox {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    accent-color: var(--black);
-  }
-
-  // Configuration (read-only)
-  &__config-row {
+  &__prop-link-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--fill);
-    font: var(--font-basic);
+    gap: 4px;
 
-    &:last-child {
-      border-bottom: none;
+    .Icon {
+      width: 18px;
+      height: 18px;
     }
   }
 
-  &__config-key {
-    font-weight: 600;
-    min-width: 80px;
-    flex-shrink: 0;
-  }
-
-  &__config-tag {
-    font: var(--font-basic);
-    padding: 1px 8px;
-    border-radius: 4px;
-
-    &_root {
-      background: #ede9fe;
-      color: #5b21b6;
-    }
-  }
-
-  &__children-list {
+  &__preview-section {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  &__children-item {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    background: var(--fill);
-    color: var(--darkgray);
-  }
-
-  // Figma JSON
-  &__figma-json {
-    margin: 0;
-    padding: 12px;
-    font: var(--font-basic);
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-break: break-all;
-    color: var(--darkgray);
-  }
-
-  // React Code
-  &__code-wrap {
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid var(--fill);
+  &__preview-frame {
+    width: 100%;
+    height: 218px;
+    border: none;
     border-radius: 12px;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
+    background: var(--fill);
   }
 }
 </style>

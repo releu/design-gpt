@@ -16,7 +16,7 @@ class DesignSystemsController < ApplicationController
         id: ds.id,
         name: ds.name,
         component_library_ids: ds.component_library_ids,
-        libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name } },
+        libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } },
         created_at: ds.created_at
       }
     }
@@ -34,7 +34,7 @@ class DesignSystemsController < ApplicationController
       id: ds.id,
       name: ds.name,
       component_library_ids: ds.component_library_ids,
-      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name } }
+      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } }
     }, status: :created
   end
 
@@ -44,7 +44,7 @@ class DesignSystemsController < ApplicationController
       id: ds.id,
       name: ds.name,
       component_library_ids: ds.component_library_ids,
-      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name } },
+      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } },
       created_at: ds.created_at
     }
   end

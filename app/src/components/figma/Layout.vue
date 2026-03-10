@@ -224,7 +224,7 @@ export default {
 
   /* ===== LAYOUT 1: HOME (Three columns + bottom bar) ===== */
   &_layout-home {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 320px;
     grid-template-rows: auto 1fr auto;
     grid-template-areas:
       "header  header  header"
@@ -322,9 +322,8 @@ export default {
     padding: 0;
     border: 4px solid var(--black);
     border-radius: 32px;
-    width: 340px;
-    max-height: 100%;
-    aspect-ratio: 9 / 16;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     position: relative;
 
@@ -380,6 +379,10 @@ export default {
 
   &__overlay-content {
     grid-area: content;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   &__overlay-close {
