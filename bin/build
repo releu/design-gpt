@@ -12,3 +12,8 @@ rm -rf api/public/assets api/public/index.html
 cp -r app/dist/* api/public/
 
 echo "-----> Frontend build complete"
+
+echo "-----> Installing esbuild binary for JSX compilation"
+cd api
+ruby bin/setup_esbuild
+cd ..
