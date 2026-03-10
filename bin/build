@@ -14,6 +14,11 @@ cp -r app/dist/* api/public/
 echo "-----> Frontend build complete"
 
 echo "-----> Installing esbuild binary for JSX compilation"
-cd api
-ruby bin/setup_esbuild
-cd ..
+ESBUILD_VERSION="0.27.3"
+ESBUILD_PLATFORM="linux-x64"
+ESBUILD_URL="https://registry.npmjs.org/@esbuild/${ESBUILD_PLATFORM}/-/${ESBUILD_PLATFORM}-${ESBUILD_VERSION}.tgz"
+mkdir -p api/vendor/bin
+curl -sL "$ESBUILD_URL" | tar xz -C /tmp --strip-components=2 package/bin/esbuild
+mv /tmp/esbuild api/vendor/bin/esbuild
+chmod +x api/vendor/bin/esbuild
+api/vendor/bin/esbuild --version
