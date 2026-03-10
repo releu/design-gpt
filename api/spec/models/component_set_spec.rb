@@ -1,8 +1,8 @@
 require "rails_helper"
 
 RSpec.describe ComponentSet, type: :model do
-  it "belongs to component_library" do
-    expect(component_sets(:button_set).component_library).to eq(component_libraries(:example_lib))
+  it "belongs to figma_file" do
+    expect(component_sets(:button_set).figma_file).to eq(figma_files(:example_lib))
   end
 
   it "has many variants" do
@@ -57,9 +57,9 @@ RSpec.describe ComponentSet, type: :model do
     end
   end
 
-  it "validates node_id uniqueness within component_library" do
+  it "validates node_id uniqueness within figma_file" do
     cs = ComponentSet.new(
-      component_library: component_libraries(:example_lib),
+      figma_file: figma_files(:example_lib),
       node_id: "1:100", # same as button_set
       name: "Duplicate"
     )

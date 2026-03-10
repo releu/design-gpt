@@ -118,9 +118,9 @@ All 81 E2E scenarios across 10 feature files, run via `bash run-tests.sh all` wi
 - FAIL: Multiple improvements in sequence -- `[qa="preview-frame"]` not found
 
 #### Category D: Sync API response is empty JSON (2 tests)
-**Root cause**: `POST /api/component-libraries` returns empty body -- `SyntaxError: Unexpected end of JSON input`. This is an APP-SIDE BUG, not API-dependent.
+**Root cause**: `POST /api/figma-files` returns empty body -- `SyntaxError: Unexpected end of JSON input`. This is an APP-SIDE BUG, not API-dependent.
 
-- FAIL: Sync all FIGMA_FILEs in a DESIGN_SYSTEM -- JSON parse error on component-libraries create
+- FAIL: Sync all FIGMA_FILEs in a DESIGN_SYSTEM -- JSON parse error on figma-files create
 - FAIL: Sync a single FIGMA_FILE in a DESIGN_SYSTEM -- same
 
 #### Category E: Component browser data gaps (4 tests)
@@ -128,7 +128,7 @@ All 81 E2E scenarios across 10 feature files, run via `bash run-tests.sh all` wi
 
 - FAIL: Component detail shows ALLOWED_CHILDREN for SLOTs -- `[qa="component-config-row"]` not found. Page component exists in seed but its children/config section is not rendered. **App-side**: ComponentDetail does not render a config row for the Page component's slots.
 - FAIL: Component with no React code shows a message -- expected "no code" status but got "ready". **App-side**: The e2e-icon component meant to have `react_code: nil` is either not seeded or has been given code.
-- FAIL: DESIGN_SYSTEM with no ROOT components shows empty AI Schema -- after creating a no-root DS via API, `[qa="ds-browser-detail"]` and `[qa="ds-modal"]` not found. **Test-side**: The no-root DS has no component_library so clicking browse may not open a full browser.
+- FAIL: DESIGN_SYSTEM with no ROOT components shows empty AI Schema -- after creating a no-root DS via API, `[qa="ds-browser-detail"]` and `[qa="ds-modal"]` not found. **Test-side**: The no-root DS has no figma_file so clicking browse may not open a full browser.
 - FAIL: Component detail shows raw Figma JSON -- `[qa="component-code"]` section does not contain Figma JSON. **App-side**: The Figma JSON section may not render its content inside `[qa="component-code"]` but in a separate container.
 
 #### Category F: Visual diff seed data mismatch (3 tests)
@@ -183,4 +183,4 @@ cd /Users/releu/Code/design-gpt/.hats/qa && bash run-tests.sh all
 - Developer claimed 46/35 but QA measured 43/38. The 3-test difference may be due to test ordering and accumulated data state between runs.
 - 27 of 38 failures are genuinely API-dependent (Figma or OpenAI). Developer's claim is largely confirmed.
 - 11 failures are NOT API-dependent and can be fixed with seed data corrections, app-side rendering fixes, or test-side adjustments.
-- The `POST /api/component-libraries` endpoint returns empty body (likely 204 No Content or similar) which causes JSON parse errors in 2 sync tests -- this is an app bug.
+- The `POST /api/figma-files` endpoint returns empty body (likely 204 No Content or similar) which causes JSON parse errors in 2 sync tests -- this is an app bug.

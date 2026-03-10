@@ -4,11 +4,11 @@ RSpec.describe Figma::Importer do
   let(:user) { users(:alice) }
 
   describe "#import" do
-    context "with example-lib (component library with deps)" do
+    context "with example-lib (figma file with deps)" do
       let(:figma_response) { load_figma_fixture("example_lib") }
 
       it "imports component sets and standalone components" do
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Import Test Lib",
           figma_url: "https://www.figma.com/design/TESTLIB123/import-lib",
@@ -47,7 +47,7 @@ RSpec.describe Figma::Importer do
       end
 
       it "preserves INSTANCE references in figma_json (no detaching)" do
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Preserve Instances",
           figma_url: "https://www.figma.com/design/TESTPRES123/preserve-test",
@@ -73,7 +73,7 @@ RSpec.describe Figma::Importer do
       end
 
       it "re-imports without duplicating records" do
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Re-import Test",
           figma_url: "https://www.figma.com/design/TESTREIMPORT/reimport-test",
@@ -97,7 +97,7 @@ RSpec.describe Figma::Importer do
       end
 
       it "cleans up removed components on re-import" do
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Cleanup Test",
           figma_url: "https://www.figma.com/design/TESTCLEANUP/cleanup-test",
@@ -126,7 +126,7 @@ RSpec.describe Figma::Importer do
       let(:figma_response) { load_figma_fixture("example_icons") }
 
       it "imports icon component sets with vector-only content" do
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Icon Import Test",
           figma_url: "https://www.figma.com/design/TESTICONS123/icon-test",
@@ -197,7 +197,7 @@ RSpec.describe Figma::Importer do
           }
         }
 
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Suffix Strip Test",
           figma_url: "https://www.figma.com/design/TESTSUFFIX/suffix-test",
@@ -300,7 +300,7 @@ RSpec.describe Figma::Importer do
           }
         }
 
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "PreferredValues Test",
           figma_url: "https://www.figma.com/design/TESTPV123/pv-test",
@@ -350,7 +350,7 @@ RSpec.describe Figma::Importer do
           }
         }
 
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Root Name Test",
           figma_url: "https://www.figma.com/design/TESTROOT1/root-test",
@@ -398,7 +398,7 @@ RSpec.describe Figma::Importer do
           }
         }
 
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "Root Desc Test",
           figma_url: "https://www.figma.com/design/TESTROOT2/root-desc-test",
@@ -446,7 +446,7 @@ RSpec.describe Figma::Importer do
           }
         }
 
-        ds = ComponentLibrary.create!(
+        ds = FigmaFile.create!(
           user: user,
           name: "No Root Test",
           figma_url: "https://www.figma.com/design/TESTNOROOT/no-root-test",
@@ -468,7 +468,7 @@ RSpec.describe Figma::Importer do
 
     context "with no file key" do
       it "skips import" do
-        ds = ComponentLibrary.new(id: 0, figma_file_key: nil)
+        ds = FigmaFile.new(id: 0, figma_file_key: nil)
         allow(ds).to receive(:update!)
 
         # Should not raise — just log and skip

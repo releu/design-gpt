@@ -123,7 +123,7 @@ Then(
     // At least one DS should have 2+ libraries
     const multiFile = systems.find(
       (d) =>
-        (d.component_library_ids?.length || d.libraries?.length || 0) >= 2,
+        (d.figma_file_ids?.length || d.libraries?.length || 0) >= 2,
     );
     expect(multiFile).toBeTruthy();
   },
@@ -177,7 +177,7 @@ Given(
 
     const figmaUrls = [CUBES_FIGMA_URL, EXAMPLE_LIB_URL].slice(0, fileCount);
     for (const url of figmaUrls) {
-      await request.post("/api/component-libraries", {
+      await request.post("/api/figma-files", {
         headers: authHeaders(token),
         data: { url, design_system_id: ds.id },
       });

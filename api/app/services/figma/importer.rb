@@ -2,17 +2,17 @@
 # Stores raw figma_json as-is (INSTANCE nodes keep their componentId for cross-file resolution).
 module Figma
   class Importer
-    def initialize(component_library)
-      @component_library = component_library
+    def initialize(figma_file)
+      @figma_file = figma_file
       @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
-      @file_key = component_library.figma_file_key
+      @file_key = figma_file.figma_file_key
       @file_name = nil
     end
 
     def import
-      return log("No figma_file_key on ComponentLibrary##{@component_library.id}") unless @file_key.present?
+      return log("No figma_file_key on FigmaFile##{@figma_file.id}") unless @file_key.present?
 
-      log "Starting import for ComponentLibrary##{@component_library.id} (file: #{@file_key})"
+      log "Starting import for FigmaFile##{@figma_file.id} (file: #{@file_key})"
 
       # 1. Fetch the full Figma file
       file = @figma.get("/v1/files/#{@file_key}")
@@ -22,7 +22,7 @@ module Figma
       log "File: #{@file_name}"
 
       # Update design system with the file name
-      @component_library.update!(figma_file_name: @file_name)
+      @figma_file.update!(figma_file_name: @file_name)
 
       # 2. Collect component metadata from file
       component_sets_data, standalone_data = collect_components(file)
@@ -254,10 +254,10 @@ module Figma
       log "Persisting #{component_sets.size} component sets..."
 
       existing_ids = component_sets.keys
-      @component_library.component_sets.where.not(node_id: existing_ids).destroy_all
+      @figma_file.component_sets.where.not(node_id: existing_ids).destroy_all
 
       component_sets.each do |node_id, data|
-        set = @component_library.component_sets.find_or_initialize_by(node_id: node_id)
+        set = @figma_file.component_sets.find_or_initialize_by(node_id: node_id)
         attrs = {
           name: data[:name],
           description: data[:description],
@@ -277,7 +277,7 @@ module Figma
         begin
           set.update!(attrs)
         rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-          set = @component_library.component_sets.find_by!(node_id: node_id)
+          set = @figma_file.component_sets.find_by!(node_id: node_id)
           set.update!(attrs)
         end
 
@@ -306,10 +306,10 @@ module Figma
       log "Persisting #{components.size} standalone components..."
 
       existing_ids = components.keys
-      @component_library.components.where.not(node_id: existing_ids).destroy_all
+      @figma_file.components.where.not(node_id: existing_ids).destroy_all
 
       components.each do |node_id, data|
-        component = @component_library.components.find_or_initialize_by(node_id: node_id)
+        component = @figma_file.components.find_or_initialize_by(node_id: node_id)
         attrs = {
           name: data[:name],
           description: data[:description],

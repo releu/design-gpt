@@ -16,7 +16,7 @@ async function openDesignSystemBrowser(page, request, token) {
   });
   const systems = await dsRes.json();
   const ds = systems.find(
-    (d) => (d.component_library_ids?.length || d.libraries?.length || 0) > 0,
+    (d) => (d.figma_file_ids?.length || d.libraries?.length || 0) > 0,
   );
 
   if (ds) {

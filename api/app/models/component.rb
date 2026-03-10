@@ -1,5 +1,5 @@
 class Component < ApplicationRecord
-  belongs_to :component_library
+  belongs_to :figma_file
   has_many :figma_assets, dependent: :destroy
 
   VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION ELLIPSE RECTANGLE LINE STAR POLYGON].freeze

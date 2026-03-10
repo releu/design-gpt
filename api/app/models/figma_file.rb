@@ -1,11 +1,11 @@
-class ComponentLibrary < ApplicationRecord
+class FigmaFile < ApplicationRecord
   belongs_to :user
-  belongs_to :source_library, class_name: "ComponentLibrary", optional: true
-  has_many :versions, class_name: "ComponentLibrary", foreign_key: :source_library_id
+  belongs_to :source_file, class_name: "FigmaFile", optional: true
+  has_many :versions, class_name: "FigmaFile", foreign_key: :source_file_id
   has_many :components, dependent: :destroy
   has_many :component_sets, dependent: :destroy
-  has_many :design_component_libraries, dependent: :destroy
-  has_many :designs, through: :design_component_libraries
+  has_many :design_figma_files, dependent: :destroy
+  has_many :designs, through: :design_figma_files
   has_many :design_system_libraries, dependent: :destroy
   has_many :design_systems, through: :design_system_libraries
 
@@ -15,10 +15,10 @@ class ComponentLibrary < ApplicationRecord
 
   scope :latest_versions, -> {
     where(<<~SQL.squish)
-      component_libraries.id NOT IN (
-        SELECT cl2.source_library_id
-        FROM component_libraries cl2
-        WHERE cl2.source_library_id IS NOT NULL
+      figma_files.id NOT IN (
+        SELECT ff2.source_file_id
+        FROM figma_files ff2
+        WHERE ff2.source_file_id IS NOT NULL
       )
     SQL
   }
@@ -44,7 +44,7 @@ class ComponentLibrary < ApplicationRecord
       return
     end
 
-    puts "[ComponentLibrary#sync_with_figma] Starting sync for ComponentLibrary##{id}"
+    puts "[FigmaFile#sync_with_figma] Starting sync for FigmaFile##{id}"
     update_progress(step: "importing", step_number: 1, total_steps: 4, message: "Importing from Figma...")
 
     # 1. Import component structure from Figma (raw JSON, no detaching)
@@ -72,14 +72,14 @@ class ComponentLibrary < ApplicationRecord
     # 4. Visual diff runs in background after sync completes
     update!(status: "ready", progress: progress.merge("completed_at" => Time.current.iso8601))
     VisualDiffJob.perform_later(id)
-    puts "[ComponentLibrary#sync_with_figma] Sync complete!"
+    puts "[FigmaFile#sync_with_figma] Sync complete!"
   rescue => e
     update!(status: "error", progress: progress.merge("error" => e.message))
     raise
   end
 
   def source
-    source_library || self
+    source_file || self
   end
 
   def latest_version
@@ -90,19 +90,19 @@ class ComponentLibrary < ApplicationRecord
     # Skip if actively syncing — avoid duplicate concurrent imports
     return if %w[importing converting comparing].include?(status)
 
-    new_version = ComponentLibrary.create!(
+    new_version = FigmaFile.create!(
       user: user,
       name: name,
       figma_url: figma_url,
       figma_file_key: figma_file_key,
       figma_file_name: figma_file_name,
       is_public: is_public,
-      source_library_id: source.id,
+      source_file_id: source.id,
       version: latest_version.version + 1,
       status: "pending",
       progress: { "started_at" => Time.current.iso8601 }
     )
-    ComponentLibrarySyncJob.perform_later(new_version.id, id)
+    FigmaFileSyncJob.perform_later(new_version.id, id)
     new_version
   end
 
@@ -115,7 +115,7 @@ class ComponentLibrary < ApplicationRecord
       "updated_at" => Time.current.iso8601
     )
     update!(progress: new_progress)
-    puts "[ComponentLibrary#sync_with_figma] Step #{step_number}/#{total_steps}: #{message}"
+    puts "[FigmaFile#sync_with_figma] Step #{step_number}/#{total_steps}: #{message}"
   end
 
   def print_tree
@@ -157,7 +157,7 @@ class ComponentLibrary < ApplicationRecord
     puts "─" * 40
     puts "Summary:"
     puts "  Component Sets: #{component_sets.count}"
-    puts "  Total Variants: #{ComponentVariant.joins(:component_set).where(component_sets: { component_library_id: id }).count}"
+    puts "  Total Variants: #{ComponentVariant.joins(:component_set).where(component_sets: { figma_file_id: id }).count}"
     puts "  Standalone Components: #{components.count}"
 
     nil

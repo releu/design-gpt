@@ -3,11 +3,11 @@ class DesignGenerator
 
   def initialize(design)
     @design = design
-    @libraries = design.component_libraries
+    @libraries = design.figma_files
   end
 
   def generate_task(prompt)
-    raise "No component libraries linked" unless @libraries.any?
+    raise "No figma files linked" unless @libraries.any?
     raise "No root components configured" unless root_components.any?
 
     AiTask.create! do |t|

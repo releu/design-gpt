@@ -9,8 +9,8 @@ RSpec.describe DesignSystem, type: :model do
       expect(ds.user).to eq(user)
     end
 
-    it "has many component libraries through design_system_libraries" do
-      expect(ds.component_libraries.count).to eq(2)
+    it "has many figma files through design_system_libraries" do
+      expect(ds.figma_files.count).to eq(2)
     end
   end
 

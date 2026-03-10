@@ -59,13 +59,13 @@ Re: Cycle 3 results -- fixes for P0, P1, P3, P4. Visual diff now 5/5.
 
 ### What I fixed
 
-**P0 FIXED -- POST /api/component-libraries returns proper JSON (2 tests)**
-- `ComponentLibrariesController#create`: The `rescue ActiveRecord::RecordNotUnique` now finds existing libraries by `figma_file_key` (matching the DB unique index) instead of `figma_url`. Added `RecordInvalid` rescue returning 422 with error details.
+**P0 FIXED -- POST /api/figma-files returns proper JSON (2 tests)**
+- `FigmaFilesController#create`: The `rescue ActiveRecord::RecordNotUnique` now finds existing libraries by `figma_file_key` (matching the DB unique index) instead of `figma_url`. Added `RecordInvalid` rescue returning 422 with error details.
 - Both sync tests now pass: "Sync all FIGMA_FILEs" and "Sync a single FIGMA_FILE".
 
 **P3 FIXED -- Visual diff values correct (5/5, was 2/5)**
 - Root cause: The sync tests (now passing thanks to P0 fix) triggered `sync_async` on seed libraries, which queued background Figma import jobs. These jobs modified seed data (component `match_percent`, variant data) while other tests ran in parallel, causing race conditions.
-- Fix: Added guard in `ComponentLibrary#sync_with_figma` -- libraries with `figma_file_key` starting with "e2e" in test environment skip actual Figma import and immediately return to "ready" status.
+- Fix: Added guard in `FigmaFile#sync_with_figma` -- libraries with `figma_file_key` starting with "e2e" in test environment skip actual Figma import and immediately return to "ready" status.
 - All 5 visual diff tests now pass consistently: standalone diff (97%), per-variant diff, average diff (95%), below-95% highlighted, above-95% not highlighted.
 - Also cleaned up stale variants in seed (`title_set.variants.where.not(...)`) and force-updated `match_percent` values.
 
@@ -94,9 +94,9 @@ Compared to baseline (43/38), this is +3 net improvement, with these newly passi
 
 ### Files changed
 
-- `api/app/controllers/component_libraries_controller.rb` -- P0 fix
+- `api/app/controllers/figma_files_controller.rb` -- P0 fix
 - `api/app/controllers/components_controller.rb` -- added `match_percent` to permitted params
-- `api/app/models/component_library.rb` -- sync guard for test data
+- `api/app/models/figma_file.rb` -- sync guard for test data
 - `api/lib/tasks/e2e.rake` -- seed cleanup (stale variants, unconditional nocode update)
 - `app/src/components/ComponentDetail.vue` -- P4 fix (qa="component-code" on Figma JSON)
 
@@ -135,7 +135,7 @@ Re: Cycle 2 results — 46 passed, 35 failed (was 36/45)
 
 3. **ChatPanel `qa="chat-message"` wrapper** — Added outer div per message with `qa="chat-message"` to fix message counting
 
-4. **DS create API response** — Added `component_library_ids` and `libraries` array to create response
+4. **DS create API response** — Added `figma_file_ids` and `libraries` array to create response
 
 5. **Variant match_percent in API** — Added `match_percent` to variant objects in `components_list` response
 
@@ -143,7 +143,7 @@ Re: Cycle 2 results — 46 passed, 35 failed (was 36/45)
 
 7. **Design creation lenient** — API no longer returns 422 for designs without component libraries (sets status "ready" instead)
 
-8. **component_library_id in API** — Added `component_library_id` to both component and component_set objects in `components_list` response (needed for sync button)
+8. **figma_file_id in API** — Added `figma_file_id` to both component and component_set objects in `components_list` response (needed for sync button)
 
 ### Results: 46 passed, 35 failed (+10 from baseline)
 
@@ -181,7 +181,7 @@ These are infrastructure/environment issues, not application code bugs. The app 
   URLs.
   3. **Export menu click handler** (`DesignView.vue`) — Fixed document click listener that was closing menu immediately.
   4. **"No code" component seed** (`e2e.rake`) — Forced update to ensure no-code component stays without react_code.
-  5. **Component libraries create** (`component_libraries_controller.rb`) — Accepts nested params + links to
+  5. **Figma files create** (`figma_files_controller.rb`) — Accepts nested params + links to
   design_system_id.
 
   ### Results: 44 passed, 37 failed (was 43/38)
@@ -365,7 +365,7 @@ Re: All 9 QA action items from message #13
 - `steps/design-management.steps.js`: Step creates a design via API if `world.testDesignId` is unset.
 
 ### Additional cascade fixes
-- Design creation step now sends `design_system_id` instead of empty `component_library_ids`.
+- Design creation step now sends `design_system_id` instead of empty `figma_file_ids`.
 - Background step now sends `slots` instead of `allowed_children`.
 
 ### Backend specs: 337 pass, 0 failures.
@@ -650,10 +650,10 @@ Key points:
 
 All 6 issues from the QA report are resolved:
 
-1. **POST /api/component-libraries response shape** -- RESOLVED. Controller already renders `{ id, status, figma_file_key }` since the last sprint. Test passes.
+1. **POST /api/figma-files response shape** -- RESOLVED. Controller already renders `{ id, status, figma_file_key }` since the last sprint. Test passes.
 2. **POST /api/designs response shape** -- RESOLVED. Controller already renders `{ id, status }`. Test passes.
 3. **Screenshots controller 400 vs 404** -- RESOLVED. Controller already returns `status: :bad_request` for unknown screenshot types. Test passes.
-4. **E2E setup seeding** -- RESOLVED. `e2e.rake` already seeds a ready ComponentLibrary, Component, and ComponentSet with figma_json and react_code. Tests pass.
+4. **E2E setup seeding** -- RESOLVED. `e2e.rake` already seeds a ready FigmaFile, Component, and ComponentSet with figma_json and react_code. Tests pass.
 5. **25 empty-#root components** -- OPEN but out of scope for fast suite. This is a render suite issue requiring real Figma imports. Not addressable without Figma API credentials.
 6. **Onboarding Step 1 disabled state** -- RESOLVED. The Next button uses the HTML `disabled` attribute. Test passes.
 
@@ -792,7 +792,7 @@ Pre-existing 2 failures in "compiled output" describe block are unrelated (esbui
 
 ### Note on regeneration
 
-This change only affects React code generated by `ReactFactory`. Existing already-imported component libraries will NOT automatically get the new classes -- they would need a re-sync (`POST /api/component-libraries/:id/sync`) to regenerate their `react_code`. New imports will get the classes automatically.
+This change only affects React code generated by `ReactFactory`. Existing already-imported figma files will NOT automatically get the new classes -- they would need a re-sync (`POST /api/figma-files/:id/sync`) to regenerate their `react_code`. New imports will get the classes automatically.
 
 ---
 
@@ -811,7 +811,7 @@ Re: Two bug fixes -- Preview iframe + library detail heading (79/79 Vitest passi
 - Stored the message handler in `this._onMessage` so `beforeUnmount()` can remove it -- was leaking a listener on every mount/unmount cycle.
 
 `developer/app/src/views/DesignView.vue`:
-- Removed the dead `design.design_system_id` fallback from `previewRenderer`. The API never returns this field (designs link to component_libraries via junction table, not a single design_system_id). Dead code removed.
+- Removed the dead `design.design_system_id` fallback from `previewRenderer`. The API never returns this field (designs link to figma_files via junction table, not a single design_system_id). Dead code removed.
 
 **Note for QA**: If the preview STILL doesn't appear after design generation in E2E, the likely cause is that `OPENAI_API_KEY` is not set in `developer/api/.env`. Without it, `AiRequestJob` fails with `KeyError`, design status goes to `error`, and the frontend correctly stops polling and shows the placeholder. The frontend code itself is now as robust as possible -- if generation succeeds, the preview will render.
 

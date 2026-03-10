@@ -17,7 +17,7 @@ namespace :e2e do
     end
 
     # --- Second library for multi-file tests ---
-    second_lib = alice.component_libraries.find_or_create_by!(
+    second_lib = alice.figma_files.find_or_create_by!(
       figma_url: "https://www.figma.com/design/e2eSecondLib456/e2e-second-lib?node-id=0-1"
     ) do |lib|
       lib.name          = "E2E Second Library"
@@ -31,7 +31,7 @@ namespace :e2e do
     # Seed a DesignSystem so the home page design system list is populated
     e2e_ds = DesignSystem.find_or_create_by!(user: alice, name: "E2E Design System")
 
-    ready_lib = alice.component_libraries.find_or_create_by!(
+    ready_lib = alice.figma_files.find_or_create_by!(
       figma_url: "https://www.figma.com/design/e2eReadyLib123/e2e-ready-lib?node-id=0-1"
     ) do |lib|
       lib.name          = "E2E Ready Library"
@@ -45,12 +45,12 @@ namespace :e2e do
     ready_lib.update!(status: "ready") unless ready_lib.status == "ready"
 
     # Link library to design system
-    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, component_library: ready_lib)
-    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, component_library: second_lib)
+    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, figma_file: ready_lib)
+    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, figma_file: second_lib)
 
     # --- "Example" design system (needed for design generation tests) ---
     example_ds = DesignSystem.find_or_create_by!(user: alice, name: "Example")
-    DesignSystemLibrary.find_or_create_by!(design_system: example_ds, component_library: ready_lib)
+    DesignSystemLibrary.find_or_create_by!(design_system: example_ds, figma_file: ready_lib)
 
     # Seed a standalone component (TEXT_COMPONENT) with react_code and visual_diff score
     text_component = ready_lib.components.find_or_create_by!(node_id: "e2e:50") do |c|
@@ -233,7 +233,7 @@ namespace :e2e do
     design_100.update!(status: "ready") unless design_100.status == "ready"
 
     # Link component libraries to design
-    DesignComponentLibrary.find_or_create_by!(design: design_100, component_library: ready_lib)
+    DesignFigmaFile.find_or_create_by!(design: design_100, figma_file: ready_lib)
 
     # Seed iterations with JSX
     if design_100.iterations.empty?
@@ -255,7 +255,7 @@ namespace :e2e do
         d.prompt = "Test design #{i + 1}"
         d.status = "ready"
       end
-      DesignComponentLibrary.find_or_create_by!(design: d, component_library: ready_lib)
+      DesignFigmaFile.find_or_create_by!(design: d, figma_file: ready_lib)
       if d.iterations.empty?
         d.iterations.create!(comment: "Test design #{i + 1}", jsx: "<Page><Title text=\"Design #{i + 1}\" /></Page>")
       end

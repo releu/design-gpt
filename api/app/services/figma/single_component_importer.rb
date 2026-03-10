@@ -1,9 +1,9 @@
 module Figma
   class SingleComponentImporter
-    def initialize(component_library)
-      @component_library = component_library
+    def initialize(figma_file)
+      @figma_file = figma_file
       @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
-      @file_key = component_library.figma_file_key
+      @file_key = figma_file.figma_file_key
     end
 
     # Re-import a single standalone component by its DB record
@@ -23,11 +23,11 @@ module Figma
 
       # Re-extract SVG assets if it's a vector
       if component.vector?
-        Figma::AssetExtractor.new(@component_library).extract_for_component(component)
+        Figma::AssetExtractor.new(@figma_file).extract_for_component(component)
       end
 
       # Re-generate React code
-      factory = Figma::ReactFactory.new(@component_library)
+      factory = Figma::ReactFactory.new(@figma_file)
       factory.generate_component(component)
 
       component.update!(status: "imported")
@@ -71,11 +71,11 @@ module Figma
 
       # Re-extract SVG assets if it's a vector set
       if component_set.vector?
-        Figma::AssetExtractor.new(@component_library).extract_for_component_set(component_set)
+        Figma::AssetExtractor.new(@figma_file).extract_for_component_set(component_set)
       end
 
       # Re-generate React code
-      factory = Figma::ReactFactory.new(@component_library)
+      factory = Figma::ReactFactory.new(@figma_file)
       factory.generate_component_set(component_set)
 
       log "Re-import complete for '#{component_set.name}'"

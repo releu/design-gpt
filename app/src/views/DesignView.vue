@@ -48,7 +48,7 @@
       />
       <DesignSettings
         v-else-if="panelMode === 'settings' && design"
-        :componentLibraryIds="design.component_library_ids"
+        :figmaFileIds="design.figma_file_ids"
       />
     </template>
 

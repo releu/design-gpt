@@ -1,9 +1,9 @@
 require "rails_helper"
 
 RSpec.describe Figma::ReactFactory, "slot convention" do
-  fixtures :component_libraries, :component_sets, :component_variants
+  fixtures :figma_files, :component_sets, :component_variants
 
-  let(:library) { component_libraries(:example_lib) }
+  let(:library) { figma_files(:example_lib) }
   let(:factory) { described_class.new(library) }
 
   # Component set with no slot — standard behavior

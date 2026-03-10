@@ -5,10 +5,10 @@ class IterationsController < ApplicationController
 
   def renderer
     iteration = Iteration.find(params[:id])
-    if iteration.component_library_ids.present?
-      libraries = ComponentLibrary.where(id: iteration.component_library_ids)
+    if iteration.figma_file_ids.present?
+      libraries = FigmaFile.where(id: iteration.figma_file_ids)
     else
-      libraries = iteration.design.component_libraries
+      libraries = iteration.design.figma_files
     end
     html = render_component_libraries(libraries)
     render html: html.html_safe, layout: false

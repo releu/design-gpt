@@ -1,13 +1,13 @@
 require "rails_helper"
 
-RSpec.describe "Component Libraries API", type: :request do
+RSpec.describe "Figma Files API", type: :request do
   let(:user) { users(:alice) }
 
   before { stub_auth_for(user) }
 
-  describe "GET /api/component-libraries" do
-    it "returns user's component libraries" do
-      get "/api/component-libraries", headers: auth_headers(user)
+  describe "GET /api/figma-files" do
+    it "returns user's figma files" do
+      get "/api/figma-files", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -20,26 +20,26 @@ RSpec.describe "Component Libraries API", type: :request do
     end
   end
 
-  describe "POST /api/component-libraries" do
-    it "creates a new component library from Figma URL" do
+  describe "POST /api/figma-files" do
+    it "creates a new figma file from Figma URL" do
       expect {
-        post "/api/component-libraries",
+        post "/api/figma-files",
           params: { url: "https://www.figma.com/design/NEWkey123/new-ds", name: "New DS" },
           headers: auth_headers(user)
-      }.to change(ComponentLibrary, :count).by(1)
+      }.to change(FigmaFile, :count).by(1)
 
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      ds = ComponentLibrary.find(json["id"])
+      ds = FigmaFile.find(json["id"])
       expect(ds.figma_file_key).to eq("NEWkey123")
       expect(ds.status).to eq("pending")
     end
   end
 
-  describe "GET /api/component-libraries/:id" do
-    it "returns component library details" do
-      ds = component_libraries(:example_lib)
-      get "/api/component-libraries/#{ds.id}", headers: auth_headers(user)
+  describe "GET /api/figma-files/:id" do
+    it "returns figma file details" do
+      ds = figma_files(:example_lib)
+      get "/api/figma-files/#{ds.id}", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -50,13 +50,13 @@ RSpec.describe "Component Libraries API", type: :request do
     end
   end
 
-  describe "POST /api/component-libraries/:id/sync" do
+  describe "POST /api/figma-files/:id/sync" do
     it "enqueues a sync job and returns pending status" do
-      ds = component_libraries(:empty_ds)
+      ds = figma_files(:empty_ds)
 
       expect {
-        post "/api/component-libraries/#{ds.id}/sync", headers: auth_headers(user)
-      }.to have_enqueued_job(ComponentLibrarySyncJob).with(ds.id)
+        post "/api/figma-files/#{ds.id}/sync", headers: auth_headers(user)
+      }.to have_enqueued_job(FigmaFileSyncJob).with(ds.id)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -65,11 +65,11 @@ RSpec.describe "Component Libraries API", type: :request do
     end
   end
 
-  describe "PATCH /api/component-libraries/:id" do
+  describe "PATCH /api/figma-files/:id" do
     it "updates name and is_public" do
-      cl = component_libraries(:example_lib)
-      patch "/api/component-libraries/#{cl.id}",
-        params: { component_library: { name: "Updated Name", is_public: true } },
+      cl = figma_files(:example_lib)
+      patch "/api/figma-files/#{cl.id}",
+        params: { figma_file: { name: "Updated Name", is_public: true } },
         headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
@@ -79,9 +79,9 @@ RSpec.describe "Component Libraries API", type: :request do
     end
   end
 
-  describe "GET /api/component-libraries/available" do
+  describe "GET /api/figma-files/available" do
     it "returns own libraries and public ones" do
-      get "/api/component-libraries/available", headers: auth_headers(user)
+      get "/api/figma-files/available", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -90,10 +90,10 @@ RSpec.describe "Component Libraries API", type: :request do
     end
   end
 
-  describe "GET /api/component-libraries/:id/renderer" do
+  describe "GET /api/figma-files/:id/renderer" do
     it "returns HTML with React, Babel, and postMessage listener without auth" do
-      cl = component_libraries(:example_lib)
-      get "/api/component-libraries/#{cl.id}/renderer"
+      cl = figma_files(:example_lib)
+      get "/api/figma-files/#{cl.id}/renderer"
 
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("text/html")
@@ -108,26 +108,26 @@ RSpec.describe "Component Libraries API", type: :request do
     end
 
     it "includes compiled component code from variants" do
-      cl = component_libraries(:example_lib)
-      get "/api/component-libraries/#{cl.id}/renderer"
+      cl = figma_files(:example_lib)
+      get "/api/figma-files/#{cl.id}/renderer"
 
       body = response.body
       expect(body).to include("window.Button")
     end
 
     it "includes CSS from components" do
-      cl = component_libraries(:example_lib)
-      get "/api/component-libraries/#{cl.id}/renderer"
+      cl = figma_files(:example_lib)
+      get "/api/figma-files/#{cl.id}/renderer"
 
       body = response.body
       expect(body).to include(".divider")
     end
   end
 
-  describe "GET /api/component-libraries/:id/components" do
+  describe "GET /api/figma-files/:id/components" do
     it "returns component sets and standalone components" do
-      ds = component_libraries(:example_lib)
-      get "/api/component-libraries/#{ds.id}/components", headers: auth_headers(user)
+      ds = figma_files(:example_lib)
+      get "/api/figma-files/#{ds.id}/components", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)

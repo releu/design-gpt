@@ -29,7 +29,7 @@ After reviewing all 18 feature specs against the 8 existing design files, I iden
 
 1. **`09-libraries-pages.md`** -- Libraries list page (`/libraries`) with card grid layout and import input. Library detail page (`/libraries/:id`) with two-pane layout: component list on left, ComponentDetail view on right. Covers all scenarios from `08-component-library-browser.feature` for standalone pages.
 
-2. **`10-component-preview-page.md`** -- Backend-rendered HTML page at `/api/component-libraries/:id/preview` showing all components in a grid. Each card has name, type badge, live React preview, variant count, and collapsible Figma JSON. Covers `08-component-library-browser.feature` preview page scenario and `16-figma-json-inspection.feature` lazy-load scenario.
+2. **`10-component-preview-page.md`** -- Backend-rendered HTML page at `/api/figma-files/:id/preview` showing all components in a grid. Each card has name, type badge, live React preview, variant count, and collapsible Figma JSON. Covers `08-component-library-browser.feature` preview page scenario and `16-figma-json-inspection.feature` lazy-load scenario.
 
 3. **`11-ai-schema-view.md`** -- AI Schema view within the design system modal. Shows component tree reachable from root components with tree-branch visualization. Empty state shows "No root components found" message. Covers `04-design-system-management.feature` AI Schema scenarios.
 

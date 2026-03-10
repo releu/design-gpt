@@ -209,7 +209,7 @@ export default {
     },
     rendererUrl() {
       if (!this.selectedLibraryId) return null;
-      return `/api/component-libraries/${this.selectedLibraryId}/renderer`;
+      return `/api/figma-files/${this.selectedLibraryId}/renderer`;
     },
     syncingLib() {
       if (!this.syncingLibId) return null;
@@ -256,7 +256,7 @@ export default {
     },
     async loadComponents(libraryId) {
       const token = await this.getToken();
-      const res = await fetch(`/api/component-libraries/${libraryId}/components`, {
+      const res = await fetch(`/api/figma-files/${libraryId}/components`, {
         credentials: "include",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -279,7 +279,7 @@ export default {
       lib.components = [...sets, ...comps];
     },
     async syncComponent(comp) {
-      const libId = comp.component_library_id;
+      const libId = comp.figma_file_id;
       if (!libId) return;
       const prevCompId = Number(this.$route.params.componentId);
       const token = await this.getToken();
@@ -291,7 +291,7 @@ export default {
       this.syncing = true;
       this.syncingLibId = libId;
       try {
-        const syncRes = await fetch(`/api/component-libraries/${libId}/sync`, {
+        const syncRes = await fetch(`/api/figma-files/${libId}/sync`, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
@@ -304,7 +304,7 @@ export default {
         }
         this.syncingLibId = newLibId;
         const interval = setInterval(async () => {
-          const r = await fetch(`/api/component-libraries/${newLibId}`, {
+          const r = await fetch(`/api/figma-files/${newLibId}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -339,7 +339,7 @@ export default {
         lib.loading = true;
         lib.progress = null;
         try {
-          const syncRes = await fetch(`/api/component-libraries/${lib.id}/sync`, {
+          const syncRes = await fetch(`/api/figma-files/${lib.id}/sync`, {
             method: "POST",
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
@@ -391,7 +391,7 @@ export default {
       for (const url of urlsToImport) {
         try {
           const token = await this.getToken();
-          const createRes = await fetch("/api/component-libraries", {
+          const createRes = await fetch("/api/figma-files", {
             method: "POST",
             credentials: "include",
             headers: {
@@ -404,7 +404,7 @@ export default {
           const lib = await createRes.json();
           if (!lib.id) continue;
 
-          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+          await fetch(`/api/figma-files/${lib.id}/sync`, {
             method: "POST",
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
@@ -447,7 +447,7 @@ export default {
           body: JSON.stringify({
             design_system: {
               name: this.designSystemName,
-              component_library_ids: this.libraries.map((l) => l.id),
+              figma_file_ids: this.libraries.map((l) => l.id),
             },
           }),
         });
@@ -457,7 +457,7 @@ export default {
       const interval = setInterval(async () => {
         try {
           const token = await this.getToken();
-          const res = await fetch(`/api/component-libraries/${libraryId}`, {
+          const res = await fetch(`/api/figma-files/${libraryId}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });

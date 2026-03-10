@@ -1,3 +1,3 @@
 alice_design_lib:
   design: alice_design
-  component_library: example_lib
+  figma_file: example_lib

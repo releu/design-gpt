@@ -40,7 +40,7 @@ I CONFIRM that 27 of 38 failures genuinely require Figma or OpenAI APIs. Your as
 
 However, **11 failures are NOT API-dependent** and can be fixed:
 
-**P0 -- `POST /api/component-libraries` returns empty body (2 tests)**
+**P0 -- `POST /api/figma-files` returns empty body (2 tests)**
 The "Sync all FIGMA_FILEs" and "Sync a single FIGMA_FILE" tests fail with `SyntaxError: Unexpected end of JSON input` when creating component libraries via API. The response body is empty. The step calls `const libBody = await libRes.json()` and gets a parse error. This endpoint should return `{ id, status, ... }` as JSON.
 
 **P1 -- "No code" component not found in seed data (1 test)**
@@ -60,10 +60,10 @@ The spec says TEXT has 97% and TITLE variants have 91%/99% (average 95%). Please
 "Component detail shows raw Figma JSON" fails: clicking the Figma JSON section header does not produce content inside `[qa="component-code"] .cm-content` or `pre` or `code`. The Figma JSON section may render its content in a different container than `[qa="component-code"]`. Please check where the Figma JSON content is rendered and whether it needs a `qa` attribute or whether the test selector needs updating.
 
 **P5 -- No-root DS AI Schema view (1 test)**
-"DESIGN_SYSTEM with no ROOT components shows empty AI Schema" fails because after creating a DS with no libraries via API, the browse button click does not open a modal with `[qa="ds-browser-detail"]`. The DS has no component_library so the browse flow may not work. This could be a test-side issue (need to create a library for the DS first, just without root components).
+"DESIGN_SYSTEM with no ROOT components shows empty AI Schema" fails because after creating a DS with no libraries via API, the browse button click does not open a modal with `[qa="ds-browser-detail"]`. The DS has no figma_file so the browse flow may not work. This could be a test-side issue (need to create a library for the DS first, just without root components).
 
 **P6 -- Browse components assertion (1 test)**
-"Browse components in a DESIGN_SYSTEM" expects > 2 `[qa="ds-menu-item"]` elements but gets 0. The step opens a DS via the browse button but no menu items appear. The DS may not have its component_library properly linked for the browser view.
+"Browse components in a DESIGN_SYSTEM" expects > 2 `[qa="ds-menu-item"]` elements but gets 0. The step opens a DS via the browse button but no menu items appear. The DS may not have its figma_file properly linked for the browser view.
 
 **P7 -- Sync single component depends on prior state (1 test)**
 "Sync a single component" expects the DS browser or component detail to be visible already, but neither is. This test lacks proper setup -- it assumes a prior test opened the browser.
@@ -108,15 +108,15 @@ Running 4 parallel workers with 10-minute timeouts means long-running tests hold
 **P0 -- Investigate Figma import job completion (17 tests blocked)**
 
 The import job (`sync_async`) runs via `:async` queue adapter in test mode. Please check:
-1. Are the Figma API calls succeeding? Check Rails test logs during the E2E run for errors in `SyncComponentLibraryJob` or similar.
+1. Are the Figma API calls succeeding? Check Rails test logs during the E2E run for errors in `SyncFigmaFileJob` or similar.
 2. Does the import job set a status that the frontend polls for? What status triggers the `[qa="ds-browser"]` view?
 3. Is there an error being swallowed? The job may be raising an exception that the `:async` adapter catches silently.
 
-Run a manual test: navigate to the app, create a design system, paste a Figma URL, click import, and watch the Rails logs. Does the job start? Does it complete? What status does the component_library record end up in?
+Run a manual test: navigate to the app, create a design system, paste a Figma URL, click import, and watch the Rails logs. Does the job start? Does it complete? What status does the figma_file record end up in?
 
 **P1 -- Component browser seed data (13 tests blocked)**
 
-The seeded "E2E Design System" components (Title, Page, e2e-icon) do not appear in the DS browser. When tests navigate to the design system and click a component, `[qa="component-name"]` never appears. The seed data in `e2e.rake` creates components but they may not be correctly associated with the design system's component_library, or the browser view may require additional data (like `figma_json` or a specific `status`).
+The seeded "E2E Design System" components (Title, Page, e2e-icon) do not appear in the DS browser. When tests navigate to the design system and click a component, `[qa="component-name"]` never appears. The seed data in `e2e.rake` creates components but they may not be correctly associated with the design system's figma_file, or the browser view may require additional data (like `figma_json` or a specific `status`).
 
 Test logs show:
 - "No component with variant props found"
@@ -157,7 +157,7 @@ This means the API returns components but they lack the expected props/status. P
 | Design management data | 3 | API create failures / export menu | Developer |
 | Visual diff seed data | 3 | Missing visual_diff_score | Developer |
 | Chat/improvement generation-dep | 3 | Depends on working generation | Developer |
-| DS management API response | 1 | Missing component_library_ids | Developer |
+| DS management API response | 1 | Missing figma_file_ids | Developer |
 
 ---
 
@@ -707,10 +707,10 @@ Read and cross-referenced all 18 manager specs against all 19 QA feature files a
 
 The same 6 issues from the last report remain open:
 
-1. **POST /api/component-libraries** response should include `status` ("pending") and `figma_file_key` (extracted from URL)
+1. **POST /api/figma-files** response should include `status` ("pending") and `figma_file_key` (extracted from URL)
 2. **POST /api/designs** response should include `status` ("generating")
 3. **Screenshots controller** should return 400 (not 404) for invalid screenshot type parameter
-4. **E2E setup** should seed a minimal ready ComponentLibrary + Component for visual diff and Figma JSON tests
+4. **E2E setup** should seed a minimal ready FigmaFile + Component for visual diff and Figma JSON tests
 5. **25 empty-#root components** in render suite need investigation (likely SVG/icon sub-elements)
 6. **Onboarding Step 1** Next button disabled check may need attribute vs class alignment
 
@@ -821,7 +821,7 @@ Render suite (Figma import, 155 components): **130/155 components render correct
 
 ### Fast suite failures needing Developer attention
 
-**1. API response shape: POST /api/component-libraries returns only `{"id":N}`**
+**1. API response shape: POST /api/figma-files returns only `{"id":N}`**
 
 Tests expect the create response to include `status` (should be `"pending"`) and `figma_file_key` (the key extracted from the URL). Currently both are missing. Please add them to the ComponentLibraries create action response.
 
@@ -835,7 +835,7 @@ Create design response does not include `status`. Please add it.
 
 **4. No ready library in E2E test DB (affects visual diff and Figma JSON tests)**
 
-Four tests need `I have a component from a ready library` but `rails e2e:setup` seeds only the users fixture. Options: (a) seed a minimal ready ComponentLibrary + Component in `lib/tasks/e2e.rake`, or (b) we skip those tests until there is a rendered library. Affected scenarios:
+Four tests need `I have a component from a ready library` but `rails e2e:setup` seeds only the users fixture. Options: (a) seed a minimal ready FigmaFile + Component in `lib/tasks/e2e.rake`, or (b) we skip those tests until there is a rendered library. Affected scenarios:
 - Visual Diff: Invalid screenshot type returns 400
 - Visual Diff: Visual diff for existing component returns data
 - Figma JSON: Figma JSON for existing component returns data

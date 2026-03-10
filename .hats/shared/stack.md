@@ -62,7 +62,7 @@ app/                            # Vue 3 frontend
 api/                            # Rails 8 API-only backend
   app/
     controllers/                # All scoped under /api
-                                # ApplicationController, ComponentLibrariesController,
+                                # ApplicationController, FigmaFilesController,
                                 #   ComponentSetsController, ComponentsController,
                                 #   CustomComponentsController, DesignSystemFigmaFilesController,
                                 #   DesignSystemsController, DesignsController,
@@ -72,9 +72,9 @@ api/                            # Rails 8 API-only backend
         renderable.rb           # Shared renderer endpoint logic
     models/                     # Domain models
                                 # Design, Iteration, ChatMessage, AiTask,
-                                #   FigmaFile (ComponentLibrary), ComponentSet, ComponentVariant,
+                                #   FigmaFile (FigmaFile), ComponentSet, ComponentVariant,
                                 #   Component, FigmaAsset, DesignSystem,
-                                #   DesignSystemLibrary (join), DesignComponentLibrary (join),
+                                #   DesignSystemLibrary (join), DesignFigmaFile (join),
                                 #   Export, Render, User, DesignGenerator, ArtDirector
       concerns/
         component_naming.rb     # ComponentNaming shared concern
@@ -89,7 +89,7 @@ api/                            # Rails 8 API-only backend
       json_to_jsx.rb
       yandex_images.rb
     jobs/                       # AiRequestJob, ScreenshotJob,
-                                #   FigmaFileSyncJob (ComponentLibrarySyncJob), VisualDiffJob
+                                #   FigmaFileSyncJob (FigmaFileSyncJob), VisualDiffJob
   config/
   db/
 caddy/                          # Reverse proxy (local dev only)
@@ -221,7 +221,7 @@ Global design tokens live in `src/assets/main.css` (`:root` CSS custom propertie
 
 ### API Routes
 - All scoped under `/api`; RESTful; no versioning prefix beyond `/api`
-- Renderer endpoints (no auth): `/api/component-libraries/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`
+- Renderer endpoints (no auth): `/api/figma-files/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`
 - Task endpoints use TASKS_TOKEN for external worker auth
 - API endpoint catalog: see `.hats/shared/api.md`
 
@@ -284,7 +284,7 @@ Global design tokens live in `src/assets/main.css` (`:root` CSS custom propertie
 
 | Step | Key files |
 |------|-----------|
-| 1. Import | `figma/client.rb`, `figma/importer.rb`, `figma/asset_extractor.rb`, `ComponentLibrarySyncJob` (FigmaFileSyncJob) |
+| 1. Import | `figma/client.rb`, `figma/importer.rb`, `figma/asset_extractor.rb`, `FigmaFileSyncJob` (FigmaFileSyncJob) |
 | 2. Schema | `DesignGenerator#build_schema`, `#build_defs`, `ComponentNaming` concern |
 | 3. AI request | `AiRequestJob`, `AiTask` model, OpenAI API (`gpt-5`, structured output) |
 | 4. Transform | `JsonToJsx` service, `AiTask#jsx` |

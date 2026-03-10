@@ -85,7 +85,7 @@ class ComponentsController < ApplicationController
   # Re-imports a single component from Figma
   def reimport
     component = Component.find(params[:id])
-    importer = Figma::SingleComponentImporter.new(component.component_library)
+    importer = Figma::SingleComponentImporter.new(component.figma_file)
     importer.reimport_component(component)
     render json: {
       id: component.id,

@@ -8,7 +8,7 @@ Rails.application.routes.draw do
 
     resources :renders, :only => :show
 
-    resources :component_libraries, :only => [:index, :create, :show, :update], :path => "component-libraries" do
+    resources :figma_files, :only => [:index, :create, :show, :update], :path => "figma-files" do
       get :available, :on => :collection
       get :preview, :on => :member
       get :renderer, :on => :member

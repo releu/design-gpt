@@ -15,8 +15,8 @@
 module Figma
   class ComponentResolver
     def initialize(libraries_or_library)
-      @component_libraries = case libraries_or_library
-      when ComponentLibrary
+      @figma_files = case libraries_or_library
+      when FigmaFile
         [libraries_or_library]
       when Array
         libraries_or_library
@@ -67,7 +67,7 @@ module Figma
     private
 
     def build_index
-      @component_libraries.each do |ds|
+      @figma_files.each do |ds|
         ds.components.each do |comp|
           @components_by_node_id[comp.node_id] = comp
         end

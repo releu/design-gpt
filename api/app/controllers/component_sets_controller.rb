@@ -5,7 +5,7 @@ class ComponentSetsController < ApplicationController
   # Re-imports a single component set from Figma
   def reimport
     component_set = ComponentSet.find(params[:id])
-    importer = Figma::SingleComponentImporter.new(component_set.component_library)
+    importer = Figma::SingleComponentImporter.new(component_set.figma_file)
     importer.reimport_component_set(component_set)
     render json: {
       id: component_set.id,

@@ -1,6 +1,6 @@
 # example-lib: Button component set (has deps on icons via INSTANCE)
 button_set:
-  component_library: example_lib
+  figma_file: example_lib
   node_id: "1:100"
   name: Button
   description: A reusable button
@@ -18,7 +18,7 @@ button_set:
 
 # example-lib: VStack root container
 vstack_set:
-  component_library: example_lib
+  figma_file: example_lib
   node_id: "1:500"
   name: VStack
   description: Vertical stack layout container
@@ -35,7 +35,7 @@ vstack_set:
 
 # example-icons: Arrow icon set (vectors only)
 icon_arrow_set:
-  component_library: example_icons
+  figma_file: example_icons
   node_id: "2:100"
   name: IconArrow
   figma_file_key: dlYQK7x0jXbn8HCFFvZ0lw
@@ -44,7 +44,7 @@ icon_arrow_set:
 
 # example-icons: Close icon set (vectors only)
 icon_close_set:
-  component_library: example_icons
+  figma_file: example_icons
   node_id: "2:200"
   name: IconClose
   figma_file_key: dlYQK7x0jXbn8HCFFvZ0lw

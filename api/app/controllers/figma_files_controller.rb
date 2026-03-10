@@ -1,12 +1,12 @@
-class ComponentLibrariesController < ApplicationController
+class FigmaFilesController < ApplicationController
   include ComponentNaming
   include Renderable
 
   before_action :require_auth, except: [:preview, :renderer]
 
   def index
-    component_libraries = accessible_libraries
-    render json: component_libraries.map { |cl|
+    figma_files = accessible_libraries
+    render json: figma_files.map { |cl|
       {
         id: cl.id,
         name: cl.name,
@@ -21,7 +21,7 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def show
-    cl = ComponentLibrary.find(params[:id])
+    cl = FigmaFile.find(params[:id])
     render json: {
       id: cl.id,
       name: cl.name,
@@ -36,11 +36,11 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def create
-    url = params[:url] || params.dig(:component_library, :url)
-    name = params[:name] || params.dig(:component_library, :name)
+    url = params[:url] || params.dig(:figma_file, :url)
+    name = params[:name] || params.dig(:figma_file, :name)
 
     # De-duplicate: find the latest version for this Figma URL
-    cl = current_user.component_libraries.latest_versions.find_by(figma_url: url)
+    cl = current_user.figma_files.latest_versions.find_by(figma_url: url)
     if cl
       # Update name if provided and library has no name yet
       cl.update!(name: name) if name.present? && cl.name.blank?
@@ -48,13 +48,13 @@ class ComponentLibrariesController < ApplicationController
     end
 
     attrs = { figma_url: url, name: name }
-    cl = current_user.component_libraries.create!(attrs)
+    cl = current_user.figma_files.create!(attrs)
 
     # Link to design system if provided
-    ds_id = params[:design_system_id] || params.dig(:component_library, :design_system_id)
+    ds_id = params[:design_system_id] || params.dig(:figma_file, :design_system_id)
     if ds_id.present?
       ds = current_user.design_systems.find(ds_id)
-      DesignSystemLibrary.find_or_create_by!(design_system: ds, component_library: cl)
+      DesignSystemLibrary.find_or_create_by!(design_system: ds, figma_file: cl)
     end
 
     render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :created
@@ -63,8 +63,8 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def update
-    cl = current_user.component_libraries.find(params[:id])
-    cl.update!(component_library_params)
+    cl = current_user.figma_files.find(params[:id])
+    cl.update!(figma_file_params)
     render json: {
       id: cl.id,
       name: cl.name,
@@ -75,8 +75,8 @@ class ComponentLibrariesController < ApplicationController
   # GET /api/component-libraries/available
   # Returns user's own + all public libraries
   def available
-    own = current_user.component_libraries.latest_versions.to_a
-    public_libs = ComponentLibrary.latest_versions.where(is_public: true).where.not(user: current_user).to_a
+    own = current_user.figma_files.latest_versions.to_a
+    public_libs = FigmaFile.latest_versions.where(is_public: true).where.not(user: current_user).to_a
     all_libs = (own + public_libs).uniq
 
     render json: all_libs.map { |cl|
@@ -109,7 +109,7 @@ class ComponentLibrariesController < ApplicationController
   # GET /api/component-libraries/:id/components
   # Returns all components with their status, match_percent, etc.
   def components_list
-    cl = ComponentLibrary.find(params[:id])
+    cl = FigmaFile.find(params[:id])
 
     sets = cl.component_sets.includes(:variants).map do |cs|
       dv = cs.default_variant
@@ -118,7 +118,7 @@ class ComponentLibrariesController < ApplicationController
         type: "component_set",
         name: cs.name,
         node_id: cs.node_id,
-        component_library_id: cl.id,
+        figma_file_id: cl.id,
         is_vector: cs.vector?,
         is_root: cs.is_root,
         slots: cs.slots,
@@ -148,7 +148,7 @@ class ComponentLibrariesController < ApplicationController
         type: "component",
         name: c.name,
         node_id: c.node_id,
-        component_library_id: cl.id,
+        figma_file_id: cl.id,
         is_vector: c.vector?,
         is_root: c.is_root,
         slots: c.slots,
@@ -170,13 +170,13 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def preview
-    @component_library = ComponentLibrary.find(params[:id])
+    @figma_file = FigmaFile.find(params[:id])
 
     # Get component sets with their default variants
-    component_sets = @component_library.component_sets.includes(:variants)
+    component_sets = @figma_file.component_sets.includes(:variants)
 
     # Get standalone components
-    standalone_components = @component_library.components.where.not(react_code: [nil, ""])
+    standalone_components = @figma_file.components.where.not(react_code: [nil, ""])
 
     # Build browser code from component sets (default variants) and standalone components
     all_browser_code = []
@@ -220,7 +220,7 @@ class ComponentLibrariesController < ApplicationController
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>#{ERB::Util.html_escape(@component_library.name || "Component Library")} - Preview</title>
+        <title>#{ERB::Util.html_escape(@figma_file.name || "Figma File")} - Preview</title>
         <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
         <style>
@@ -432,7 +432,7 @@ class ComponentLibrariesController < ApplicationController
       </head>
       <body>
         <div class="header">
-          <h1>#{ERB::Util.html_escape(@component_library.name || "Component Library ##{@component_library.id}")}</h1>
+          <h1>#{ERB::Util.html_escape(@figma_file.name || "Figma File ##{@figma_file.id}")}</h1>
           <p>#{total_count} components loaded from Figma (#{component_sets.count} component sets, #{standalone_components.count} standalone)</p>
           <div class="tabs">
             <button class="tab active" data-file="all">All<span class="count">(#{total_count})</span></button>
@@ -525,24 +525,24 @@ class ComponentLibrariesController < ApplicationController
   # GET /api/component-libraries/:id/renderer
   # Self-contained HTML page for rendering JSX in an iframe via postMessage
   def renderer
-    cl = ComponentLibrary.find(params[:id])
-    html = render_component_libraries([cl])
+    cl = FigmaFile.find(params[:id])
+    html = render_figma_files([cl])
     render html: html.html_safe, layout: false
   end
 
   private
 
-  def component_library_params
-    params.require(:component_library).permit(:name, :is_public)
+  def figma_file_params
+    params.require(:figma_file).permit(:name, :is_public)
   end
 
   def accessible_libraries
-    current_user.component_libraries.latest_versions
+    current_user.figma_files.latest_versions
   end
 
   def find_accessible_library(id)
     # Look up by ID across all versions (not just latest) since sync may be called on any version
-    current_user.component_libraries.find(id)
+    current_user.figma_files.find(id)
   end
 
   def build_component_cards(items_by_file)

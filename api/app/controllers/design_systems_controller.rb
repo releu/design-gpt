@@ -5,18 +5,18 @@ class DesignSystemsController < ApplicationController
 
   def renderer
     ds = DesignSystem.find(params[:id])
-    html = render_component_libraries(ds.component_libraries)
+    html = render_component_libraries(ds.figma_files)
     render html: html.html_safe, layout: false
   end
 
   def index
-    design_systems = current_user.design_systems.includes(:component_libraries).order(created_at: :desc)
+    design_systems = current_user.design_systems.includes(:figma_files).order(created_at: :desc)
     render json: design_systems.map { |ds|
       {
         id: ds.id,
         name: ds.name,
-        component_library_ids: ds.component_library_ids,
-        libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } },
+        figma_file_ids: ds.figma_file_ids,
+        libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
         created_at: ds.created_at
       }
     }
@@ -27,14 +27,14 @@ class DesignSystemsController < ApplicationController
     ds = current_user.design_systems.create!(
       name: dp[:name]
     )
-    Array(dp[:component_library_ids]).each do |lib_id|
-      ds.design_system_libraries.create!(component_library_id: lib_id)
+    Array(dp[:figma_file_ids]).each do |ff_id|
+      ds.design_system_libraries.create!(figma_file_id: ff_id)
     end
     render json: {
       id: ds.id,
       name: ds.name,
-      component_library_ids: ds.component_library_ids,
-      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } }
+      figma_file_ids: ds.figma_file_ids,
+      libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } }
     }, status: :created
   end
 
@@ -43,21 +43,22 @@ class DesignSystemsController < ApplicationController
     render json: {
       id: ds.id,
       name: ds.name,
-      component_library_ids: ds.component_library_ids,
-      libraries: ds.component_libraries.map { |lib| { id: lib.id, name: lib.name || lib.figma_file_name, figma_url: lib.figma_url } },
+      figma_file_ids: ds.figma_file_ids,
+      libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
       created_at: ds.created_at
     }
   end
 
   def update
     ds = find_user_design_system(params[:id])
-    ds.update!(ds_params.except(:component_library_ids))
+    ds.update!(ds_params.except(:figma_file_ids))
 
-    if params[:component_library_ids].present? || params.dig(:design_system, :component_library_ids).present?
-      new_ids = Array(ds_params[:component_library_ids]).map(&:to_i)
-      ds.design_system_libraries.where.not(component_library_id: new_ids).destroy_all
-      new_ids.each do |lib_id|
-        ds.design_system_libraries.find_or_create_by!(component_library_id: lib_id)
+    if params[:figma_file_ids].present? || params.dig(:design_system, :figma_file_ids).present? ||
+       params[:component_library_ids].present? || params.dig(:design_system, :component_library_ids).present?
+      new_ids = Array(ds_params[:figma_file_ids] || ds_params[:component_library_ids]).map(&:to_i)
+      ds.design_system_libraries.where.not(figma_file_id: new_ids).destroy_all
+      new_ids.each do |ff_id|
+        ds.design_system_libraries.find_or_create_by!(figma_file_id: ff_id)
       end
     end
 
@@ -79,9 +80,9 @@ class DesignSystemsController < ApplicationController
   def ds_params
     # Accept both wrapped and unwrapped params
     if params[:design_system].present?
-      params.require(:design_system).permit(:name, component_library_ids: [])
+      params.require(:design_system).permit(:name, figma_file_ids: [], component_library_ids: [])
     else
-      params.permit(:name, component_library_ids: [])
+      params.permit(:name, figma_file_ids: [], component_library_ids: [])
     end
   end
 end

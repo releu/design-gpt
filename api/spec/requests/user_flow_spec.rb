@@ -5,21 +5,21 @@ RSpec.describe "Full User Flow", type: :request do
 
   before { stub_auth_for(user) }
 
-  it "end-to-end: import component library, create design, view components, manage" do
+  it "end-to-end: import figma file, create design, view components, manage" do
     headers = auth_headers(user)
 
-    # === Step 1: Create a component library from a Figma URL ===
-    post "/api/component-libraries",
+    # === Step 1: Create a figma file from a Figma URL ===
+    post "/api/figma-files",
       params: { url: "https://www.figma.com/design/E2Ekey111/e2e-lib", name: "E2E Lib" },
       headers: headers
     expect(response).to have_http_status(:created)
     ds_id = JSON.parse(response.body)["id"]
 
-    ds = ComponentLibrary.find(ds_id)
+    ds = FigmaFile.find(ds_id)
     expect(ds.figma_file_key).to eq("E2Ekey111")
     expect(ds.status).to eq("pending")
 
-    # === Step 2: Sync the component library (import from Figma) ===
+    # === Step 2: Sync the figma file (import from Figma) ===
     mock_client = instance_double(Figma::Client)
     allow(Figma::Client).to receive(:new).and_return(mock_client)
     allow(mock_client).to receive(:get)
@@ -28,7 +28,7 @@ RSpec.describe "Full User Flow", type: :request do
     allow_any_instance_of(Figma::AssetExtractor).to receive(:extract_all)
     allow_any_instance_of(Figma::ReactFactory).to receive(:generate_all)
 
-    post "/api/component-libraries/#{ds_id}/sync", headers: headers
+    post "/api/figma-files/#{ds_id}/sync", headers: headers
     expect(response).to have_http_status(:ok)
     expect(JSON.parse(response.body)["status"]).to eq("pending")
 
@@ -38,7 +38,7 @@ RSpec.describe "Full User Flow", type: :request do
     expect(ds.status).to eq("ready")
 
     # === Step 3: View discovered components ===
-    get "/api/component-libraries/#{ds_id}/components", headers: headers
+    get "/api/figma-files/#{ds_id}/components", headers: headers
     expect(response).to have_http_status(:ok)
     components_data = JSON.parse(response.body)
 
@@ -65,17 +65,17 @@ RSpec.describe "Full User Flow", type: :request do
     expect(response).to have_http_status(:ok)
     expect(Component.find(divider["id"]).enabled).to be true
 
-    # === Step 6: Create a design using the component library ===
+    # === Step 6: Create a design using the figma file ===
     allow_any_instance_of(Design).to receive(:generate)
 
     post "/api/designs",
-      params: { design: { prompt: "A simple dashboard", component_library_ids: [ds_id] } },
+      params: { design: { prompt: "A simple dashboard", figma_file_ids: [ds_id] } },
       headers: headers
     expect(response).to have_http_status(:created)
     design_id = JSON.parse(response.body)["id"]
 
     design = Design.find(design_id)
-    expect(design.component_library_ids).to include(ds_id)
+    expect(design.figma_file_ids).to include(ds_id)
 
     # === Step 7: List designs ===
     get "/api/designs", headers: headers

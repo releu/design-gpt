@@ -50,7 +50,7 @@ export default {
     return { getAccessTokenSilently };
   },
   props: {
-    componentLibraryIds: Array,
+    figmaFileIds: Array,
   },
   emits: ["saved"],
   data() {
@@ -79,7 +79,7 @@ export default {
       for (const lib of this.libraries) {
         for (const comp of lib.components) {
           if (comp.id === this.selectedItem.id && comp.type === this.selectedItem.type) {
-            return `/api/component-libraries/${lib.id}/renderer`;
+            return `/api/figma-files/${lib.id}/renderer`;
           }
         }
       }
@@ -103,17 +103,17 @@ export default {
       this.dirtyItems = new Set([...this.dirtyItems, comp.type + ":" + comp.id]);
     },
     async loadLibraries() {
-      if (!this.componentLibraryIds?.length) return;
+      if (!this.figmaFileIds?.length) return;
       this.loading = true;
       const token = await this.getToken();
       const loaded = [];
-      for (const id of this.componentLibraryIds) {
+      for (const id of this.figmaFileIds) {
         const [libRes, compRes] = await Promise.all([
-          fetch(`/api/component-libraries/${id}`, {
+          fetch(`/api/figma-files/${id}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`/api/component-libraries/${id}/components`, {
+          fetch(`/api/figma-files/${id}/components`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -177,7 +177,7 @@ export default {
     },
   },
   watch: {
-    componentLibraryIds: {
+    figmaFileIds: {
       immediate: true,
       handler() {
         this.loadLibraries();

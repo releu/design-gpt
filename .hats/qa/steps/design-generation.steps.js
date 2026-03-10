@@ -41,7 +41,7 @@ Given(
     world.designSystemName = "Example";
 
     // Create a library and upload root components
-    const libRes = await request.post("/api/component-libraries", {
+    const libRes = await request.post("/api/figma-files", {
       headers,
       data: {
         url: "https://www.figma.com/design/75U91YIrYa65xhYcM0olH5/Example-Lib",
@@ -65,7 +65,7 @@ Given(
           "  );",
           "}",
         ].join("\n"),
-        component_library_id: lib.id,
+        figma_file_id: lib.id,
         is_root: true,
         slots: [{ name: "children", allowed_children: ["Title", "Text"] }],
         prop_types: { title: "string" },
@@ -79,7 +79,7 @@ Given(
         name: "Title",
         react_code:
           "function Title(props) { return React.createElement('h2', null, props.text); }",
-        component_library_id: lib.id,
+        figma_file_id: lib.id,
         prop_types: { text: "string" },
       },
     });
@@ -89,7 +89,7 @@ Given(
         name: "Text",
         react_code:
           "function Text(props) { return React.createElement('p', null, props.text); }",
-        component_library_id: lib.id,
+        figma_file_id: lib.id,
         prop_types: { text: "string" },
       },
     });

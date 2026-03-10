@@ -147,7 +147,7 @@ export default {
         try {
           const token = await this.getToken();
 
-          const createRes = await fetch("/api/component-libraries", {
+          const createRes = await fetch("/api/figma-files", {
             method: "POST",
             credentials: "include",
             headers: {
@@ -160,7 +160,7 @@ export default {
           const lib = await createRes.json();
           if (!lib.id) continue;
 
-          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+          await fetch(`/api/figma-files/${lib.id}/sync`, {
             method: "POST",
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
@@ -187,7 +187,7 @@ export default {
       const interval = setInterval(async () => {
         try {
           const token = await this.getToken();
-          const res = await fetch(`/api/component-libraries/${libraryId}`, {
+          const res = await fetch(`/api/figma-files/${libraryId}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -234,7 +234,7 @@ export default {
           body: JSON.stringify({
             design_system: {
               name: this.designSystemName || "Untitled",
-              component_library_ids: this.libraries.map((l) => l.id),
+              figma_file_ids: this.libraries.map((l) => l.id),
             },
           }),
         });

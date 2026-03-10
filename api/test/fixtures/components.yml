@@ -1,6 +1,6 @@
 # example-lib standalone components (leaf — no INSTANCE deps)
 divider:
-  component_library: example_lib
+  figma_file: example_lib
   node_id: "1:200"
   name: Divider
   description: A simple divider line
@@ -23,7 +23,7 @@ divider:
   css_code: '.divider { height: 1px; background: #ccc; }'
 
 badge:
-  component_library: example_lib
+  figma_file: example_lib
   node_id: "1:300"
   name: Badge
   description: A notification badge
@@ -49,7 +49,7 @@ badge:
 
 # A component with deps (has INSTANCE referencing icon from example_icons)
 card_with_icon:
-  component_library: example_lib
+  figma_file: example_lib
   node_id: "1:400"
   name: CardWithIcon
   description: A card that uses an icon

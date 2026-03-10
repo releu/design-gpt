@@ -17,13 +17,13 @@ Given("a DESIGN_SYSTEM has been imported", async ({ page, request, world }) => {
   });
   const systems = await dsRes.json();
   const ds = systems.find(
-    (d) => (d.component_library_ids?.length || d.libraries?.length || 0) > 0,
+    (d) => (d.figma_file_ids?.length || d.libraries?.length || 0) > 0,
   );
   if (ds) {
     world.designSystemName = ds.name;
     world.designSystemId = ds.id;
     world.libraryId =
-      ds.component_library_ids?.[0] || ds.libraries?.[0]?.id;
+      ds.figma_file_ids?.[0] || ds.libraries?.[0]?.id;
   }
 });
 
@@ -33,7 +33,7 @@ Given("a DESIGN_SYSTEM has been imported", async ({ page, request, world }) => {
 
 async function findComponentByName(request, token, libraryId, name) {
   const compRes = await request.get(
-    `/api/component-libraries/${libraryId}/components`,
+    `/api/figma-files/${libraryId}/components`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   const data = await compRes.json();

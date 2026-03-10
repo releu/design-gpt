@@ -1,9 +1,9 @@
 class ComponentSet < ApplicationRecord
-  belongs_to :component_library
+  belongs_to :figma_file
   has_many :variants, class_name: "ComponentVariant", dependent: :destroy
   has_many :figma_assets, dependent: :destroy
 
-  validates :node_id, presence: true, uniqueness: { scope: :component_library_id }
+  validates :node_id, presence: true, uniqueness: { scope: :figma_file_id }
 
   STATUSES = %w[pending imported error skipped].freeze
   validates :status, inclusion: { in: STATUSES }, allow_nil: true

@@ -1,8 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Figma::SingleComponentImporter do
-  let(:component_library) { component_libraries(:example_lib) }
-  let(:importer) { described_class.new(component_library) }
+  let(:figma_file) { figma_files(:example_lib) }
+  let(:importer) { described_class.new(figma_file) }
   let(:mock_client) { instance_double(Figma::Client) }
 
   before do

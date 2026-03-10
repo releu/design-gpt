@@ -582,7 +582,7 @@ Then(
     }
 
     const libraryId =
-      cubesDs.component_library_ids?.[0] || cubesDs.libraries?.[0]?.id;
+      cubesDs.figma_file_ids?.[0] || cubesDs.libraries?.[0]?.id;
     if (!libraryId) {
       console.log("[qa] No library ID found for Cubes DS");
       return;
@@ -590,7 +590,7 @@ Then(
 
     // Get all components via API to check visual diff
     const compRes = await request.get(
-      `/api/component-libraries/${libraryId}/components`,
+      `/api/figma-files/${libraryId}/components`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
     const compData = await compRes.json();

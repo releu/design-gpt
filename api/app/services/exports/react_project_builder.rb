@@ -4,7 +4,7 @@ module Exports
   class ReactProjectBuilder
     def initialize(design)
       @design = design
-      @libraries = design.component_libraries.to_a
+      @libraries = design.figma_files.to_a
       @jsx = design.last_jsx
     end
 

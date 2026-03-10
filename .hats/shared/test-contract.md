@@ -96,14 +96,14 @@ Do NOT check CSS classes for active states. Instead assert the corresponding pan
 | POST | /api/designs/:id/improve | `{ design: { prompt } }` | `200` |
 | GET | /api/designs/:id/export_image | -- | `200 image/png` |
 | GET | /api/designs/:id/export_react | -- | `200 application/zip` |
-| GET | /api/design-systems | -- | `200 [{ id, name, component_library_ids, ... }]` |
+| GET | /api/design-systems | -- | `200 [{ id, name, figma_file_ids, ... }]` |
 | POST | /api/design-systems | `{ name }` | `201 { id, name }` |
 | DELETE | /api/design-systems/:id | -- | `204` |
-| GET | /api/component-libraries/:id/components | -- | `200 { components, component_sets }` |
-| POST | /api/component-libraries | `{ url, design_system_id }` | `201 { id }` |
-| POST | /api/component-libraries/:id/sync | -- | `200` |
+| GET | /api/figma-files/:id/components | -- | `200 { components, component_sets }` |
+| POST | /api/figma-files | `{ url, design_system_id }` | `201 { id }` |
+| POST | /api/figma-files/:id/sync | -- | `200` |
 | GET | /api/components/:id/visual_diff | -- | `200 { similarity_percentage }` |
-| POST | /api/custom-components | `{ name, react_code, component_library_id, ... }` | `201` |
+| POST | /api/custom-components | `{ name, react_code, figma_file_id, ... }` | `201` |
 
 ## Behaviors
 

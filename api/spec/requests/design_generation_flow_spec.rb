@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Design generation flow", type: :request do
   let(:user) { users(:alice) }
-  let(:library) { component_libraries(:example_lib) }
+  let(:library) { figma_files(:example_lib) }
 
   before { stub_auth_for(user) }
 
@@ -32,7 +32,7 @@ RSpec.describe "Design generation flow", type: :request do
   it "creates design, enqueues AI job, processes response, and returns JSX" do
     expect {
       post "/api/designs",
-        params: { design: { prompt: "A hello world page", component_library_ids: [library.id] } },
+        params: { design: { prompt: "A hello world page", figma_file_ids: [library.id] } },
         headers: auth_headers(user)
     }.to have_enqueued_job(AiRequestJob)
 
@@ -101,8 +101,8 @@ RSpec.describe "Design generation flow", type: :request do
     expect(json["iterations"].last["jsx"]).to include("VStack")
   end
 
-  it "renders component library HTML for iframe preview" do
-    get "/api/component-libraries/#{library.id}/renderer"
+  it "renders figma file HTML for iframe preview" do
+    get "/api/figma-files/#{library.id}/renderer"
 
     expect(response).to have_http_status(:ok)
     body = response.body

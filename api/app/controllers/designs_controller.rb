@@ -2,14 +2,14 @@ class DesignsController < ApplicationController
   before_action :require_auth
 
   def index
-    designs = accessible_designs.includes(:component_libraries).order(created_at: :desc)
+    designs = accessible_designs.includes(:figma_files).order(created_at: :desc)
     render json: designs.map { |d|
       {
         id: d.id,
         name: d.name,
         prompt: d.prompt,
         status: d.status,
-        component_library_ids: d.component_library_ids,
+        figma_file_ids: d.figma_file_ids,
         has_jsx: d.last_jsx.present?,
         created_at: d.created_at,
         updated_at: d.updated_at
@@ -18,12 +18,12 @@ class DesignsController < ApplicationController
   end
 
   def create
-    library_ids = resolve_component_library_ids
+    library_ids = resolve_figma_file_ids
 
     design = current_user.designs.create!(prompt: design_params[:prompt], name: design_params[:name], status: "draft")
 
     library_ids.each do |id|
-      design.design_component_libraries.create!(component_library_id: id)
+      design.design_figma_files.create!(figma_file_id: id)
     end
 
     if library_ids.any?
@@ -135,23 +135,23 @@ class DesignsController < ApplicationController
       name: design.name,
       tree: tree,
       jsx: iteration.jsx,
-      component_library_ids: design.component_library_ids
+      figma_file_ids: design.figma_file_ids
     }
   end
 
   private
 
   def design_params
-    params.require(:design).permit(:prompt, :name, :design_system_id, component_library_ids: [])
+    params.require(:design).permit(:prompt, :name, :design_system_id, figma_file_ids: [])
   end
 
-  def resolve_component_library_ids
+  def resolve_figma_file_ids
     ds_id = params.dig(:design, :design_system_id)
     if ds_id.present?
       ds = current_user.design_systems.find(ds_id)
-      ds.component_library_ids
+      ds.figma_file_ids
     else
-      Array(params.dig(:design, :component_library_ids))
+      Array(params.dig(:design, :figma_file_ids))
     end
   rescue ActiveRecord::RecordNotFound
     []

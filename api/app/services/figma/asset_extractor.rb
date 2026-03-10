@@ -1,7 +1,7 @@
 module Figma
   class AssetExtractor
-    def initialize(component_library)
-      @component_library = component_library
+    def initialize(figma_file)
+      @figma_file = figma_file
       @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
     end
 
@@ -19,7 +19,7 @@ module Figma
     end
 
     def extract_for_component_sets
-      component_sets = @component_library.component_sets
+      component_sets = @figma_file.component_sets
       total_count = component_sets.count
       vector_sets = component_sets.select(&:vector?)
 
@@ -34,7 +34,7 @@ module Figma
     end
 
     def extract_for_standalone_components
-      components = @component_library.components
+      components = @figma_file.components
       total_count = components.count
       vector_components = components.select(&:vector?)
 
@@ -61,14 +61,14 @@ module Figma
 
       inline_vectors_by_file = {}
 
-      @component_library.component_sets.includes(:variants).each do |cs|
+      @figma_file.component_sets.includes(:variants).each do |cs|
         cs.variants.each do |variant|
           next unless variant.figma_json.present?
           find_inline_vectors(variant.figma_json, cs.figma_file_key, inline_vectors_by_file)
         end
       end
 
-      @component_library.components.each do |comp|
+      @figma_file.components.each do |comp|
         next unless comp.figma_json.present?
         find_inline_vectors(comp.figma_json, comp.figma_file_key, inline_vectors_by_file)
       end

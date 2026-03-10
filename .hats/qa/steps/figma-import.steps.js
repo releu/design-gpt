@@ -207,7 +207,7 @@ Given(
     world.figmaFileIds = [];
 
     for (const key of figmaKeys) {
-      const libRes = await request.post("/api/component-libraries", {
+      const libRes = await request.post("/api/figma-files", {
         headers: authHeaders(token),
         data: {
           url: `https://www.figma.com/design/${key}/file`,
@@ -226,7 +226,7 @@ When(
     const token = world.authToken || createTestToken();
     // Sync all files in the design system
     for (const libId of world.figmaFileIds) {
-      await request.post(`/api/component-libraries/${libId}/sync`, {
+      await request.post(`/api/figma-files/${libId}/sync`, {
         headers: authHeaders(token),
       });
     }
@@ -256,7 +256,7 @@ When(
     const token = world.authToken || createTestToken();
     const libId = world.figmaFileIds[0];
     world.syncResponse = await request.post(
-      `/api/component-libraries/${libId}/sync`,
+      `/api/figma-files/${libId}/sync`,
       { headers: authHeaders(token) },
     );
   },
@@ -318,7 +318,7 @@ Given(
     const systems = await dsRes.json();
     const ds = systems.find(
       (d) =>
-        (d.component_library_ids?.length || d.libraries?.length || 0) >=
+        (d.figma_file_ids?.length || d.libraries?.length || 0) >=
         fileCount,
     );
 
@@ -436,7 +436,7 @@ Given("a DESIGN_SYSTEM has imported components", async ({ page, request, world }
   });
   const systems = await dsRes.json();
   const ds = systems.find(
-    (d) => (d.component_library_ids?.length || d.libraries?.length || 0) > 0,
+    (d) => (d.figma_file_ids?.length || d.libraries?.length || 0) > 0,
   );
   if (ds) {
     world.designSystemName = ds.name;

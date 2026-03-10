@@ -7,7 +7,7 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 ## Authentication
 
 - All endpoints require `Authorization: Bearer <JWT>` header unless noted otherwise
-- Unauthenticated endpoints: renderer pages (`/api/component-libraries/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON (`/api/components/:id/figma_json`, `/api/component-sets/:id/figma_json`), SVG assets (`/api/components/:id/svg`, `/api/component-sets/:id/svg`), HTML preview (`/api/components/:id/html_preview`), library preview page (`/api/component-libraries/:id/preview`)
+- Unauthenticated endpoints: renderer pages (`/api/figma-files/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON (`/api/components/:id/figma_json`, `/api/component-sets/:id/figma_json`), SVG assets (`/api/components/:id/svg`, `/api/component-sets/:id/svg`), HTML preview (`/api/components/:id/html_preview`), library preview page (`/api/figma-files/:id/preview`)
 - Task endpoints (`/api/tasks/*`) use `TASKS_TOKEN` header auth instead of JWT
 
 ## Response Format
@@ -37,19 +37,19 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 | DELETE | /api/design-systems/:id/figma-files/:figma_file_id | Yes | Remove a FigmaFile from a design system |
 
 ### FigmaFiles
-_(URL paths use `/api/component-libraries/` — current code name. Domain name is FigmaFile.)_
+_(URL paths use `/api/figma-files/`.)_
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | /api/component-libraries | Yes | List own FigmaFiles |
-| GET | /api/component-libraries/available | Yes | Own + public FigmaFiles |
-| POST | /api/component-libraries | Yes | Create (import from Figma URL) |
-| GET | /api/component-libraries/:id | Yes | Show FigmaFile with components |
-| PATCH | /api/component-libraries/:id | Yes | Update name |
-| POST | /api/component-libraries/:id/sync | Yes | Re-sync from Figma (async) |
-| GET | /api/component-libraries/:id/components | Yes | List all component sets and components |
-| GET | /api/component-libraries/:id/renderer | No | Iframe renderer HTML |
-| GET | /api/component-libraries/:id/preview | No | Preview page (all components) |
+| GET | /api/figma-files | Yes | List own FigmaFiles |
+| GET | /api/figma-files/available | Yes | Own + public FigmaFiles |
+| POST | /api/figma-files | Yes | Create (import from Figma URL) |
+| GET | /api/figma-files/:id | Yes | Show FigmaFile with components |
+| PATCH | /api/figma-files/:id | Yes | Update name |
+| POST | /api/figma-files/:id/sync | Yes | Re-sync from Figma (async) |
+| GET | /api/figma-files/:id/components | Yes | List all component sets and components |
+| GET | /api/figma-files/:id/renderer | No | Iframe renderer HTML |
+| GET | /api/figma-files/:id/preview | No | Preview page (all components) |
 
 ### Component Sets
 | Method | Path | Auth | Description |
@@ -139,9 +139,9 @@ pending -> importing -> converting -> comparing -> ready
                                                \-> error
 ```
 
-- `POST /api/component-libraries` creates a FigmaFile record with status `pending`
-- `POST /api/component-libraries/:id/sync` enqueues `FigmaFileSyncJob` (ComponentLibrarySyncJob)
-- Frontend polls `GET /api/component-libraries/:id` for progress updates
+- `POST /api/figma-files` creates a FigmaFile record with status `pending`
+- `POST /api/figma-files/:id/sync` enqueues `FigmaFileSyncJob` (FigmaFileSyncJob)
+- Frontend polls `GET /api/figma-files/:id` for progress updates
 - Progress object: `{ step_number, total_steps, message }`
 
 ## Renderer Communication Protocol

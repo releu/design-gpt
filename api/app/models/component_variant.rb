@@ -5,7 +5,7 @@ class ComponentVariant < ApplicationRecord
 
   scope :default, -> { where(is_default: true) }
 
-  delegate :component_library, :figma_file_key, :figma_file_name, to: :component_set
+  delegate :figma_file, :figma_file_key, :figma_file_name, to: :component_set
 
   def figma_url
     return nil unless figma_file_key && node_id

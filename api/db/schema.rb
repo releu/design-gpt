@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_10_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -29,24 +29,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.integer "iteration_id"
   end
 
-  create_table "component_libraries", force: :cascade do |t|
-    t.integer "user_id"
-    t.string "name"
-    t.string "figma_url"
-    t.string "figma_file_key"
-    t.string "figma_file_name"
-    t.string "status", default: "pending"
-    t.jsonb "progress", default: {}
-    t.boolean "is_public", default: false, null: false
-    t.bigint "source_library_id"
-    t.integer "version", default: 1, null: false
-    t.index ["source_library_id"], name: "index_component_libraries_on_source_library_id"
-    t.index ["user_id", "figma_file_key"], name: "index_component_libraries_on_user_id_and_figma_file_key"
-    t.index ["user_id"], name: "index_component_libraries_on_user_id"
-  end
-
   create_table "component_sets", force: :cascade do |t|
-    t.bigint "component_library_id", null: false
+    t.bigint "figma_file_id", null: false
     t.string "node_id", null: false
     t.string "name"
     t.text "description"
@@ -57,8 +41,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.string "status", default: "pending"
     t.text "error_message"
     t.jsonb "slots", default: []
-    t.index ["component_library_id", "node_id"], name: "index_component_sets_on_component_library_id_and_node_id", unique: true
-    t.index ["component_library_id"], name: "index_component_sets_on_component_library_id"
+    t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
+    t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
   end
 
@@ -82,7 +66,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
   end
 
   create_table "components", force: :cascade do |t|
-    t.integer "component_library_id"
+    t.integer "figma_file_id"
     t.string "kind"
     t.string "node_id", null: false
     t.string "name", null: false
@@ -113,24 +97,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.jsonb "slots", default: []
   end
 
-  create_table "design_component_libraries", force: :cascade do |t|
+  create_table "design_figma_files", force: :cascade do |t|
     t.bigint "design_id", null: false
-    t.bigint "component_library_id", null: false
+    t.bigint "figma_file_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["component_library_id"], name: "index_design_component_libraries_on_component_library_id"
-    t.index ["design_id", "component_library_id"], name: "idx_design_component_libraries_unique", unique: true
-    t.index ["design_id"], name: "index_design_component_libraries_on_design_id"
+    t.index ["design_id", "figma_file_id"], name: "idx_design_component_libraries_unique", unique: true
+    t.index ["design_id"], name: "index_design_figma_files_on_design_id"
+    t.index ["figma_file_id"], name: "index_design_figma_files_on_figma_file_id"
   end
 
   create_table "design_system_libraries", force: :cascade do |t|
     t.bigint "design_system_id", null: false
-    t.bigint "component_library_id", null: false
+    t.bigint "figma_file_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["component_library_id"], name: "index_design_system_libraries_on_component_library_id"
-    t.index ["design_system_id", "component_library_id"], name: "idx_design_system_libraries_unique", unique: true
+    t.index ["design_system_id", "figma_file_id"], name: "idx_design_system_libraries_unique", unique: true
     t.index ["design_system_id"], name: "index_design_system_libraries_on_design_system_id"
+    t.index ["figma_file_id"], name: "index_design_system_libraries_on_figma_file_id"
   end
 
   create_table "design_systems", force: :cascade do |t|
@@ -177,6 +161,22 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.index ["node_id"], name: "index_figma_assets_on_node_id"
   end
 
+  create_table "figma_files", force: :cascade do |t|
+    t.integer "user_id"
+    t.string "name"
+    t.string "figma_url"
+    t.string "figma_file_key"
+    t.string "figma_file_name"
+    t.string "status", default: "pending"
+    t.jsonb "progress", default: {}
+    t.boolean "is_public", default: false, null: false
+    t.bigint "source_file_id"
+    t.integer "version", default: 1, null: false
+    t.index ["source_file_id"], name: "index_figma_files_on_source_file_id"
+    t.index ["user_id", "figma_file_key"], name: "index_figma_files_on_user_id_and_figma_file_key"
+    t.index ["user_id"], name: "index_figma_files_on_user_id"
+  end
+
   create_table "image_caches", force: :cascade do |t|
     t.string "query", null: false
     t.text "url", null: false
@@ -192,7 +192,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.text "jsx"
     t.integer "render_id"
     t.string "comment"
-    t.jsonb "component_library_ids", default: []
+    t.jsonb "figma_file_ids", default: []
   end
 
   create_table "renders", force: :cascade do |t|
@@ -350,19 +350,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
-  add_foreign_key "component_libraries", "component_libraries", column: "source_library_id"
-  add_foreign_key "component_sets", "component_libraries"
+  add_foreign_key "component_sets", "figma_files"
   add_foreign_key "component_variants", "component_sets"
-  add_foreign_key "design_component_libraries", "component_libraries"
-  add_foreign_key "design_component_libraries", "designs"
-  add_foreign_key "design_system_libraries", "component_libraries"
+  add_foreign_key "design_figma_files", "designs"
+  add_foreign_key "design_figma_files", "figma_files"
   add_foreign_key "design_system_libraries", "design_systems"
+  add_foreign_key "design_system_libraries", "figma_files"
   add_foreign_key "design_systems", "users"
   add_foreign_key "designs", "users"
   add_foreign_key "exports", "designs"
   add_foreign_key "exports", "iterations"
   add_foreign_key "figma_assets", "component_sets"
   add_foreign_key "figma_assets", "components"
+  add_foreign_key "figma_files", "figma_files", column: "source_file_id"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

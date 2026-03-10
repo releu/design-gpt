@@ -1,8 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Component, type: :model do
-  it "belongs to component_library" do
-    expect(components(:divider).component_library).to eq(component_libraries(:example_lib))
+  it "belongs to figma_file" do
+    expect(components(:divider).figma_file).to eq(figma_files(:example_lib))
   end
 
   describe "#vector?" do

@@ -2,8 +2,8 @@ module Figma
   class ReactFactory
     include Figma::StyleExtractor
 
-    def initialize(component_library)
-      @component_library = component_library
+    def initialize(figma_file)
+      @figma_file = figma_file
       @components_by_node_id = {}
       @component_sets_by_node_id = {}
       @variants_by_node_id = {}
@@ -19,13 +19,13 @@ module Figma
     end
 
     def generate_all
-      log "Starting React code generation for ComponentLibrary##{@component_library.id}"
+      log "Starting React code generation for ComponentLibrary##{@figma_file.id}"
 
-      @component_library.components.each do |component|
+      @figma_file.components.each do |component|
         @components_by_node_id[component.node_id] = component
       end
 
-      @component_library.component_sets.includes(:variants).each do |component_set|
+      @figma_file.component_sets.includes(:variants).each do |component_set|
         @component_sets_by_node_id[component_set.node_id] = component_set
         component_set.variants.each do |variant|
           @variants_by_node_id[variant.node_id] = variant
@@ -45,14 +45,14 @@ module Figma
       build_inline_svg_cache
       log "Inline SVG cache: #{@inline_svgs_by_node_id.size} assets"
 
-      component_sets = @component_library.component_sets.to_a
+      component_sets = @figma_file.component_sets.to_a
       log "Generating React code for #{component_sets.size} component sets..."
       component_sets.each_with_index do |component_set, idx|
         generate_component_set(component_set)
         log "  [#{idx + 1}/#{component_sets.size}] #{component_set.name}" if (idx + 1) % 10 == 0 || idx == component_sets.size - 1
       end
 
-      components = @component_library.components.to_a
+      components = @figma_file.components.to_a
       log "Generating React code for #{components.size} standalone components..."
       components.each_with_index do |component, idx|
         generate_component(component)
@@ -898,7 +898,7 @@ module Figma
     def lookup_component_set_name_for_variant(variant_node_id)
       @figma_components_cache ||= {}
 
-      @component_library.component_sets.select(:figma_file_key).distinct.pluck(:figma_file_key).each do |file_key|
+      @figma_file.component_sets.select(:figma_file_key).distinct.pluck(:figma_file_key).each do |file_key|
         next if file_key.blank?
 
         unless @figma_components_cache[file_key]
@@ -967,7 +967,7 @@ module Figma
     end
 
     def build_node_id_cache
-      @component_library.component_sets.includes(:variants).each do |component_set|
+      @figma_file.component_sets.includes(:variants).each do |component_set|
         @component_sets_by_node_id[component_set.node_id] = component_set
         component_set.variants.each do |variant|
           @variants_by_node_id[variant.node_id] = variant
@@ -979,14 +979,14 @@ module Figma
         end
       end
 
-      @component_library.components.each do |component|
+      @figma_file.components.each do |component|
         @components_by_node_id[component.node_id] = component
       end
     end
 
     def build_svg_asset_cache
       FigmaAsset.joins(:component)
-        .where(components: { component_library_id: @component_library.id })
+        .where(components: { figma_file_id: @figma_file.id })
         .where(asset_type: "svg")
         .each do |asset|
           name = normalize_icon_name(asset.component.name)
@@ -994,7 +994,7 @@ module Figma
         end
 
       FigmaAsset.joins(:component_set)
-        .where(component_sets: { component_library_id: @component_library.id })
+        .where(component_sets: { figma_file_id: @figma_file.id })
         .where(asset_type: "svg")
         .each do |asset|
           name = normalize_icon_name(asset.component_set.name)

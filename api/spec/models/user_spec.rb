@@ -1,10 +1,10 @@
 require "rails_helper"
 
 RSpec.describe User, type: :model do
-  it "has many component_libraries" do
+  it "has many figma_files" do
     user = users(:alice)
-    expect(user.component_libraries).to include(component_libraries(:example_lib))
-    expect(user.component_libraries).to include(component_libraries(:example_icons))
+    expect(user.figma_files).to include(figma_files(:example_lib))
+    expect(user.figma_files).to include(figma_files(:example_icons))
   end
 
   it "has many designs" do

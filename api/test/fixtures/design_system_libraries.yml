@@ -1,7 +1,7 @@
 alice_ds_example_lib:
   design_system: alice_ds
-  component_library: example_lib
+  figma_file: example_lib
 
 alice_ds_example_icons:
   design_system: alice_ds
-  component_library: example_icons
+  figma_file: example_icons

@@ -5,8 +5,8 @@ RSpec.describe Design, type: :model do
     expect(designs(:alice_design).user).to eq(users(:alice))
   end
 
-  it "has many component_libraries through design_component_libraries" do
-    expect(designs(:alice_design).component_libraries).to include(component_libraries(:example_lib))
+  it "has many figma_files through design_figma_files" do
+    expect(designs(:alice_design).figma_files).to include(figma_files(:example_lib))
   end
 
   it "is accessible through user.designs" do
@@ -45,7 +45,7 @@ RSpec.describe Design, type: :model do
 
       expect(copy).to be_persisted
       expect(copy.name).to include("(copy)")
-      expect(copy.component_library_ids).to match_array(design.component_library_ids)
+      expect(copy.figma_file_ids).to match_array(design.figma_file_ids)
       expect(copy.iterations.count).to eq(1)
       expect(copy.status).to eq("ready")
     end

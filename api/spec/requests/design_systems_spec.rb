@@ -4,7 +4,7 @@ RSpec.describe "Design Systems API", type: :request do
   let(:user) { users(:alice) }
   let(:bob) { users(:bob) }
   let(:ds) { design_systems(:alice_ds) }
-  let(:library) { component_libraries(:example_lib) }
+  let(:library) { figma_files(:example_lib) }
 
   before { stub_auth_for(user) }
 
@@ -34,7 +34,7 @@ RSpec.describe "Design Systems API", type: :request do
     it "creates a design system with linked libraries" do
       expect {
         post "/api/design-systems",
-          params: { design_system: { name: "New DS", component_library_ids: [library.id] } },
+          params: { design_system: { name: "New DS", figma_file_ids: [library.id] } },
           headers: auth_headers(user)
       }.to change(DesignSystem, :count).by(1)
 
@@ -43,12 +43,12 @@ RSpec.describe "Design Systems API", type: :request do
       expect(json["name"]).to eq("New DS")
 
       new_ds = DesignSystem.find(json["id"])
-      expect(new_ds.component_library_ids).to eq([library.id])
+      expect(new_ds.figma_file_ids).to eq([library.id])
     end
 
     it "returns 422 when name is missing" do
       post "/api/design-systems",
-        params: { design_system: { name: "", component_library_ids: [library.id] } },
+        params: { design_system: { name: "", figma_file_ids: [library.id] } },
         headers: auth_headers(user)
 
       expect(response).to have_http_status(:unprocessable_content)

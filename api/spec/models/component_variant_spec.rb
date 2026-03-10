@@ -5,8 +5,8 @@ RSpec.describe ComponentVariant, type: :model do
     expect(component_variants(:button_default).component_set).to eq(component_sets(:button_set))
   end
 
-  it "delegates component_library to component_set" do
-    expect(component_variants(:button_default).component_library).to eq(component_libraries(:example_lib))
+  it "delegates figma_file to component_set" do
+    expect(component_variants(:button_default).figma_file).to eq(figma_files(:example_lib))
   end
 
   it "delegates figma_file_key to component_set" do

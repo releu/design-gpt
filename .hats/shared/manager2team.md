@@ -336,7 +336,7 @@ The investigation shows:
 - When a design is first generated, the iteration is created with no `jsx` yet
 - The AI job (`AiRequestJob`) later sets `iteration.jsx`, then `design.status` changes to `ready`
 - There IS polling in DesignView.vue (triggered by `design.status === 'generating'`) but something is preventing the Preview from rendering once generation completes
-- Also: `previewRenderer` computed falls through to `design.design_system_id` which does NOT exist on the Design model -- designs link to component_libraries via a junction table
+- Also: `previewRenderer` computed falls through to `design.design_system_id` which does NOT exist on the Design model -- designs link to figma_files via a junction table
 
 Key files:
 - `developer/app/src/views/DesignView.vue` lines ~141-157 (`previewRenderer` computed) and ~183-199 (`fetchDesign`)

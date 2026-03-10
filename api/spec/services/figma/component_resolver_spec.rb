@@ -1,8 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Figma::ComponentResolver do
-  describe "resolving from a single component library" do
-    let(:ds) { component_libraries(:example_lib) }
+  describe "resolving from a single figma file" do
+    let(:ds) { figma_files(:example_lib) }
     let(:resolver) { described_class.new(ds) }
 
     it "resolves standalone components by node_id" do
@@ -26,7 +26,7 @@ RSpec.describe Figma::ComponentResolver do
   end
 
   describe "resolving variants" do
-    let(:ds) { component_libraries(:example_lib) }
+    let(:ds) { figma_files(:example_lib) }
     let(:resolver) { described_class.new(ds) }
 
     it "resolves a variant by its node_id" do
@@ -39,7 +39,7 @@ RSpec.describe Figma::ComponentResolver do
   end
 
   describe "resolving component sets" do
-    let(:ds) { component_libraries(:example_lib) }
+    let(:ds) { figma_files(:example_lib) }
     let(:resolver) { described_class.new(ds) }
 
     it "resolves a component set by its node_id (returns default variant)" do
@@ -51,10 +51,10 @@ RSpec.describe Figma::ComponentResolver do
   end
 
   describe "cross-file resolution with multiple libraries" do
-    let(:libraries) { [component_libraries(:example_lib), component_libraries(:example_icons)] }
+    let(:libraries) { [figma_files(:example_lib), figma_files(:example_icons)] }
     let(:resolver) { described_class.new(libraries) }
 
-    it "resolves components from both linked component libraries" do
+    it "resolves components from both linked figma files" do
       # From example_lib
       divider_result = resolver.resolve(components(:divider).node_id)
       expect(divider_result).to be_present
@@ -75,7 +75,7 @@ RSpec.describe Figma::ComponentResolver do
   end
 
   describe "#resolvable?" do
-    let(:resolver) { described_class.new([component_libraries(:example_lib), component_libraries(:example_icons)]) }
+    let(:resolver) { described_class.new([figma_files(:example_lib), figma_files(:example_icons)]) }
 
     it "returns true for known components" do
       expect(resolver.resolvable?(components(:divider).node_id)).to be true
@@ -88,7 +88,7 @@ RSpec.describe Figma::ComponentResolver do
   end
 
   describe "#unresolved_references" do
-    let(:resolver) { described_class.new(component_libraries(:example_lib)) }
+    let(:resolver) { described_class.new(figma_files(:example_lib)) }
 
     it "detects cross-file references that can't be resolved in a single DS" do
       # card_with_icon references "2:201" (IconClose from icons lib)
@@ -99,7 +99,7 @@ RSpec.describe Figma::ComponentResolver do
     end
 
     context "with multiple libraries" do
-      let(:resolver) { described_class.new([component_libraries(:example_lib), component_libraries(:example_icons)]) }
+      let(:resolver) { described_class.new([figma_files(:example_lib), figma_files(:example_icons)]) }
 
       it "resolves cross-file references when both DS are linked" do
         figma_json = components(:card_with_icon).figma_json
@@ -109,9 +109,9 @@ RSpec.describe Figma::ComponentResolver do
     end
   end
 
-  describe "with array of component libraries" do
-    it "accepts array of component libraries" do
-      ds_list = [component_libraries(:example_lib), component_libraries(:example_icons)]
+  describe "with array of figma files" do
+    it "accepts array of figma files" do
+      ds_list = [figma_files(:example_lib), figma_files(:example_icons)]
       resolver = described_class.new(ds_list)
 
       expect(resolver.resolvable?(components(:divider).node_id)).to be true

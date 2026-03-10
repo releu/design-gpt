@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe DesignGenerator, type: :model do
   let(:design) { designs(:alice_design) }
-  let(:library) { component_libraries(:example_lib) }
+  let(:library) { figma_files(:example_lib) }
 
   describe "#generate_task" do
     it "creates an AiTask with valid payload" do
@@ -135,17 +135,17 @@ RSpec.describe DesignGenerator, type: :model do
       expect(defs).not_to have_key("Iconclose")
     end
 
-    it "raises error when no component libraries linked" do
+    it "raises error when no figma files linked" do
       design_no_lib = users(:alice).designs.create!(prompt: "test", status: "draft")
       gen = DesignGenerator.new(design_no_lib)
 
-      expect { gen.generate_task("Build a page") }.to raise_error("No component libraries linked")
+      expect { gen.generate_task("Build a page") }.to raise_error("No figma files linked")
     end
 
     it "raises error when no root components configured" do
       # Use example_icons library which has no root components (only icon sets)
-      design.design_component_libraries.destroy_all
-      design.design_component_libraries.create!(component_library: component_libraries(:example_icons))
+      design.design_figma_files.destroy_all
+      design.design_figma_files.create!(figma_file: figma_files(:example_icons))
       gen = DesignGenerator.new(design.reload)
 
       expect { gen.generate_task("Build a page") }.to raise_error("No root components configured")
