@@ -5,8 +5,8 @@ class IterationsController < ApplicationController
 
   def renderer
     iteration = Iteration.find(params[:id])
-    if iteration.figma_file_ids.present?
-      libraries = FigmaFile.where(id: iteration.figma_file_ids)
+    if iteration.design_system_id && iteration.design_system_version
+      libraries = FigmaFile.where(design_system_id: iteration.design_system_id, version: iteration.design_system_version)
     else
       libraries = iteration.design.figma_files
     end

@@ -81,19 +81,6 @@ class ComponentsController < ApplicationController
     render html: html.html_safe, layout: false
   end
 
-  # POST /api/components/:id/reimport
-  # Re-imports a single component from Figma
-  def reimport
-    component = Component.find(params[:id])
-    importer = Figma::SingleComponentImporter.new(component.figma_file)
-    importer.reimport_component(component)
-    render json: {
-      id: component.id,
-      name: component.name,
-      status: component.reload.status
-    }
-  end
-
   # GET /api/components/:id/visual_diff
   # Returns visual diff results (match_percent, image paths)
   def visual_diff

@@ -1,3 +1,5 @@
 alice_ds:
   user: alice
   name: My Design System
+  version: 1
+  status: ready

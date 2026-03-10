@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Designs API", type: :request do
   let(:user) { users(:alice) }
-  let(:library) { figma_files(:example_lib) }
+  let(:ds) { design_systems(:alice_ds) }
   let(:design) { designs(:alice_design) }
 
   before { stub_auth_for(user) }
@@ -14,7 +14,7 @@ RSpec.describe "Designs API", type: :request do
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json).to be_an(Array)
-      expect(json.first).to include("id", "prompt", "figma_file_ids", "name", "status")
+      expect(json.first).to include("id", "prompt", "design_system_id", "name", "status")
     end
   end
 
@@ -24,7 +24,7 @@ RSpec.describe "Designs API", type: :request do
 
       expect {
         post "/api/designs",
-          params: { design: { prompt: "A login page", figma_file_ids: [library.id] } },
+          params: { design: { prompt: "A login page", design_system_id: ds.id } },
           headers: auth_headers(user)
       }.to change(Design, :count).by(1)
 
@@ -39,7 +39,7 @@ RSpec.describe "Designs API", type: :request do
       allow_any_instance_of(Design).to receive(:generate)
 
       post "/api/designs",
-        params: { design: { prompt: "Dashboard", name: "My Dashboard", figma_file_ids: [library.id] } },
+        params: { design: { prompt: "Dashboard", name: "My Dashboard", design_system_id: ds.id } },
         headers: auth_headers(user)
 
       json = JSON.parse(response.body)

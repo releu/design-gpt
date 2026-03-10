@@ -65,17 +65,23 @@ RSpec.describe "Full User Flow", type: :request do
     expect(response).to have_http_status(:ok)
     expect(Component.find(divider["id"]).enabled).to be true
 
-    # === Step 6: Create a design using the figma file ===
+    # === Step 6: Create a design system, then a design using it ===
+    post "/api/design-systems",
+      params: { design_system: { name: "E2E DS", figma_file_ids: [ds_id] } },
+      headers: headers
+    expect(response).to have_http_status(:created)
+    design_system_id = JSON.parse(response.body)["id"]
+
     allow_any_instance_of(Design).to receive(:generate)
 
     post "/api/designs",
-      params: { design: { prompt: "A simple dashboard", figma_file_ids: [ds_id] } },
+      params: { design: { prompt: "A simple dashboard", design_system_id: design_system_id } },
       headers: headers
     expect(response).to have_http_status(:created)
     design_id = JSON.parse(response.body)["id"]
 
     design = Design.find(design_id)
-    expect(design.figma_file_ids).to include(ds_id)
+    expect(design.design_system_id).to eq(design_system_id)
 
     # === Step 7: List designs ===
     get "/api/designs", headers: headers

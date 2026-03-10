@@ -51,17 +51,23 @@ RSpec.describe "Figma Files API", type: :request do
   end
 
   describe "POST /api/figma-files/:id/sync" do
-    it "enqueues a sync job and returns pending status" do
-      ds = figma_files(:empty_ds)
+    it "syncs a standalone figma file directly" do
+      ff = figma_files(:empty_ds)
+      allow_any_instance_of(FigmaFile).to receive(:sync_with_figma)
 
-      expect {
-        post "/api/figma-files/#{ds.id}/sync", headers: auth_headers(user)
-      }.to have_enqueued_job(FigmaFileSyncJob).with(ds.id)
+      post "/api/figma-files/#{ff.id}/sync", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
-      json = JSON.parse(response.body)
-      expect(json["status"]).to eq("pending")
-      expect(json["progress"]).to include("started_at")
+    end
+
+    it "syncs via design system when linked" do
+      ff = figma_files(:example_lib)
+
+      expect {
+        post "/api/figma-files/#{ff.id}/sync", headers: auth_headers(user)
+      }.to have_enqueued_job(DesignSystemSyncJob)
+
+      expect(response).to have_http_status(:ok)
     end
   end
 

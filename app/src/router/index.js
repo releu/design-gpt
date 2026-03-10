@@ -26,12 +26,6 @@ const router = createRouter({
       props: true,
     },
     {
-      path: "/designs/:id/settings",
-      name: "design-settings",
-      component: DesignView,
-      props: true,
-    },
-    {
       path: "/design-systems/:id",
       name: "design-system",
       component: DesignSystemView,

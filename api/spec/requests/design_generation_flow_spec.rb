@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Design generation flow", type: :request do
   let(:user) { users(:alice) }
-  let(:library) { figma_files(:example_lib) }
+  let(:ds) { design_systems(:alice_ds) }
 
   before { stub_auth_for(user) }
 
@@ -32,7 +32,7 @@ RSpec.describe "Design generation flow", type: :request do
   it "creates design, enqueues AI job, processes response, and returns JSX" do
     expect {
       post "/api/designs",
-        params: { design: { prompt: "A hello world page", figma_file_ids: [library.id] } },
+        params: { design: { prompt: "A hello world page", design_system_id: ds.id } },
         headers: auth_headers(user)
     }.to have_enqueued_job(AiRequestJob)
 
@@ -102,7 +102,7 @@ RSpec.describe "Design generation flow", type: :request do
   end
 
   it "renders figma file HTML for iframe preview" do
-    get "/api/figma-files/#{library.id}/renderer"
+    get "/api/figma-files/#{figma_files(:example_lib).id}/renderer"
 
     expect(response).to have_http_status(:ok)
     body = response.body

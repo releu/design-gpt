@@ -1,29 +1,14 @@
 class FigmaFile < ApplicationRecord
   belongs_to :user
-  belongs_to :source_file, class_name: "FigmaFile", optional: true
-  has_many :versions, class_name: "FigmaFile", foreign_key: :source_file_id
+  belongs_to :design_system, optional: true
   has_many :components, dependent: :destroy
   has_many :component_sets, dependent: :destroy
-  has_many :design_figma_files, dependent: :destroy
-  has_many :designs, through: :design_figma_files
-  has_many :design_system_libraries, dependent: :destroy
-  has_many :design_systems, through: :design_system_libraries
 
   validates :figma_url, presence: true
 
   before_validation :extract_figma_file_key, if: -> { figma_url_changed? }
 
-  scope :latest_versions, -> {
-    where(<<~SQL.squish)
-      figma_files.id NOT IN (
-        SELECT ff2.source_file_id
-        FROM figma_files ff2
-        WHERE ff2.source_file_id IS NOT NULL
-      )
-    SQL
-  }
-
-  # Status flow: pending → discovering → importing → converting → comparing → ready / error
+  # Status flow: pending → importing → converting → comparing → ready / error
   STATUSES = %w[pending discovering importing converting comparing ready error].freeze
   validates :status, inclusion: { in: STATUSES }
 
@@ -34,11 +19,9 @@ class FigmaFile < ApplicationRecord
   end
 
   def sync_with_figma
-    # Prevent concurrent syncs — skip if already in progress
+    # Prevent concurrent syncs
     return if %w[importing converting comparing].include?(status)
 
-    # In E2E test mode, skip actual Figma import for seed data (fake file keys)
-    # to avoid corrupting test data while parallel tests are running
     if figma_file_key&.start_with?("e2e") && Rails.env.test?
       update!(status: "ready")
       return
@@ -47,19 +30,19 @@ class FigmaFile < ApplicationRecord
     puts "[FigmaFile#sync_with_figma] Starting sync for FigmaFile##{id}"
     update_progress(step: "importing", step_number: 1, total_steps: 4, message: "Importing from Figma...")
 
-    # 1. Import component structure from Figma (raw JSON, no detaching)
+    # 1. Import component structure from Figma
     update!(status: "importing")
     Figma::Importer.new(self).import
     reload
     update_progress(step: "importing", step_number: 1, total_steps: 4,
       message: "Complete - #{component_sets.count} component sets, #{components.count} standalone components")
 
-    # 2. Extract and cache SVG assets for icons
+    # 2. Extract and cache SVG assets
     update_progress(step: "extracting_assets", step_number: 2, total_steps: 4, message: "Extracting SVG assets...")
     Figma::AssetExtractor.new(self).extract_all
     update_progress(step: "extracting_assets", step_number: 2, total_steps: 4, message: "Complete")
 
-    # 3. Generate React code (uses cached SVGs for inline icons)
+    # 3. Generate React code
     update!(status: "converting")
     update_progress(step: "converting", step_number: 3, total_steps: 4, message: "Generating React code...")
     Figma::ReactFactory.new(self).generate_all
@@ -69,41 +52,13 @@ class FigmaFile < ApplicationRecord
     update_progress(step: "converting", step_number: 3, total_steps: 4,
       message: "Complete - #{sets_with_code} component sets, #{components_with_code} standalone components with React code")
 
-    # 4. Visual diff runs in background after sync completes
+    # 4. Visual diff
     update!(status: "ready", progress: progress.merge("completed_at" => Time.current.iso8601))
     VisualDiffJob.perform_later(id)
     puts "[FigmaFile#sync_with_figma] Sync complete!"
   rescue => e
     update!(status: "error", progress: progress.merge("error" => e.message))
     raise
-  end
-
-  def source
-    source_file || self
-  end
-
-  def latest_version
-    source.versions.order(version: :desc).first || source
-  end
-
-  def sync_async
-    # Skip if actively syncing — avoid duplicate concurrent imports
-    return if %w[importing converting comparing].include?(status)
-
-    new_version = FigmaFile.create!(
-      user: user,
-      name: name,
-      figma_url: figma_url,
-      figma_file_key: figma_file_key,
-      figma_file_name: figma_file_name,
-      is_public: is_public,
-      source_file_id: source.id,
-      version: latest_version.version + 1,
-      status: "pending",
-      progress: { "started_at" => Time.current.iso8601 }
-    )
-    FigmaFileSyncJob.perform_later(new_version.id, id)
-    new_version
   end
 
   def update_progress(step:, step_number:, total_steps:, message:)
@@ -116,6 +71,25 @@ class FigmaFile < ApplicationRecord
     )
     update!(progress: new_progress)
     puts "[FigmaFile#sync_with_figma] Step #{step_number}/#{total_steps}: #{message}"
+  end
+
+  def run_visual_diff
+    diffable_components = components.where.not(react_code_compiled: [nil, ""])
+    diffable_components.each do |comp|
+      next if comp.vector?
+      Figma::VisualDiff.compare_component(comp)
+    rescue => e
+      Rails.logger.warn("[VisualDiff] Skipping component #{comp.name}: #{e.message}")
+    end
+
+    component_sets.includes(:variants).each do |cs|
+      next if cs.vector?
+      variant = cs.default_variant
+      next unless variant&.react_code_compiled.present?
+      Figma::VisualDiff.compare_component_set(cs)
+    rescue => e
+      Rails.logger.warn("[VisualDiff] Skipping component set #{cs.name}: #{e.message}")
+    end
   end
 
   def print_tree
@@ -161,27 +135,6 @@ class FigmaFile < ApplicationRecord
     puts "  Standalone Components: #{components.count}"
 
     nil
-  end
-
-  def run_visual_diff
-    # Compare standalone components that have React code
-    diffable_components = components.where.not(react_code_compiled: [nil, ""])
-    diffable_components.each do |comp|
-      next if comp.vector?
-      Figma::VisualDiff.compare_component(comp)
-    rescue => e
-      Rails.logger.warn("[VisualDiff] Skipping component #{comp.name}: #{e.message}")
-    end
-
-    # Compare component sets (via default variant)
-    component_sets.includes(:variants).each do |cs|
-      next if cs.vector?
-      variant = cs.default_variant
-      next unless variant&.react_code_compiled.present?
-      Figma::VisualDiff.compare_component_set(cs)
-    rescue => e
-      Rails.logger.warn("[VisualDiff] Skipping component set #{cs.name}: #{e.message}")
-    end
   end
 
   private

@@ -84,7 +84,7 @@
               </div>
             </template>
             <template #design-system>
-              <ModuleContentDesignSystem :libraries="mockLibraries" modelValue="1" />
+              <ModuleContentDesignSystem :design-systems="mockLibraries" modelValue="1" />
             </template>
             <template #ai-engine-info>
               <Module label="ai engine">
@@ -267,7 +267,7 @@
               </div>
             </template>
             <template #design-system>
-              <ModuleContentDesignSystem :libraries="mockLibraries" modelValue="1" />
+              <ModuleContentDesignSystem :design-systems="mockLibraries" modelValue="1" />
             </template>
             <template #ai-engine-info>
               <Module label="ai engine">
@@ -357,11 +357,11 @@ export default {
             "https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?...",
           ];
         } else if (variant.name === "view-overview") {
-          comp.libraries = mockData.dsLibraries;
+          comp.figmaFiles = mockData.dsLibraries;
           comp.designSystemName = "Depot";
           comp.selectedItem = "overview";
         } else if (variant.name === "view-component") {
-          comp.libraries = mockData.dsLibraries;
+          comp.figmaFiles = mockData.dsLibraries;
           comp.designSystemName = "Depot";
           comp.selectedItem = mockData.dsLibraries[0].components[0];
         }

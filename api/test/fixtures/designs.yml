@@ -3,3 +3,4 @@ alice_design:
   prompt: Build a landing page
   name: Landing Page Design
   status: ready
+  design_system: alice_ds

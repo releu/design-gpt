@@ -16,10 +16,6 @@
         <Icon type="link" />
         <span>figma</span>
       </a>
-      <div class="ComponentDetail__action" qa="component-sync-btn" @click="$emit('sync', comp)">
-        <Icon type="refresh" />
-        <span>sync</span>
-      </div>
       <div v-if="matchPercent != null" class="ComponentDetail__action-text" qa="component-visual-diff">
         {{ Math.round(matchPercent) }}% diff
       </div>

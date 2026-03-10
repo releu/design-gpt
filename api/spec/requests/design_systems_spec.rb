@@ -17,8 +17,8 @@ RSpec.describe "Design Systems API", type: :request do
       expect(json).to be_an(Array)
       expect(json.length).to eq(1)
       expect(json.first["name"]).to eq("My Design System")
-      expect(json.first["libraries"]).to be_an(Array)
-      expect(json.first["libraries"].length).to eq(2)
+      expect(json.first["figma_files"]).to be_an(Array)
+      expect(json.first["figma_files"].length).to eq(2)
     end
 
     it "does not return other users' design systems" do
@@ -43,7 +43,7 @@ RSpec.describe "Design Systems API", type: :request do
       expect(json["name"]).to eq("New DS")
 
       new_ds = DesignSystem.find(json["id"])
-      expect(new_ds.figma_file_ids).to eq([library.id])
+      expect(new_ds.figma_files.pluck(:id)).to eq([library.id])
     end
 
     it "returns 422 when name is missing" do

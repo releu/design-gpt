@@ -1,32 +1,15 @@
 <template>
-  <div class="DesignSettings" qa="settings-panel">
-    <div class="DesignSettings__menu">
-      <div v-if="loading" class="DesignSettings__loading">Loading…</div>
-      <template v-for="lib in libraries" :key="lib.id">
-        <div class="DesignSettings__menu-subtitle">{{ lib.name }}</div>
-        <div
-          v-for="comp in lib.components"
-          :key="comp.type + comp.id"
-          class="DesignSettings__menu-item"
-          :class="{ 'DesignSettings__menu-item_active': isSelected(comp) }"
-          @click="selectedItem = comp"
-        >
-          {{ comp.name }}
-        </div>
-      </template>
-    </div>
-
-    <div class="DesignSettings__detail">
-      <div v-if="!selectedItem" class="DesignSettings__placeholder">
-        Select a component to configure
-      </div>
-      <ComponentDetail
-        v-else
-        :comp="selectedItem"
-        :renderer-url="selectedRendererUrl"
-        :all-components="otherComponents"
-      />
-    </div>
+  <div class="ModuleDesignSystem ModuleDesignSystem_wide" qa="settings-panel">
+    <DesignSystemBrowser
+      ref="browser"
+      :figma-files="figmaFiles"
+      :loading="loading"
+      :saving="saving"
+      :name="currentName"
+      :parent-id="designId"
+      @sync-all="syncAll"
+      @save="saveEdits"
+    />
   </div>
 </template>
 
@@ -40,38 +23,18 @@ export default {
     return { getAccessTokenSilently };
   },
   props: {
-    figmaFileIds: Array,
+    designId: { type: [String, Number], required: true },
+    designName: { type: String, default: "" },
+    designSystemId: { type: [String, Number], default: null },
   },
+  emits: ["updated"],
   data() {
     return {
-      libraries: [],
+      figmaFiles: [],
       loading: false,
-      selectedItem: null,
+      saving: false,
+      currentName: this.designName,
     };
-  },
-  computed: {
-    otherComponents() {
-      if (!this.selectedItem) return [];
-      const all = [];
-      for (const lib of this.libraries) {
-        for (const comp of lib.components) {
-          if (comp.id === this.selectedItem.id && comp.type === this.selectedItem.type) continue;
-          all.push(comp);
-        }
-      }
-      return all;
-    },
-    selectedRendererUrl() {
-      if (!this.selectedItem) return null;
-      for (const lib of this.libraries) {
-        for (const comp of lib.components) {
-          if (comp.id === this.selectedItem.id && comp.type === this.selectedItem.type) {
-            return `/api/figma-files/${lib.id}/renderer`;
-          }
-        }
-      }
-      return null;
-    },
   },
   methods: {
     async getToken() {
@@ -79,133 +42,129 @@ export default {
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
     },
-    isSelected(comp) {
-      return (
-        this.selectedItem &&
-        this.selectedItem.id === comp.id &&
-        this.selectedItem.type === comp.type
-      );
-    },
-    async loadLibraries() {
-      if (!this.figmaFileIds?.length) return;
+    async loadDesignSystem() {
+      if (!this.designSystemId) return;
       this.loading = true;
       const token = await this.getToken();
-      const loaded = [];
-      for (const id of this.figmaFileIds) {
-        const [libRes, compRes] = await Promise.all([
-          fetch(`/api/figma-files/${id}`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`/api/figma-files/${id}/components`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        const libData = await libRes.json();
-        const compData = await compRes.json();
-
-        const sets = (compData.component_sets || []).map((cs) => ({
-          ...cs,
-          type: "component_set",
-          is_root: cs.is_root || false,
-          slots: cs.slots || [],
-        }));
-        const comps = (compData.components || []).map((c) => ({
-          ...c,
-          type: "component",
-          is_root: c.is_root || false,
-          slots: c.slots || [],
-        }));
-        loaded.push({
-          id,
-          name: libData.name || `Library ${id}`,
-          components: [...sets, ...comps],
+      const res = await fetch(`/api/design-systems/${this.designSystemId}`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { this.loading = false; return; }
+      const ds = await res.json();
+      this.figmaFiles = [];
+      for (const lib of ds.figma_files || []) {
+        this.figmaFiles.push({
+          id: lib.id,
+          name: lib.name,
+          figma_url: lib.figma_url || "",
+          status: "ready",
+          loading: false,
+          error: null,
+          progress: null,
+          components: [],
         });
+        await this.loadComponents(lib.id);
       }
-      this.libraries = loaded;
       this.loading = false;
+    },
+    async loadComponents(libraryId) {
+      const token = await this.getToken();
+      const res = await fetch(`/api/figma-files/${libraryId}/components`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const lib = this.figmaFiles.find((l) => l.id === libraryId);
+      if (!lib) return;
+
+      const sets = (data.component_sets || []).map((cs) => ({
+        ...cs,
+        type: "component_set",
+        is_root: cs.is_root || false,
+        slots: cs.slots || [],
+      }));
+      const comps = (data.components || []).map((c) => ({
+        ...c,
+        type: "component",
+        is_root: c.is_root || false,
+        slots: c.slots || [],
+      }));
+      lib.components = [...sets, ...comps];
+    },
+    async syncAll() {
+      if (!this.designSystemId) return;
+      const token = await this.getToken();
+      for (const lib of this.figmaFiles) {
+        lib.loading = true;
+        lib.progress = null;
+      }
+      try {
+        await fetch(`/api/design-systems/${this.designSystemId}/sync`, {
+          method: "POST",
+          credentials: "include",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.pollDesignSystem();
+      } catch {
+        for (const lib of this.figmaFiles) lib.loading = false;
+      }
+    },
+    pollDesignSystem() {
+      const interval = setInterval(async () => {
+        try {
+          const token = await this.getToken();
+          const res = await fetch(`/api/design-systems/${this.designSystemId}`, {
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+
+          if (data.status === "ready" || data.status === "error") {
+            clearInterval(interval);
+            await this.loadDesignSystem();
+          }
+        } catch { clearInterval(interval); }
+      }, 2000);
+    },
+    async saveEdits({ name, urls }) {
+      if (this.saving) return;
+      this.saving = true;
+      this.currentName = name;
+
+      await this.updateDesign();
+      this.saving = false;
+      this.$refs.browser.finishEditing();
+    },
+    async updateDesign() {
+      try {
+        const token = await this.getToken();
+        await fetch(`/api/designs/${this.designId}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            design: { name: this.currentName },
+          }),
+        });
+        this.$emit("updated");
+      } catch { /* continue */ }
     },
   },
   watch: {
-    figmaFileIds: {
+    designSystemId: {
       immediate: true,
       handler() {
-        this.loadLibraries();
+        this.loadDesignSystem();
       },
+    },
+    designName(val) {
+      this.currentName = val;
     },
   },
 };
 </script>
 
-<style lang="scss">
-.DesignSettings {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  height: 100%;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  overflow: hidden;
-
-  &__menu {
-    overflow-y: auto;
-    border-right: 1px solid var(--fill);
-    padding: 24px 20px 24px 24px;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  &__menu-subtitle {
-    font: var(--font-basic);
-    color: var(--darkgray);
-    text-transform: none;
-    letter-spacing: 0;
-    padding: 16px 10px 6px;
-
-    &:first-child {
-      padding-top: 0;
-    }
-  }
-
-  &__menu-item {
-    padding: 7px 10px;
-    border-radius: 8px;
-    font: var(--font-basic);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--fill);
-    }
-
-    &_active {
-      background: var(--fill);
-    }
-  }
-
-  &__loading {
-    font: var(--font-basic);
-    color: var(--darkgray);
-    padding: 10px;
-  }
-
-  &__detail {
-    padding: 24px 24px 24px 32px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  &__placeholder {
-    font: var(--font-basic);
-    color: var(--darkgray);
-  }
-
-}
-</style>

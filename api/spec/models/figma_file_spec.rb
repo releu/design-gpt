@@ -43,8 +43,15 @@ RSpec.describe FigmaFile, type: :model do
     expect(figma_files(:example_lib).component_sets.count).to be >= 1
   end
 
-  it "has many designs through design_figma_files" do
-    expect(figma_files(:example_lib).designs).to include(designs(:alice_design))
+  it "is linked to designs through design systems" do
+    ds = design_systems(:alice_ds)
+    expect(ds.figma_files).to include(figma_files(:example_lib))
+    expect(ds.designs).to include(designs(:alice_design))
+  end
+
+  it "belongs to a design system" do
+    ff = figma_files(:example_lib)
+    expect(ff.design_system).to eq(design_systems(:alice_ds))
   end
 
   describe "#figma_url_for_node" do
@@ -70,56 +77,6 @@ RSpec.describe FigmaFile, type: :model do
       ff.update!(status: "comparing")
       ff.update!(status: "ready")
       expect(ff.status).to eq("ready")
-    end
-  end
-
-  describe "#sync_async" do
-    it "creates a new version and enqueues a FigmaFileSyncJob" do
-      ff = figma_files(:empty_ds)
-      new_version = nil
-      expect { new_version = ff.sync_async }.to have_enqueued_job(FigmaFileSyncJob)
-      expect(new_version).to be_a(FigmaFile)
-      expect(new_version.id).not_to eq(ff.id)
-      expect(new_version.source_file_id).to eq(ff.id)
-      expect(new_version.version).to eq(2)
-      expect(new_version.status).to eq("pending")
-      expect(new_version.progress).to include("started_at")
-    end
-  end
-
-  describe "#source" do
-    it "returns self when no source_file" do
-      ff = figma_files(:example_lib)
-      expect(ff.source).to eq(ff)
-    end
-
-    it "returns source_file when set" do
-      ff = figma_files(:example_lib)
-      new_version = ff.sync_async
-      expect(new_version.source).to eq(ff)
-    end
-  end
-
-  describe "#latest_version" do
-    it "returns self when no versions exist" do
-      ff = figma_files(:empty_ds)
-      expect(ff.latest_version).to eq(ff)
-    end
-
-    it "returns the highest version" do
-      ff = figma_files(:empty_ds)
-      v2 = ff.sync_async
-      expect(ff.latest_version).to eq(v2)
-    end
-  end
-
-  describe ".latest_versions" do
-    it "excludes old versions that have newer ones" do
-      ff = figma_files(:empty_ds)
-      v2 = ff.sync_async
-      latest = FigmaFile.latest_versions
-      expect(latest).to include(v2)
-      expect(latest).not_to include(ff)
     end
   end
 end

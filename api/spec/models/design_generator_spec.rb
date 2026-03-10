@@ -143,9 +143,10 @@ RSpec.describe DesignGenerator, type: :model do
     end
 
     it "raises error when no root components configured" do
-      # Use example_icons library which has no root components (only icon sets)
-      design.design_figma_files.destroy_all
-      design.design_figma_files.create!(figma_file: figma_files(:example_icons))
+      # Use a design system with only example_icons (no root components)
+      icons_ds = DesignSystem.create!(name: "Icons Only", user: design.user, status: "ready", version: 1)
+      figma_files(:example_icons).update!(design_system: icons_ds, version: 1)
+      design.update!(design_system: icons_ds)
       gen = DesignGenerator.new(design.reload)
 
       expect { gen.generate_task("Build a page") }.to raise_error("No root components configured")

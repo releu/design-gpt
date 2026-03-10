@@ -6,6 +6,8 @@ example_lib:
   figma_file_name: example-lib
   status: ready
   progress: {}
+  design_system: alice_ds
+  version: 1
 
 example_icons:
   user: alice
@@ -15,6 +17,8 @@ example_icons:
   figma_file_name: example-icons
   status: ready
   progress: {}
+  design_system: alice_ds
+  version: 1
 
 empty_ds:
   user: alice

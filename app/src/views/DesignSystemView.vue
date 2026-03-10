@@ -26,131 +26,34 @@
 
     <!-- Normal: wide browser layout -->
     <div v-else class="ModuleDesignSystem ModuleDesignSystem_wide" qa="ds-modal" data-testid="modal-card">
-      <div class="ModuleDesignSystem__browser" qa="ds-browser">
-        <!-- Left: menu -->
-        <div class="ModuleDesignSystem__menu">
-          <div class="ModuleDesignSystem__menu-group">
-            <div class="ModuleDesignSystem__menu-subtitle">general</div>
-            <router-link
-              :to="{ name: 'design-system', params: { id: dsId } }"
-              class="ModuleDesignSystem__menu-item"
-              :class="{ 'ModuleDesignSystem__menu-item_active': view === 'overview' }"
-              qa="ds-menu-item"
-            >
-              overview
-            </router-link>
-            <router-link
-              :to="{ name: 'design-system-ai-schema', params: { id: dsId } }"
-              class="ModuleDesignSystem__menu-item"
-              :class="{ 'ModuleDesignSystem__menu-item_active': view === 'ai-schema' }"
-              qa="ds-menu-item"
-            >
-              ai schema
-            </router-link>
-          </div>
-          <div class="ModuleDesignSystem__menu-group" v-for="lib in libraries" :key="lib.id">
-            <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
-            <div class="ModuleDesignSystem__menu-items">
-              <router-link
-                v-for="comp in lib.components"
-                :key="comp.type + comp.id"
-                :to="{ name: 'design-system-component', params: { id: dsId, componentId: comp.id } }"
-                class="ModuleDesignSystem__menu-item"
-                :class="{ 'ModuleDesignSystem__menu-item_active': selectedComp && selectedComp.id === comp.id && selectedComp.type === comp.type }"
-                qa="ds-menu-item"
-              >
-                {{ comp.name }}
-              </router-link>
-            </div>
-          </div>
-        </div>
+      <DesignSystemBrowser
+        ref="browser"
+        :figma-files="figmaFiles"
+        :loading="false"
+        :saving="saving"
+        :name="designSystemName"
+        :route-names="browserRouteNames"
+        :extra-route-names="['design-system-ai-schema']"
+        :parent-id="dsId"
+        @sync-all="syncAll"
+        @select-component="selectComponentByName"
+        @save="saveEdits"
+      >
+        <template #menu-extra>
+          <router-link
+            :to="{ name: 'design-system-ai-schema', params: { id: dsId } }"
+            class="ModuleDesignSystem__menu-item"
+            :class="{ 'ModuleDesignSystem__menu-item_active': $route.name === 'design-system-ai-schema' }"
+            qa="ds-menu-item"
+          >
+            ai schema
+          </router-link>
+        </template>
 
-        <!-- Right: detail -->
-        <div class="ModuleDesignSystem__browser-detail" qa="ds-browser-detail">
-          <!-- Overview -->
-          <div class="ModuleDesignSystem__overview" v-if="view === 'overview'">
-            <!-- Read-only view -->
-            <template v-if="!editing">
-              <div class="ModuleDesignSystem__overview-field">
-                <div class="ModuleDesignSystem__overview-label">system name</div>
-                <div class="ModuleDesignSystem__overview-value">{{ designSystemName }}</div>
-              </div>
-              <div class="ModuleDesignSystem__overview-field">
-                <div class="ModuleDesignSystem__overview-label">figma files</div>
-                <div class="ModuleDesignSystem__overview-files">
-                  <a
-                    class="ModuleDesignSystem__overview-file-row"
-                    v-for="lib in libraries"
-                    :key="lib.id"
-                    :href="lib.figma_url"
-                    target="_blank"
-                  >
-                    <Icon type="link" />
-                    <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
-                  </a>
-                </div>
-              </div>
-              <div class="ModuleDesignSystem__overview-actions">
-                <div class="ModuleDesignSystem__overview-edit" @click="startEditing">edit</div>
-                <div class="ModuleDesignSystem__overview-edit" @click="syncAll">sync all</div>
-              </div>
-            </template>
-
-            <!-- Edit view -->
-            <template v-else>
-              <div class="ModuleDesignSystem__overview-field">
-                <div class="ModuleDesignSystem__overview-label">system name</div>
-                <input
-                  class="ModuleDesignSystem__pill-input"
-                  qa="ds-name-input"
-                  v-model="designSystemName"
-                />
-              </div>
-              <div class="ModuleDesignSystem__overview-field">
-                <div class="ModuleDesignSystem__overview-label">figma files</div>
-                <div class="ModuleDesignSystem__url-list">
-                  <input
-                    v-for="(url, index) in editUrlFields"
-                    :key="index"
-                    class="ModuleDesignSystem__pill-input"
-                    :value="url"
-                    placeholder="figma.com/..."
-                    @input="onEditUrlInput(index, $event.target.value)"
-                    @blur="cleanupEditUrls"
-                  />
-                </div>
-              </div>
-              <div
-                class="ModuleDesignSystem__do-import"
-                :class="{ 'ModuleDesignSystem__do-import_loading': saving }"
-                @click="saveEdits"
-              >
-                save
-              </div>
-            </template>
-          </div>
-
-          <!-- AI Schema -->
-          <AiSchemaView
-            v-else-if="view === 'ai-schema'"
-            :libraries="libraries"
-          />
-
-          <!-- Component detail -->
-          <template v-else-if="view === 'component' && selectedComp">
-            <ComponentDetail
-              :comp="selectedComp"
-              :renderer-url="rendererUrl"
-              @sync="syncComponent"
-              @select-component="selectComponentByName"
-            />
-          </template>
-
-          <div v-else class="ModuleDesignSystem__detail-empty">
-            Select a component to view details
-          </div>
-        </div>
-      </div>
+        <template #detail-extra>
+          <AiSchemaView :figma-files="figmaFiles" />
+        </template>
+      </DesignSystemBrowser>
     </div>
     </template>
   </Layout>
@@ -172,54 +75,27 @@ export default {
     return {
       loading: true,
       designSystemName: "",
-      libraries: [],
+      figmaFiles: [],
       syncing: false,
-      syncingLibId: null,
-      editing: false,
-      editUrlFields: [""],
       saving: false,
+      syncProgress: null,
     };
   },
   computed: {
     dsId() {
       return this.id;
     },
-    view() {
-      if (this.$route.name === "design-system-ai-schema") return "ai-schema";
-      if (this.$route.name === "design-system-component") return "component";
-      return "overview";
-    },
-    selectedComp() {
-      if (this.view !== "component") return null;
-      const compId = Number(this.$route.params.componentId);
-      for (const lib of this.libraries) {
-        const found = lib.components.find((c) => c.id === compId);
-        if (found) return found;
-      }
-      return null;
-    },
-    selectedLibraryId() {
-      if (!this.selectedComp) return null;
-      for (const lib of this.libraries) {
-        if (lib.components.some((c) => c.id === this.selectedComp.id && c.type === this.selectedComp.type)) {
-          return lib.id;
-        }
-      }
-      return null;
-    },
-    rendererUrl() {
-      if (!this.selectedLibraryId) return null;
-      return `/api/figma-files/${this.selectedLibraryId}/renderer`;
+    browserRouteNames() {
+      return { overview: "design-system", component: "design-system-component" };
     },
     syncingLib() {
-      if (!this.syncingLibId) return null;
-      return this.libraries.find((l) => l.id === this.syncingLibId) || null;
+      return this.syncProgress ? { name: this.designSystemName, progress: this.syncProgress } : null;
     },
     syncTotalSteps() {
-      return this.syncingLib?.progress?.total_steps || 0;
+      return this.syncProgress?.total_steps || 0;
     },
     syncStepNumber() {
-      return this.syncingLib?.progress?.step_number || 0;
+      return this.syncProgress?.step_number || 0;
     },
   },
   methods: {
@@ -238,9 +114,10 @@ export default {
       if (!res.ok) return;
       const ds = await res.json();
       this.designSystemName = ds.name;
+      this.figmaFiles = [];
 
-      for (const lib of ds.libraries || []) {
-        this.libraries.push({
+      for (const lib of ds.figma_files || []) {
+        this.figmaFiles.push({
           id: lib.id,
           name: lib.name,
           figma_url: lib.figma_url || "",
@@ -261,7 +138,7 @@ export default {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const lib = this.libraries.find((l) => l.id === libraryId);
+      const lib = this.figmaFiles.find((l) => l.id === libraryId);
       if (!lib) return;
 
       const sets = (data.component_sets || []).map((cs) => ({
@@ -278,119 +155,42 @@ export default {
       }));
       lib.components = [...sets, ...comps];
     },
-    async syncComponent(comp) {
-      const libId = comp.figma_file_id;
-      if (!libId) return;
-      const prevCompId = Number(this.$route.params.componentId);
-      const token = await this.getToken();
-      const lib = this.libraries.find((l) => l.id === libId);
-      if (lib) {
+    async syncAll() {
+      if (this.syncing) return;
+      this.syncing = true;
+      for (const lib of this.figmaFiles) {
         lib.loading = true;
         lib.progress = null;
       }
-      this.syncing = true;
-      this.syncingLibId = libId;
       try {
-        const syncRes = await fetch(`/api/figma-files/${libId}/sync`, {
+        const token = await this.getToken();
+        await fetch(`/api/design-systems/${this.id}/sync`, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });
-        const syncData = await syncRes.json();
-        const newLibId = syncData.id || libId;
-        // Update local lib ID to the new version
-        if (lib && newLibId !== libId) {
-          lib.id = newLibId;
-        }
-        this.syncingLibId = newLibId;
-        const interval = setInterval(async () => {
-          const r = await fetch(`/api/figma-files/${newLibId}`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const d = await r.json();
-          if (lib) lib.progress = d.progress || null;
-          if (d.status === "ready" || d.status === "error") {
-            clearInterval(interval);
-            await this.loadComponents(newLibId);
-            if (lib) lib.loading = false;
-            this.syncing = false;
-            this.syncingLibId = null;
-            // Navigate back to component if it still exists, otherwise overview
-            const stillExists = this.libraries.some((l) =>
-              l.components.some((c) => c.id === prevCompId)
-            );
-            if (!stillExists) {
-              this.$router.push({ name: "design-system", params: { id: this.dsId } });
-            }
-          }
-        }, 2000);
+        this.pollDesignSystem();
       } catch {
-        if (lib) lib.loading = false;
         this.syncing = false;
-        this.syncingLibId = null;
+        for (const lib of this.figmaFiles) lib.loading = false;
       }
     },
-    async syncAll() {
-      if (this.syncing) return;
-      this.syncing = true;
-      const token = await this.getToken();
-      for (const lib of this.libraries) {
-        lib.loading = true;
-        lib.progress = null;
-        try {
-          const syncRes = await fetch(`/api/figma-files/${lib.id}/sync`, {
-            method: "POST",
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const syncData = await syncRes.json();
-          const newLibId = syncData.id || lib.id;
-          if (newLibId !== lib.id) {
-            lib.id = newLibId;
-          }
-          this.syncingLibId = newLibId;
-          this.pollLibrary(newLibId);
-        } catch {
-          lib.loading = false;
-        }
-      }
-    },
-    startEditing() {
-      this.editUrlFields = [
-        ...this.libraries.map((l) => l.figma_url || ""),
-        "",
-      ];
-      this.editing = true;
-    },
-    onEditUrlInput(index, value) {
-      this.editUrlFields[index] = value;
-      if (index === this.editUrlFields.length - 1 && value.trim()) {
-        this.editUrlFields.push("");
-      }
-    },
-    cleanupEditUrls() {
-      const cleaned = this.editUrlFields.filter((u, i) => u.trim() || i === this.editUrlFields.length - 1);
-      if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
-        cleaned.push("");
-      }
-      this.editUrlFields = cleaned;
-    },
-    async saveEdits() {
+    async saveEdits({ name, urls }) {
       if (this.saving) return;
       this.saving = true;
+      this.designSystemName = name;
 
-      const newUrls = [...new Set(this.editUrlFields.filter((u) => u.trim()))];
-      const existingUrls = this.libraries.map((l) => l.figma_url);
+      const newUrls = urls;
+      const existingUrls = this.figmaFiles.map((l) => l.figma_url);
       const urlsToImport = newUrls.filter((u) => !existingUrls.includes(u));
 
-      // Remove libraries whose URLs were deleted
-      this.libraries = this.libraries.filter((l) => newUrls.includes(l.figma_url));
+      // Remove figma files whose URLs were deleted
+      this.figmaFiles = this.figmaFiles.filter((l) => newUrls.includes(l.figma_url));
 
-      // Import new URLs
+      // Import new URLs as figma files linked to this design system
+      const token = await this.getToken();
       for (const url of urlsToImport) {
         try {
-          const token = await this.getToken();
           const createRes = await fetch("/api/figma-files", {
             method: "POST",
             credentials: "include",
@@ -398,41 +198,28 @@ export default {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({ url, design_system_id: this.id }),
           });
           if (!createRes.ok) continue;
           const lib = await createRes.json();
           if (!lib.id) continue;
 
-          await fetch(`/api/figma-files/${lib.id}/sync`, {
-            method: "POST",
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          this.libraries.push({
+          this.figmaFiles.push({
             id: lib.id,
             name: lib.name || lib.figma_file_name || url,
             figma_url: url,
             status: lib.status || "pending",
-            loading: true,
+            loading: false,
             error: null,
             progress: null,
             components: [],
           });
-          this.pollLibrary(lib.id);
         } catch { /* continue */ }
       }
 
-      if (this.libraries.some((l) => l.loading)) {
-        this.syncing = true;
-        this.syncingLibId = this.libraries.find((l) => l.loading)?.id || null;
-      } else {
-        await this.updateDesignSystem();
-      }
-
+      await this.updateDesignSystem();
       this.saving = false;
-      this.editing = false;
+      this.$refs.browser.finishEditing();
     },
     async updateDesignSystem() {
       try {
@@ -445,47 +232,34 @@ export default {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            design_system: {
-              name: this.designSystemName,
-              figma_file_ids: this.libraries.map((l) => l.id),
-            },
+            design_system: { name: this.designSystemName },
           }),
         });
       } catch { /* continue */ }
     },
-    pollLibrary(libraryId) {
+    pollDesignSystem() {
       const interval = setInterval(async () => {
         try {
           const token = await this.getToken();
-          const res = await fetch(`/api/figma-files/${libraryId}`, {
+          const res = await fetch(`/api/design-systems/${this.id}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json();
-          const lib = this.libraries.find((l) => l.id === libraryId);
-          if (!lib) { clearInterval(interval); return; }
-
-          if (data.name) lib.name = data.name;
-          lib.progress = data.progress || null;
+          this.syncProgress = data.progress || null;
 
           if (data.status === "ready" || data.status === "error") {
             clearInterval(interval);
-            await this.loadComponents(libraryId);
-            lib.loading = false;
-            const nextLoading = this.libraries.find((l) => l.loading);
-            if (nextLoading) {
-              this.syncingLibId = nextLoading.id;
-            } else {
-              await this.updateDesignSystem();
-              this.syncing = false;
-              this.syncingLibId = null;
-            }
+            this.syncProgress = null;
+            // Reload design system to get new library IDs
+            await this.loadDesignSystem();
+            this.syncing = false;
           }
         } catch { clearInterval(interval); }
       }, 2000);
     },
     selectComponentByName(name) {
-      for (const lib of this.libraries) {
+      for (const lib of this.figmaFiles) {
         const found = lib.components.find((c) => c.name === name);
         if (found) {
           this.$router.push({

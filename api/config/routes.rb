@@ -20,7 +20,6 @@ Rails.application.routes.draw do
       get :figma_json, :on => :member
       get :svg, :on => :member
       get :html_preview, :on => :member
-      post :reimport, :on => :member
       get :visual_diff, :on => :member
       get :diff_image, :on => :member
       get "screenshots/:type", :on => :member, :action => :screenshot, :as => :screenshot
@@ -29,11 +28,11 @@ Rails.application.routes.draw do
     resources :component_sets, :only => [:update], :path => "component-sets" do
       get :figma_json, :on => :member, :action => :component_set_figma_json, :controller => :components
       get :svg, :on => :member, :action => :component_set_svg, :controller => :components
-      post :reimport, :on => :member
     end
 
     resources :design_systems, :only => [:index, :create, :show, :update, :destroy], :path => "design-systems" do
       get :renderer, :on => :member
+      post :sync, :on => :member
       resources :figma_files, only: [:create, :destroy], controller: "design_system_figma_files", path: "figma-files"
     end
 

@@ -11,16 +11,15 @@
       />
     </template>
 
-    <!-- Mode selector (chat / settings) -->
-    <template #mode-selector>
-      <ModeSelector :modelValue="panelMode === 'chat' ? 0 : 1" @update:modelValue="onModeChange" />
-    </template>
+    <!-- Mode selector — removed, no longer needed -->
+    <template #mode-selector><span /></template>
 
     <!-- More button -->
     <template #more-button>
       <MoreButton @click.stop="showExportMenu = !showExportMenu">
         ...
         <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
+          <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">Design system</a>
           <template v-if="code">
             <div class="DesignView__export-item" @click="exportReact">Download React project</div>
             <div class="DesignView__export-item" @click="exportImage">Download image</div>
@@ -36,19 +35,14 @@
       <PreviewSelector :modelValue="viewMode === 'mobile' ? 'phone' : viewMode" @update:modelValue="viewMode = $event === 'phone' ? 'mobile' : $event" />
     </template>
 
-    <!-- Left panel (chat or settings) -->
+    <!-- Left panel (always chat now) -->
     <template #left-panel>
       <ModuleChat
-        v-if="panelMode === 'chat'"
         :messages="design ? design.chat : []"
         :designId="id"
         :generating="design && design.status === 'generating'"
         @sent="fetchDesign"
         @reset="resetToIteration"
-      />
-      <DesignSettings
-        v-else-if="panelMode === 'settings' && design"
-        :figmaFileIds="design.figma_file_ids"
       />
     </template>
 
@@ -104,6 +98,8 @@
 
     <template #design-system><span /></template>
     <template #ai-engine><span /></template>
+
+    <template #overlay><span /></template>
   </Layout>
 </template>
 
@@ -134,9 +130,6 @@ export default {
     };
   },
   computed: {
-    panelMode() {
-      return this.$route.name === "design-settings" ? "settings" : "chat";
-    },
     effectiveLayout() {
       if (this.viewMode === "mobile") return "phone";
       if (this.viewMode === "desktop") return "desktop";
@@ -151,10 +144,6 @@ export default {
     },
   },
   methods: {
-    onModeChange(val) {
-      const name = val === 0 ? "design-chat" : "design-settings";
-      this.$router.replace({ name, params: { id: this.id } });
-    },
     onDesignSelect(val) {
       if (val === "new") {
         this.$router.push({ name: "home" });
@@ -295,12 +284,14 @@ export default {
 }
 
 .DesignView__export-item {
+  display: block;
   padding: var(--sp-2) var(--sp-3);
   font: var(--font-basic);
   color: var(--black);
   cursor: pointer;
   transition: background 100ms ease;
   white-space: nowrap;
+  text-decoration: none;
 
   &:hover {
     background: var(--fill);

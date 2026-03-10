@@ -2,14 +2,14 @@ class DesignsController < ApplicationController
   before_action :require_auth
 
   def index
-    designs = accessible_designs.includes(:figma_files).order(created_at: :desc)
+    designs = accessible_designs.order(created_at: :desc)
     render json: designs.map { |d|
       {
         id: d.id,
         name: d.name,
         prompt: d.prompt,
         status: d.status,
-        figma_file_ids: d.figma_file_ids,
+        design_system_id: d.design_system_id,
         has_jsx: d.last_jsx.present?,
         created_at: d.created_at,
         updated_at: d.updated_at
@@ -18,15 +18,15 @@ class DesignsController < ApplicationController
   end
 
   def create
-    library_ids = resolve_figma_file_ids
+    ds = resolve_design_system
+    design = current_user.designs.create!(
+      prompt: design_params[:prompt],
+      name: design_params[:name],
+      design_system: ds,
+      status: "draft"
+    )
 
-    design = current_user.designs.create!(prompt: design_params[:prompt], name: design_params[:name], status: "draft")
-
-    library_ids.each do |id|
-      design.design_figma_files.create!(figma_file_id: id)
-    end
-
-    if library_ids.any?
+    if ds
       begin
         design.generate
       rescue => e
@@ -48,7 +48,7 @@ class DesignsController < ApplicationController
   def update
     design = find_user_design(params[:id])
     design.update!(design_update_params)
-    render json: { id: design.id, name: design.name }
+    render json: { id: design.id, name: design.name, design_system_id: design.design_system_id }
   end
 
   def destroy
@@ -135,30 +135,26 @@ class DesignsController < ApplicationController
       name: design.name,
       tree: tree,
       jsx: iteration.jsx,
-      figma_file_ids: design.figma_file_ids
+      design_system_id: design.design_system_id
     }
   end
 
   private
 
   def design_params
-    params.require(:design).permit(:prompt, :name, :design_system_id, figma_file_ids: [])
+    params.require(:design).permit(:prompt, :name, :design_system_id)
   end
 
-  def resolve_figma_file_ids
+  def resolve_design_system
     ds_id = params.dig(:design, :design_system_id)
-    if ds_id.present?
-      ds = current_user.design_systems.find(ds_id)
-      ds.figma_file_ids
-    else
-      Array(params.dig(:design, :figma_file_ids))
-    end
+    return nil unless ds_id.present?
+    current_user.design_systems.find(ds_id)
   rescue ActiveRecord::RecordNotFound
-    []
+    nil
   end
 
   def design_update_params
-    params.require(:design).permit(:name)
+    params.require(:design).permit(:name, :design_system_id)
   end
 
   def find_user_design(id)

@@ -23,7 +23,7 @@
     <template #design-system>
       <Module label="design system">
         <ModuleContentDesignSystem
-          :libraries="designSystems"
+          :design-systems="designSystems"
           v-model="currentDesignSystemId"
           @saved="refreshDesignSystems"
           @new="dsModal = true; editingDS = null"

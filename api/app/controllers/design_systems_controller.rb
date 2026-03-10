@@ -5,18 +5,21 @@ class DesignSystemsController < ApplicationController
 
   def renderer
     ds = DesignSystem.find(params[:id])
-    html = render_figma_files(ds.figma_files)
+    html = render_figma_files(ds.current_figma_files)
     render html: html.html_safe, layout: false
   end
 
   def index
-    design_systems = current_user.design_systems.includes(:figma_files).order(created_at: :desc)
+    design_systems = current_user.design_systems.order(created_at: :desc)
     render json: design_systems.map { |ds|
+      libs = ds.current_figma_files
       {
         id: ds.id,
         name: ds.name,
-        figma_file_ids: ds.figma_file_ids,
-        libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
+        version: ds.version,
+        status: ds.status,
+        figma_file_ids: libs.pluck(:id),
+        figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
         created_at: ds.created_at
       }
     }
@@ -25,26 +28,34 @@ class DesignSystemsController < ApplicationController
   def create
     dp = ds_params
     ds = current_user.design_systems.create!(
-      name: dp[:name]
+      name: dp[:name],
+      version: 1,
+      status: "ready"
     )
     Array(dp[:figma_file_ids]).each do |ff_id|
-      ds.design_system_libraries.create!(figma_file_id: ff_id)
+      ff = current_user.figma_files.find(ff_id)
+      ff.update!(design_system: ds, version: ds.version)
     end
+    libs = ds.current_figma_files
     render json: {
       id: ds.id,
       name: ds.name,
-      figma_file_ids: ds.figma_file_ids,
-      libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } }
+      figma_file_ids: libs.pluck(:id),
+      figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } }
     }, status: :created
   end
 
   def show
     ds = find_user_design_system(params[:id])
+    libs = ds.current_figma_files
     render json: {
       id: ds.id,
       name: ds.name,
-      figma_file_ids: ds.figma_file_ids,
-      libraries: ds.figma_files.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
+      version: ds.version,
+      status: ds.status,
+      progress: ds.progress,
+      figma_file_ids: libs.pluck(:id),
+      figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
       created_at: ds.created_at
     }
   end
@@ -52,17 +63,17 @@ class DesignSystemsController < ApplicationController
   def update
     ds = find_user_design_system(params[:id])
     ds.update!(ds_params.except(:figma_file_ids))
-
-    if params[:figma_file_ids].present? || params.dig(:design_system, :figma_file_ids).present? ||
-       params[:component_library_ids].present? || params.dig(:design_system, :component_library_ids).present?
-      new_ids = Array(ds_params[:figma_file_ids] || ds_params[:component_library_ids]).map(&:to_i)
-      ds.design_system_libraries.where.not(figma_file_id: new_ids).destroy_all
-      new_ids.each do |ff_id|
-        ds.design_system_libraries.find_or_create_by!(figma_file_id: ff_id)
-      end
-    end
-
     render json: { id: ds.id, name: ds.name }
+  end
+
+  def sync
+    ds = find_user_design_system(params[:id])
+    new_version = ds.sync_async
+    if new_version
+      render json: { id: ds.id, status: ds.reload.status, version: new_version, progress: ds.progress }
+    else
+      render json: { id: ds.id, status: ds.reload.status, version: ds.version, progress: ds.progress }
+    end
   end
 
   def destroy
@@ -78,11 +89,10 @@ class DesignSystemsController < ApplicationController
   end
 
   def ds_params
-    # Accept both wrapped and unwrapped params
     if params[:design_system].present?
-      params.require(:design_system).permit(:name, figma_file_ids: [], component_library_ids: [])
+      params.require(:design_system).permit(:name, figma_file_ids: [])
     else
-      params.permit(:name, figma_file_ids: [], component_library_ids: [])
+      params.permit(:name, figma_file_ids: [])
     end
   end
 end

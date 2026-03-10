@@ -83,7 +83,7 @@ export default {
       phase: "add", // 'add' | 'importing'
       urlFields: [""],
       importing: false,
-      libraries: [],
+      figmaFiles: [],
       pollingIntervals: [],
       saving: false,
       designSystemName: "",
@@ -91,19 +91,19 @@ export default {
   },
   computed: {
     anyLoading() {
-      return this.libraries.some((l) => l.loading);
+      return this.figmaFiles.some((l) => l.loading);
     },
     allImported() {
-      return this.libraries.length > 0 && !this.anyLoading;
+      return this.figmaFiles.length > 0 && !this.anyLoading;
     },
     activeLib() {
-      return this.libraries.find((l) => l.loading) || null;
+      return this.figmaFiles.find((l) => l.loading) || null;
     },
     totalSteps() {
-      return this.libraries.reduce((sum, l) => sum + (l.progress?.total_steps || 0), 0);
+      return this.figmaFiles.reduce((sum, l) => sum + (l.progress?.total_steps || 0), 0);
     },
     doneSteps() {
-      return this.libraries.reduce((sum, l) => {
+      return this.figmaFiles.reduce((sum, l) => {
         if (!l.loading) return sum + (l.progress?.total_steps || 0);
         return sum + (l.progress?.step_number || 0);
       }, 0);
@@ -166,7 +166,7 @@ export default {
             headers: { Authorization: `Bearer ${token}` },
           });
 
-          this.libraries.push({
+          this.figmaFiles.push({
             id: lib.id,
             name: lib.name || lib.figma_file_name || url,
             status: lib.status || "pending",
@@ -193,7 +193,7 @@ export default {
           });
           const data = await res.json();
 
-          const lib = this.libraries.find((l) => l.id === libraryId);
+          const lib = this.figmaFiles.find((l) => l.id === libraryId);
           if (!lib) {
             clearInterval(interval);
             return;
@@ -234,7 +234,7 @@ export default {
           body: JSON.stringify({
             design_system: {
               name: this.designSystemName || "Untitled",
-              figma_file_ids: this.libraries.map((l) => l.id),
+              figma_file_ids: this.figmaFiles.map((l) => l.id),
             },
           }),
         });

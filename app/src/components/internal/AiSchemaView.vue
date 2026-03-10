@@ -24,12 +24,12 @@
 export default {
   name: "AiSchemaView",
   props: {
-    libraries: { type: Array, required: true },
+    figmaFiles: { type: Array, required: true },
   },
   computed: {
     allComponents() {
       const list = [];
-      for (const lib of this.libraries) {
+      for (const lib of this.figmaFiles) {
         for (const comp of lib.components) {
           list.push(comp);
         }

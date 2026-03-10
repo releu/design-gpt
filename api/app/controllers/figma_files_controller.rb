@@ -39,8 +39,8 @@ class FigmaFilesController < ApplicationController
     url = params[:url] || params.dig(:figma_file, :url)
     name = params[:name] || params.dig(:figma_file, :name)
 
-    # De-duplicate: find the latest version for this Figma URL
-    cl = current_user.figma_files.latest_versions.find_by(figma_url: url)
+    # De-duplicate: find existing file for this Figma URL
+    cl = current_user.figma_files.find_by(figma_url: url)
     if cl
       # Update name if provided and library has no name yet
       cl.update!(name: name) if name.present? && cl.name.blank?
@@ -54,7 +54,7 @@ class FigmaFilesController < ApplicationController
     ds_id = params[:design_system_id] || params.dig(:figma_file, :design_system_id)
     if ds_id.present?
       ds = current_user.design_systems.find(ds_id)
-      DesignSystemLibrary.find_or_create_by!(design_system: ds, figma_file: cl)
+      cl.update!(design_system: ds, version: ds.version)
     end
 
     render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :created
@@ -75,8 +75,8 @@ class FigmaFilesController < ApplicationController
   # GET /api/component-libraries/available
   # Returns user's own + all public libraries
   def available
-    own = current_user.figma_files.latest_versions.to_a
-    public_libs = FigmaFile.latest_versions.where(is_public: true).where.not(user: current_user).to_a
+    own = current_user.figma_files.to_a
+    public_libs = FigmaFile.where(is_public: true).where.not(user: current_user).to_a
     all_libs = (own + public_libs).uniq
 
     render json: all_libs.map { |cl|
@@ -94,14 +94,15 @@ class FigmaFilesController < ApplicationController
     }
   end
 
-  # POST /api/component-libraries/:id/sync
-  # Enqueues a background job to sync from Figma
+  # POST /api/figma-files/:id/sync
+  # Syncs via design system if linked, otherwise directly
   def sync
     cl = find_accessible_library(params[:id])
-    new_version = cl.sync_async
-    if new_version
-      render json: { id: new_version.id, status: new_version.status, progress: new_version.progress }
+    if cl.design_system
+      new_version = cl.design_system.sync_async
+      render json: { id: cl.id, status: cl.design_system.reload.status, progress: cl.design_system.progress }
     else
+      cl.sync_with_figma
       render json: { id: cl.id, status: cl.reload.status, progress: cl.progress }
     end
   end
@@ -537,7 +538,7 @@ class FigmaFilesController < ApplicationController
   end
 
   def accessible_libraries
-    current_user.figma_files.latest_versions
+    current_user.figma_files
   end
 
   def find_accessible_library(id)

@@ -2,8 +2,12 @@ first_iteration:
   design: alice_design
   comment: Build a landing page
   jsx: "<div>Landing Page</div>"
+  design_system: alice_ds
+  design_system_version: 1
 
 second_iteration:
   design: alice_design
   comment: Add a hero section
   jsx: "<VStack size=\"m\"><div>Landing Page with Hero</div></VStack>"
+  design_system: alice_ds
+  design_system_version: 1

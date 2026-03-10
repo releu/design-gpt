@@ -21,12 +21,12 @@ export default {
   name: "ModuleContentDesignSystem",
   emits: ["saved", "update:modelValue", "new", "edit"],
   props: {
-    libraries: Array,
+    designSystems: Array,
     modelValue: [Number, String],
   },
   computed: {
     fileList() {
-      return (this.libraries || []).filter((lib) => lib.id !== "import");
+      return (this.designSystems || []).filter((lib) => lib.id !== "import");
     },
   },
   methods: {

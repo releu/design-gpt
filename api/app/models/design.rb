@@ -3,8 +3,11 @@ class Design < ApplicationRecord
   has_many :chat_messages
   has_many :exports, dependent: :destroy
   belongs_to :user
-  has_many :design_figma_files, dependent: :destroy
-  has_many :figma_files, through: :design_figma_files
+  belongs_to :design_system, optional: true
+
+  def figma_files
+    design_system&.current_figma_files || FigmaFile.none
+  end
 
   STATUSES = %w[draft generating ready error].freeze
   validates :status, inclusion: { in: STATUSES }
@@ -25,7 +28,6 @@ class Design < ApplicationRecord
 
   def improve(prompt)
     update!(status: "generating")
-    refresh_figma_files_to_latest!
 
     create_new_iteration(prompt)
 
@@ -61,31 +63,18 @@ class Design < ApplicationRecord
   def create_new_iteration(text)
     iterations.create! do |i|
       i.comment = text
-      i.figma_file_ids = figma_files.pluck(:id)
+      i.design_system = design_system
+      i.design_system_version = design_system&.version
     end
-  end
-
-  def refresh_figma_files_to_latest!
-    design_figma_files.includes(:figma_file).each do |dff|
-      ff = dff.figma_file
-      latest = ff.source.latest_version
-      if latest.id != ff.id
-        dff.update!(figma_file_id: latest.id)
-      end
-    end
-    reload
   end
 
   def duplicate
     new_design = user.designs.create!(
       prompt: prompt,
       name: "#{name} (copy)",
-      status: "ready"
+      status: "ready",
+      design_system: design_system
     )
-
-    figma_files.each do |ff|
-      new_design.design_figma_files.create!(figma_file: ff)
-    end
 
     last_iter = iterations.order(:id).last
     if last_iter
@@ -109,7 +98,7 @@ class Design < ApplicationRecord
       name: name,
       prompt: prompt,
       status: status,
-      figma_file_ids: figma_file_ids,
+      design_system_id: design_system_id,
       created_at: created_at,
       updated_at: updated_at,
       iterations: iterations.order(:id).map do |i|
