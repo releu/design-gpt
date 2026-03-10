@@ -25,17 +25,7 @@
         :comp="selectedItem"
         :renderer-url="selectedRendererUrl"
         :all-components="otherComponents"
-        @change="markDirty"
       />
-
-      <div
-        v-if="dirtyItems.size > 0"
-        class="DesignSettings__save"
-        :class="{ 'DesignSettings__save_loading': saving }"
-        @click="save"
-      >
-        {{ saving ? "Saving…" : "Save" }}
-      </div>
     </div>
   </div>
 </template>
@@ -52,14 +42,11 @@ export default {
   props: {
     figmaFileIds: Array,
   },
-  emits: ["saved"],
   data() {
     return {
       libraries: [],
       loading: false,
       selectedItem: null,
-      dirtyItems: new Set(),
-      saving: false,
     };
   },
   computed: {
@@ -98,9 +85,6 @@ export default {
         this.selectedItem.id === comp.id &&
         this.selectedItem.type === comp.type
       );
-    },
-    markDirty(comp) {
-      this.dirtyItems = new Set([...this.dirtyItems, comp.type + ":" + comp.id]);
     },
     async loadLibraries() {
       if (!this.figmaFileIds?.length) return;
@@ -141,39 +125,6 @@ export default {
       }
       this.libraries = loaded;
       this.loading = false;
-    },
-    async save() {
-      if (this.saving) return;
-      this.saving = true;
-      try {
-        const token = await this.getToken();
-        for (const lib of this.libraries) {
-          for (const comp of lib.components) {
-            const key = comp.type + ":" + comp.id;
-            if (!this.dirtyItems.has(key)) continue;
-            const url =
-              comp.type === "component_set"
-                ? `/api/component-sets/${comp.id}`
-                : `/api/components/${comp.id}`;
-            await fetch(url, {
-              method: "PATCH",
-              credentials: "include",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                is_root: comp.is_root,
-                slots: comp.slots,
-              }),
-            });
-          }
-        }
-        this.dirtyItems = new Set();
-        this.$emit("saved");
-      } finally {
-        this.saving = false;
-      }
     },
   },
   watch: {
@@ -256,26 +207,5 @@ export default {
     color: var(--darkgray);
   }
 
-  &__save {
-    display: inline-flex;
-    padding: 12px 32px;
-    background: var(--black);
-    color: white;
-    border-radius: 32px;
-    font: var(--font-basic);
-    cursor: pointer;
-    margin-top: 24px;
-    align-self: flex-start;
-    transition: transform 150ms ease;
-
-    &:active {
-      transform: scale(0.95);
-    }
-
-    &_loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-  }
 }
 </style>

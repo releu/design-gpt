@@ -173,7 +173,7 @@ export default {
         const val = this.selectedProps[prop.name];
         const reactName = this.toPropName(prop.name);
         if (prop.type === "BOOLEAN") {
-          if (val) parts.push(`${reactName}={true}`);
+          parts.push(`${reactName}={${val ? "true" : "false"}}`);
         } else if (val !== undefined && val !== "") {
           parts.push(`${reactName}="${val}"`);
         }
