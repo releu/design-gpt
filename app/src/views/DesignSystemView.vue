@@ -291,13 +291,20 @@ export default {
       this.syncing = true;
       this.syncingLibId = libId;
       try {
-        await fetch(`/api/component-libraries/${libId}/sync`, {
+        const syncRes = await fetch(`/api/component-libraries/${libId}/sync`, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });
+        const syncData = await syncRes.json();
+        const newLibId = syncData.id || libId;
+        // Update local lib ID to the new version
+        if (lib && newLibId !== libId) {
+          lib.id = newLibId;
+        }
+        this.syncingLibId = newLibId;
         const interval = setInterval(async () => {
-          const r = await fetch(`/api/component-libraries/${libId}`, {
+          const r = await fetch(`/api/component-libraries/${newLibId}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -305,7 +312,7 @@ export default {
           if (lib) lib.progress = d.progress || null;
           if (d.status === "ready" || d.status === "error") {
             clearInterval(interval);
-            await this.loadComponents(libId);
+            await this.loadComponents(newLibId);
             if (lib) lib.loading = false;
             this.syncing = false;
             this.syncingLibId = null;
@@ -332,13 +339,18 @@ export default {
         lib.loading = true;
         lib.progress = null;
         try {
-          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+          const syncRes = await fetch(`/api/component-libraries/${lib.id}/sync`, {
             method: "POST",
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
-          this.syncingLibId = lib.id;
-          this.pollLibrary(lib.id);
+          const syncData = await syncRes.json();
+          const newLibId = syncData.id || lib.id;
+          if (newLibId !== lib.id) {
+            lib.id = newLibId;
+          }
+          this.syncingLibId = newLibId;
+          this.pollLibrary(newLibId);
         } catch {
           lib.loading = false;
         }

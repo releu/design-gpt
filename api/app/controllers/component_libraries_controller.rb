@@ -39,8 +39,8 @@ class ComponentLibrariesController < ApplicationController
     url = params[:url] || params.dig(:component_library, :url)
     name = params[:name] || params.dig(:component_library, :name)
 
-    # De-duplicate: reuse existing library with the same Figma URL for this user
-    cl = current_user.component_libraries.find_by(figma_url: url)
+    # De-duplicate: find the latest version for this Figma URL
+    cl = current_user.component_libraries.latest_versions.find_by(figma_url: url)
     if cl
       # Update name if provided and library has no name yet
       cl.update!(name: name) if name.present? && cl.name.blank?
@@ -58,16 +58,6 @@ class ComponentLibrariesController < ApplicationController
     end
 
     render json: { id: cl.id, status: cl.status, figma_file_key: cl.figma_file_key }, status: :created
-  rescue ActiveRecord::RecordNotUnique
-    # Unique index is on (user_id, figma_file_key), so find by extracted key
-    file_key = url&.match(%r{figma\.com/(?:file|design)/([a-zA-Z0-9]+)})&.[](1)
-    existing = current_user.component_libraries.find_by(figma_file_key: file_key) ||
-               current_user.component_libraries.find_by(figma_url: url)
-    if existing
-      render json: { id: existing.id, status: existing.status, figma_file_key: existing.figma_file_key }, status: :ok
-    else
-      render json: { error: "Duplicate record" }, status: :conflict
-    end
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
@@ -85,8 +75,8 @@ class ComponentLibrariesController < ApplicationController
   # GET /api/component-libraries/available
   # Returns user's own + all public libraries
   def available
-    own = current_user.component_libraries.to_a
-    public_libs = ComponentLibrary.where(is_public: true).where.not(user: current_user).to_a
+    own = current_user.component_libraries.latest_versions.to_a
+    public_libs = ComponentLibrary.latest_versions.where(is_public: true).where.not(user: current_user).to_a
     all_libs = (own + public_libs).uniq
 
     render json: all_libs.map { |cl|
@@ -108,8 +98,12 @@ class ComponentLibrariesController < ApplicationController
   # Enqueues a background job to sync from Figma
   def sync
     cl = find_accessible_library(params[:id])
-    cl.sync_async
-    render json: { id: cl.id, status: cl.reload.status, progress: cl.progress }
+    new_version = cl.sync_async
+    if new_version
+      render json: { id: new_version.id, status: new_version.status, progress: new_version.progress }
+    else
+      render json: { id: cl.id, status: cl.reload.status, progress: cl.progress }
+    end
   end
 
   # GET /api/component-libraries/:id/components
@@ -543,11 +537,12 @@ class ComponentLibrariesController < ApplicationController
   end
 
   def accessible_libraries
-    current_user.component_libraries
+    current_user.component_libraries.latest_versions
   end
 
   def find_accessible_library(id)
-    accessible_libraries.find(id)
+    # Look up by ID across all versions (not just latest) since sync may be called on any version
+    current_user.component_libraries.find(id)
   end
 
   def build_component_cards(items_by_file)

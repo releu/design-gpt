@@ -25,6 +25,7 @@ class Design < ApplicationRecord
 
   def improve(prompt)
     update!(status: "generating")
+    refresh_component_libraries_to_latest!
 
     create_new_iteration(prompt)
 
@@ -60,7 +61,19 @@ class Design < ApplicationRecord
   def create_new_iteration(text)
     iterations.create! do |i|
       i.comment = text
+      i.component_library_ids = component_libraries.pluck(:id)
     end
+  end
+
+  def refresh_component_libraries_to_latest!
+    design_component_libraries.includes(:component_library).each do |dcl|
+      lib = dcl.component_library
+      latest = lib.source.latest_version
+      if latest.id != lib.id
+        dcl.update!(component_library_id: latest.id)
+      end
+    end
+    reload
   end
 
   def duplicate

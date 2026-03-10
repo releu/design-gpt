@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_10_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -38,7 +38,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
     t.string "status", default: "pending"
     t.jsonb "progress", default: {}
     t.boolean "is_public", default: false, null: false
-    t.index ["user_id", "figma_file_key"], name: "index_component_libraries_on_user_id_and_figma_file_key", unique: true
+    t.bigint "source_library_id"
+    t.integer "version", default: 1, null: false
+    t.index ["source_library_id"], name: "index_component_libraries_on_source_library_id"
+    t.index ["user_id", "figma_file_key"], name: "index_component_libraries_on_user_id_and_figma_file_key"
     t.index ["user_id"], name: "index_component_libraries_on_user_id"
   end
 
@@ -51,9 +54,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
     t.string "figma_file_name"
     t.jsonb "prop_definitions", default: {}
     t.boolean "is_root", default: false, null: false
-    t.jsonb "slots", default: []
     t.string "status", default: "pending"
     t.text "error_message"
+    t.jsonb "slots", default: []
     t.index ["component_library_id", "node_id"], name: "index_component_sets_on_component_library_id_and_node_id", unique: true
     t.index ["component_library_id"], name: "index_component_sets_on_component_library_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -102,12 +105,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
     t.text "error_message"
     t.boolean "enabled", default: true
     t.boolean "is_root", default: false, null: false
-    t.jsonb "slots", default: []
     t.string "diff_image_path"
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
+    t.jsonb "slots", default: []
   end
 
   create_table "design_component_libraries", force: :cascade do |t|
@@ -189,6 +192,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
     t.text "jsx"
     t.integer "render_id"
     t.string "comment"
+    t.jsonb "component_library_ids", default: []
   end
 
   create_table "renders", force: :cascade do |t|
@@ -346,6 +350,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "component_libraries", "component_libraries", column: "source_library_id"
   add_foreign_key "component_sets", "component_libraries"
   add_foreign_key "component_variants", "component_sets"
   add_foreign_key "design_component_libraries", "component_libraries"

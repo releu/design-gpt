@@ -1,5 +1,7 @@
 class ComponentLibrary < ApplicationRecord
   belongs_to :user
+  belongs_to :source_library, class_name: "ComponentLibrary", optional: true
+  has_many :versions, class_name: "ComponentLibrary", foreign_key: :source_library_id
   has_many :components, dependent: :destroy
   has_many :component_sets, dependent: :destroy
   has_many :design_component_libraries, dependent: :destroy
@@ -10,6 +12,16 @@ class ComponentLibrary < ApplicationRecord
   validates :figma_url, presence: true
 
   before_validation :extract_figma_file_key, if: -> { figma_url_changed? }
+
+  scope :latest_versions, -> {
+    where(<<~SQL.squish)
+      component_libraries.id NOT IN (
+        SELECT cl2.source_library_id
+        FROM component_libraries cl2
+        WHERE cl2.source_library_id IS NOT NULL
+      )
+    SQL
+  }
 
   # Status flow: pending → discovering → importing → converting → comparing → ready / error
   STATUSES = %w[pending discovering importing converting comparing ready error].freeze
@@ -66,12 +78,32 @@ class ComponentLibrary < ApplicationRecord
     raise
   end
 
+  def source
+    source_library || self
+  end
+
+  def latest_version
+    source.versions.order(version: :desc).first || source
+  end
+
   def sync_async
     # Skip if actively syncing — avoid duplicate concurrent imports
     return if %w[importing converting comparing].include?(status)
 
-    update!(status: "pending", progress: { "started_at" => Time.current.iso8601 })
-    ComponentLibrarySyncJob.perform_later(id)
+    new_version = ComponentLibrary.create!(
+      user: user,
+      name: name,
+      figma_url: figma_url,
+      figma_file_key: figma_file_key,
+      figma_file_name: figma_file_name,
+      is_public: is_public,
+      source_library_id: source.id,
+      version: latest_version.version + 1,
+      status: "pending",
+      progress: { "started_at" => Time.current.iso8601 }
+    )
+    ComponentLibrarySyncJob.perform_later(new_version.id, id)
+    new_version
   end
 
   def update_progress(step:, step_number:, total_steps:, message:)

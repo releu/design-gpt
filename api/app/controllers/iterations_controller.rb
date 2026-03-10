@@ -5,7 +5,11 @@ class IterationsController < ApplicationController
 
   def renderer
     iteration = Iteration.find(params[:id])
-    libraries = iteration.design.component_libraries
+    if iteration.component_library_ids.present?
+      libraries = ComponentLibrary.where(id: iteration.component_library_ids)
+    else
+      libraries = iteration.design.component_libraries
+    end
     html = render_component_libraries(libraries)
     render html: html.html_safe, layout: false
   end

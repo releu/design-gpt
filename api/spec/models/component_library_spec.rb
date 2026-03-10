@@ -74,11 +74,52 @@ RSpec.describe ComponentLibrary, type: :model do
   end
 
   describe "#sync_async" do
-    it "enqueues a ComponentLibrarySyncJob" do
+    it "creates a new version and enqueues a ComponentLibrarySyncJob" do
       ds = component_libraries(:empty_ds)
-      expect { ds.sync_async }.to have_enqueued_job(ComponentLibrarySyncJob).with(ds.id)
-      expect(ds.reload.status).to eq("pending")
-      expect(ds.progress).to include("started_at")
+      new_version = nil
+      expect { new_version = ds.sync_async }.to have_enqueued_job(ComponentLibrarySyncJob)
+      expect(new_version).to be_a(ComponentLibrary)
+      expect(new_version.id).not_to eq(ds.id)
+      expect(new_version.source_library_id).to eq(ds.id)
+      expect(new_version.version).to eq(2)
+      expect(new_version.status).to eq("pending")
+      expect(new_version.progress).to include("started_at")
+    end
+  end
+
+  describe "#source" do
+    it "returns self when no source_library" do
+      ds = component_libraries(:example_lib)
+      expect(ds.source).to eq(ds)
+    end
+
+    it "returns source_library when set" do
+      ds = component_libraries(:example_lib)
+      new_version = ds.sync_async
+      expect(new_version.source).to eq(ds)
+    end
+  end
+
+  describe "#latest_version" do
+    it "returns self when no versions exist" do
+      ds = component_libraries(:empty_ds)
+      expect(ds.latest_version).to eq(ds)
+    end
+
+    it "returns the highest version" do
+      ds = component_libraries(:empty_ds)
+      v2 = ds.sync_async
+      expect(ds.latest_version).to eq(v2)
+    end
+  end
+
+  describe ".latest_versions" do
+    it "excludes old versions that have newer ones" do
+      ds = component_libraries(:empty_ds)
+      v2 = ds.sync_async
+      latest = ComponentLibrary.latest_versions
+      expect(latest).to include(v2)
+      expect(latest).not_to include(ds)
     end
   end
 end
