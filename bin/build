@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "-----> Building Vue frontend"
+cd app
+npm ci
+npm run build
+cd ..
+
+echo "-----> Copying frontend assets to api/public/"
+rm -rf api/public/assets api/public/index.html
+cp -r app/dist/* api/public/
+
+echo "-----> Frontend build complete"

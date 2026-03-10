@@ -1,8 +1,12 @@
 {
+  "name": "design-gpt",
   "private": true,
-  "engines": { "node": "20.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "cacheDirectories": ["app/node_modules"],
   "scripts": {
-    "heroku-postbuild": "cd app && npm ci && npm run build && cp -r dist/* ../api/public/"
+    "build": "./bin/build",
+    "heroku-postbuild": "./bin/build"
   }
 }

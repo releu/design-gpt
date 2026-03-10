@@ -1,0 +1,21 @@
+{
+  "name": "design-gpt",
+  "buildpacks": [
+    { "url": "heroku/nodejs" },
+    { "url": "heroku/ruby" }
+  ],
+  "formation": {
+    "web": { "quantity": 1, "size": "basic" },
+    "worker": { "quantity": 1, "size": "basic" }
+  },
+  "env": {
+    "RAILS_MASTER_KEY": { "required": true },
+    "AUTH0_DOMAIN": { "required": true },
+    "AUTH0_AUDIENCE": { "required": true },
+    "OPENAI_API_KEY": { "required": true },
+    "FIGMA_ACCESS_TOKEN": { "required": true },
+    "BUNDLE_GEMFILE": { "value": "api/Gemfile" },
+    "HEROKU_APP_HOST": { "required": true }
+  },
+  "addons": ["heroku-postgresql:essential-0"]
+}

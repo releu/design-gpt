@@ -84,4 +84,6 @@ Rails.application.configure do
   #
   config.hosts << "jan-designer.xyz"
   config.hosts << "api.jan-designer.xyz"
+  config.hosts << "design-gpt.xyz"
+  config.hosts << "design-gpt-3350443194dd.herokuapp.com"
 end
