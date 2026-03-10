@@ -60,9 +60,9 @@ export default {
   },
   data() {
     return {
-      prompt: "",
+      prompt: sessionStorage.getItem("home:prompt") || "",
       allDesigns: [],
-      currentDesignSystemId: null,
+      currentDesignSystemId: sessionStorage.getItem("home:dsId") || null,
       designSystems: [],
       dsModal: false,
       editingDS: null,
@@ -70,8 +70,7 @@ export default {
   },
   methods: {
     openDesignSystem(ds) {
-      this.editingDS = ds;
-      this.dsModal = true;
+      this.$router.push({ name: 'design-system', params: { id: ds.id } });
     },
     async onDsSaved(newId) {
       this.dsModal = false;
@@ -132,6 +131,15 @@ export default {
       if (!this.currentDesignSystemId && data.length > 0) {
         this.currentDesignSystemId = data[0].id;
       }
+    },
+  },
+  watch: {
+    prompt(val) {
+      sessionStorage.setItem("home:prompt", val);
+    },
+    currentDesignSystemId(val) {
+      if (val) sessionStorage.setItem("home:dsId", val);
+      else sessionStorage.removeItem("home:dsId");
     },
   },
   mounted() {

@@ -163,6 +163,7 @@
                 :comp="selectedItem"
                 :renderer-url="rendererUrl"
                 @sync="syncComponent"
+                @select-component="selectComponentByName"
               />
             </template>
 
@@ -564,6 +565,15 @@ export default {
           }),
         });
       } catch { /* continue */ }
+    },
+    selectComponentByName(name) {
+      for (const lib of this.libraries) {
+        const found = lib.components.find((c) => c.name === name);
+        if (found) {
+          this.selectedItem = found;
+          return;
+        }
+      }
     },
     isSelected(comp) {
       return (

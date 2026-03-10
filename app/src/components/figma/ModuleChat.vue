@@ -62,7 +62,7 @@ export default {
   emits: ["sent", "reset"],
   data() {
     return {
-      inputText: "",
+      inputText: sessionStorage.getItem(`chat:${this.designId}:draft`) || "",
       sending: false,
     };
   },
@@ -106,6 +106,11 @@ export default {
     },
   },
   watch: {
+    inputText(val) {
+      const key = `chat:${this.designId}:draft`;
+      if (val) sessionStorage.setItem(key, val);
+      else sessionStorage.removeItem(key);
+    },
     messages() {
       this.$nextTick(() => {
         if (this.$refs.messagesList) {

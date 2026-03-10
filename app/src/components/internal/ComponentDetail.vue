@@ -33,24 +33,35 @@
           <span class="ComponentDetail__prop-name" qa="component-prop-name">{{ prop.name }}</span>
           <span class="ComponentDetail__prop-value">
             <template v-if="prop.type === 'VARIANT' && prop.values.length">
-              <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
-                <option v-for="v in prop.values" :key="v" :value="v">{{ v }}</option>
-              </select>
-              <Icon type="down" />
+              <div class="ComponentDetail__prop-selector">
+                <span>{{ selectedProps[prop.name] }}</span>
+                <Icon type="down" />
+                <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
+                  <option v-for="v in prop.values" :key="v" :value="v">{{ v }}</option>
+                </select>
+              </div>
             </template>
             <template v-else-if="prop.type === 'TEXT'">
-              <span class="ComponentDetail__prop-text">{{ selectedProps[prop.name] || prop.defaultValue || 'default text' }}</span>
+              <input
+                class="ComponentDetail__prop-text"
+                v-model="selectedProps[prop.name]"
+                :placeholder="prop.defaultValue || 'default text'"
+                @input="$nextTick(() => sendPreviewRender())"
+              />
             </template>
             <template v-else-if="prop.type === 'BOOLEAN'">
-              <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
-                <option :value="true">true</option>
-                <option :value="false">false</option>
-              </select>
-              <Icon type="down" />
+              <div class="ComponentDetail__prop-selector">
+                <span>{{ selectedProps[prop.name] ? 'true' : 'false' }}</span>
+                <Icon type="down" />
+                <select v-model="selectedProps[prop.name]" class="ComponentDetail__prop-select">
+                  <option :value="true">true</option>
+                  <option :value="false">false</option>
+                </select>
+              </div>
             </template>
             <template v-else-if="prop.type === 'INSTANCE_SWAP' && prop.values.length">
               <div class="ComponentDetail__prop-links">
-                <div v-for="v in prop.values" :key="v" class="ComponentDetail__prop-link-row">
+                <div v-for="v in prop.values" :key="v" class="ComponentDetail__prop-link-row" @click="$emit('select-component', v)">
                   <Icon type="link" />
                   <span>{{ v }}</span>
                 </div>
@@ -58,7 +69,7 @@
             </template>
             <template v-else-if="prop.type === 'SLOT' && prop.children.length">
               <div class="ComponentDetail__prop-links">
-                <div v-for="child in prop.children" :key="child" class="ComponentDetail__prop-link-row">
+                <div v-for="child in prop.children" :key="child" class="ComponentDetail__prop-link-row" @click="$emit('select-component', child)">
                   <Icon type="link" />
                   <span>{{ child }}</span>
                 </div>
@@ -86,7 +97,7 @@
 <script>
 export default {
   name: "ComponentDetail",
-  emits: ["sync"],
+  emits: ["sync", "select-component"],
   props: {
     comp: Object,
     rendererUrl: String,
@@ -323,18 +334,41 @@ export default {
   }
 
   &__prop-text {
-    color: var(--darkgray);
-  }
-
-  &__prop-select {
     font: var(--font-basic);
+    color: var(--darkgray);
     border: none;
     background: none;
     outline: none;
-    cursor: pointer;
     padding: 0;
-    appearance: none;
-    color: var(--black);
+    min-width: 0;
+
+    &::placeholder {
+      color: var(--lightgray);
+    }
+  }
+
+  &__prop-selector {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+
+    .Icon {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+  }
+
+  &__prop-select {
+    opacity: 0;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    cursor: pointer;
+    -webkit-appearance: none;
+    z-index: 1;
   }
 
   &__prop-links {
@@ -347,6 +381,7 @@ export default {
     display: flex;
     align-items: center;
     gap: 4px;
+    cursor: pointer;
 
     .Icon {
       width: 18px;

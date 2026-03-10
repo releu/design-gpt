@@ -13,7 +13,7 @@
 
     <!-- Mode selector (chat / settings) -->
     <template #mode-selector>
-      <ModeSelector :modelValue="panelMode === 'chat' ? 0 : 1" @update:modelValue="panelMode = $event === 0 ? 'chat' : 'settings'" />
+      <ModeSelector :modelValue="panelMode === 'chat' ? 0 : 1" @update:modelValue="onModeChange" />
     </template>
 
     <!-- More button -->
@@ -128,13 +128,15 @@ export default {
       code: "",
       lastSavedCode: "",
       viewMode: "mobile",
-      panelMode: "chat",
       currentIterationId: null,
       pollTimer: null,
       showExportMenu: false,
     };
   },
   computed: {
+    panelMode() {
+      return this.$route.name === "design-settings" ? "settings" : "chat";
+    },
     effectiveLayout() {
       if (this.viewMode === "mobile") return "phone";
       if (this.viewMode === "desktop") return "desktop";
@@ -149,6 +151,10 @@ export default {
     },
   },
   methods: {
+    onModeChange(val) {
+      const name = val === 0 ? "design-chat" : "design-settings";
+      this.$router.replace({ name, params: { id: this.id } });
+    },
     onDesignSelect(val) {
       if (val === "new") {
         this.$router.push({ name: "home" });
