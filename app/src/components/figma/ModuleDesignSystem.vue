@@ -1,8 +1,8 @@
 <template>
   <Layout layout="overlay" :hideClose="phase === 'importing'" @close="$emit('close')">
     <template #content>
-    <div ref="modalCard" class="ModuleDesignSystem" :class="{ 'ModuleDesignSystem_wide': phase === 'done' }" qa="ds-modal" data-testid="modal-card">
-      <div v-if="phase !== 'done'" class="ModuleDesignSystem__title">new design system</div>
+    <div class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
+      <div class="ModuleDesignSystem__title">new design system</div>
 
       <!-- Phase: add — name + URLs + Import -->
       <template v-if="phase === 'add'">
@@ -63,118 +63,6 @@
           <ProgressBar :value="doneSteps" :max="totalSteps || 1" />
         </div>
       </template>
-
-      <!-- Phase: done — two-column browser -->
-      <template v-else-if="phase === 'done'">
-        <div class="ModuleDesignSystem__browser" qa="ds-browser">
-          <!-- Left: menu -->
-          <div class="ModuleDesignSystem__menu">
-            <div class="ModuleDesignSystem__menu-group">
-              <div class="ModuleDesignSystem__menu-subtitle">general</div>
-              <div
-                class="ModuleDesignSystem__menu-item"
-                qa="ds-menu-item"
-                :class="{ 'ModuleDesignSystem__menu-item_active': selectedItem === 'overview' }"
-                @click="selectedItem = 'overview'; editing = false"
-              >
-                overview
-              </div>
-            </div>
-            <div class="ModuleDesignSystem__menu-group" v-for="lib in libraries" :key="lib.id">
-              <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
-              <div
-                v-for="comp in lib.components"
-                :key="comp.type + comp.id"
-                class="ModuleDesignSystem__menu-item"
-                qa="ds-menu-item"
-                :class="{ 'ModuleDesignSystem__menu-item_active': isSelected(comp) }"
-                @click="selectedItem = comp"
-              >
-                {{ comp.name }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Right: detail -->
-          <div class="ModuleDesignSystem__browser-detail" qa="ds-browser-detail">
-            <!-- Overview panel -->
-            <div class="ModuleDesignSystem__overview" v-if="selectedItem === 'overview'">
-              <!-- Read-only view -->
-              <template v-if="!editing">
-                <div class="ModuleDesignSystem__overview-field">
-                  <div class="ModuleDesignSystem__overview-label">system name</div>
-                  <div class="ModuleDesignSystem__overview-value">{{ designSystemName }}</div>
-                </div>
-                <div class="ModuleDesignSystem__overview-field">
-                  <div class="ModuleDesignSystem__overview-label">figma files</div>
-                  <div class="ModuleDesignSystem__overview-files">
-                    <a
-                      class="ModuleDesignSystem__overview-file-row"
-                      v-for="lib in libraries"
-                      :key="lib.id"
-                      :href="lib.figma_url"
-                      target="_blank"
-                    >
-                      <Icon type="link" />
-                      <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
-                    </a>
-                  </div>
-                </div>
-                <div class="ModuleDesignSystem__overview-edit" @click="startEditing">Edit</div>
-              </template>
-
-              <!-- Edit view -->
-              <template v-else>
-                <div class="ModuleDesignSystem__overview-field">
-                  <div class="ModuleDesignSystem__overview-label">system name</div>
-                  <input
-                    class="ModuleDesignSystem__pill-input"
-                    qa="ds-name-input"
-                    v-model="designSystemName"
-                  />
-                </div>
-                <div class="ModuleDesignSystem__overview-field">
-                  <div class="ModuleDesignSystem__overview-label">figma files</div>
-                  <div class="ModuleDesignSystem__url-list">
-                    <input
-                      v-for="(url, index) in editUrlFields"
-                      :key="index"
-                      class="ModuleDesignSystem__pill-input"
-                      :value="url"
-                      placeholder="figma.com/..."
-                      @input="onEditUrlInput(index, $event.target.value)"
-                      @blur="cleanupEditUrls"
-                    />
-                  </div>
-                </div>
-                <div
-                  class="ModuleDesignSystem__do-import"
-                  :class="{ 'ModuleDesignSystem__do-import_loading': saving }"
-                  @click="saveEdits"
-                >
-                  save
-                </div>
-              </template>
-            </div>
-
-            <!-- Component detail -->
-            <template v-else-if="selectedItem && selectedItem !== 'overview'">
-              <ComponentDetail
-                :comp="selectedItem"
-                :renderer-url="rendererUrl"
-                @sync="syncComponent"
-                @select-component="selectComponentByName"
-              />
-            </template>
-
-            <div v-else class="ModuleDesignSystem__detail-empty">
-              Select a component to view details
-            </div>
-          </div>
-        </div>
-
-
-      </template>
     </div>
     </template>
   </Layout>
@@ -189,23 +77,16 @@ export default {
     const { getAccessTokenSilently } = useAuth0();
     return { getAccessTokenSilently };
   },
-  props: {
-    designSystem: { type: Object, default: null },
-  },
   emits: ["close", "saved"],
   data() {
     return {
-      phase: "add", // 'add' | 'importing' | 'done'
+      phase: "add", // 'add' | 'importing'
       urlFields: [""],
       importing: false,
       libraries: [],
-      selectedItem: "overview",
       pollingIntervals: [],
       saving: false,
-      syncing: false,
       designSystemName: "",
-      editing: false,
-      editUrlFields: [""],
     };
   },
   computed: {
@@ -227,38 +108,11 @@ export default {
         return sum + (l.progress?.step_number || 0);
       }, 0);
     },
-    selectedLibraryId() {
-      if (!this.selectedItem || this.selectedItem === "overview") return null;
-      for (const lib of this.libraries) {
-        for (const comp of lib.components) {
-          if (comp.id === this.selectedItem.id && comp.type === this.selectedItem.type) {
-            return lib.id;
-          }
-        }
-      }
-      return null;
-    },
-    rendererUrl() {
-      if (!this.selectedLibraryId) return null;
-      return `/api/component-libraries/${this.selectedLibraryId}/renderer`;
-    },
-    selectedItemChildren() {
-      if (!this.selectedItem || typeof this.selectedItem === "string") return [];
-      return (this.selectedItem.slots || []).flatMap((s) => s.allowed_children || []);
-    },
   },
   watch: {
     allImported(val) {
       if (val && this.phase === "importing") {
-        if (this.designSystem) {
-          // Editing existing — save updated library list, go to browser
-          this.updateDesignSystem();
-          this.phase = "done";
-          this.selectedItem = "overview";
-        } else {
-          // New DS — auto-save and return to home
-          this.saveAndClose();
-        }
+        this.saveAndClose();
       }
     },
   },
@@ -270,15 +124,12 @@ export default {
     },
     onUrlInput(index, value) {
       this.urlFields[index] = value;
-      // If the last field now has content, append a new empty one
       if (index === this.urlFields.length - 1 && value.trim()) {
         this.urlFields.push("");
       }
     },
     cleanupUrls() {
-      // Remove empty fields except the last one
       const cleaned = this.urlFields.filter((u, i) => u.trim() || i === this.urlFields.length - 1);
-      // Ensure at least one empty field at the end
       if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
         cleaned.push("");
       }
@@ -322,7 +173,6 @@ export default {
             loading: true,
             error: null,
             progress: null,
-            components: [],
           });
 
           this.pollLibrary(lib.id);
@@ -356,11 +206,7 @@ export default {
 
           if (data.status === "ready") {
             clearInterval(interval);
-            try {
-              await this.loadComponents(libraryId);
-            } finally {
-              lib.loading = false;
-            }
+            lib.loading = false;
           } else if (data.status === "error") {
             clearInterval(interval);
             lib.loading = false;
@@ -373,79 +219,7 @@ export default {
 
       this.pollingIntervals.push(interval);
     },
-    async loadComponents(libraryId) {
-      const token = await this.getToken();
-      const res = await fetch(`/api/component-libraries/${libraryId}/components`, {
-        credentials: "include",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-
-      const lib = this.libraries.find((l) => l.id === libraryId);
-      if (!lib) return;
-
-      const sets = (data.component_sets || []).map((cs) => ({
-        ...cs,
-        type: "component_set",
-        is_root: cs.is_root || false,
-        slots: cs.slots || [],
-      }));
-      const comps = (data.components || []).map((c) => ({
-        ...c,
-        type: "component",
-        is_root: c.is_root || false,
-        slots: c.slots || [],
-      }));
-      lib.components = [...sets, ...comps];
-    },
-    async syncComponent(comp) {
-      const libId = comp.component_library_id;
-      if (!libId) return;
-      const token = await this.getToken();
-      const lib = this.libraries.find((l) => l.id === libId);
-      if (lib) {
-        lib.loading = true;
-        lib.progress = null;
-      }
-      try {
-        await fetch(`/api/component-libraries/${libId}/sync`, {
-          method: "POST",
-          credentials: "include",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        this.pollLibrary(libId);
-      } catch {
-        if (lib) lib.loading = false;
-      }
-    },
-    async syncAll() {
-      if (this.syncing) return;
-      this.syncing = true;
-      this.phase = "importing";
-
-      const token = await this.getToken();
-      for (const lib of this.libraries) {
-        lib.loading = true;
-        lib.progress = null;
-        try {
-          await fetch(`/api/component-libraries/${lib.id}/sync`, {
-            method: "POST",
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          this.pollLibrary(lib.id);
-        } catch {
-          lib.loading = false;
-        }
-      }
-
-      this.syncing = false;
-    },
     async saveAndClose() {
-      if (this.designSystem) {
-        this.$emit("close");
-        return;
-      }
       if (this.saving) return;
       this.saving = true;
       try {
@@ -470,143 +244,6 @@ export default {
         this.saving = false;
       }
     },
-    startEditing() {
-      this.editUrlFields = [
-        ...this.libraries.map((l) => l.figma_url || ""),
-        "",
-      ];
-      this.editing = true;
-    },
-    onEditUrlInput(index, value) {
-      this.editUrlFields[index] = value;
-      if (index === this.editUrlFields.length - 1 && value.trim()) {
-        this.editUrlFields.push("");
-      }
-    },
-    cleanupEditUrls() {
-      const cleaned = this.editUrlFields.filter((u, i) => u.trim() || i === this.editUrlFields.length - 1);
-      if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
-        cleaned.push("");
-      }
-      this.editUrlFields = cleaned;
-    },
-    async saveEdits() {
-      if (this.saving) return;
-      this.saving = true;
-
-      const newUrls = [...new Set(this.editUrlFields.filter((u) => u.trim()))];
-      const existingUrls = this.libraries.map((l) => l.figma_url);
-      const urlsToImport = newUrls.filter((u) => !existingUrls.includes(u));
-
-      // Remove libraries whose URLs were deleted
-      this.libraries = this.libraries.filter((l) => newUrls.includes(l.figma_url));
-
-      // Import new URLs
-      for (const url of urlsToImport) {
-        try {
-          const token = await this.getToken();
-          const createRes = await fetch("/api/component-libraries", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ url }),
-          });
-          if (!createRes.ok) continue;
-          const lib = await createRes.json();
-          if (!lib.id) continue;
-
-          await fetch(`/api/component-libraries/${lib.id}/sync`, {
-            method: "POST",
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          this.libraries.push({
-            id: lib.id,
-            name: lib.name || lib.figma_file_name || url,
-            figma_url: url,
-            status: lib.status || "pending",
-            loading: true,
-            error: null,
-            progress: null,
-            components: [],
-          });
-          this.pollLibrary(lib.id);
-        } catch { /* continue */ }
-      }
-
-      if (this.libraries.some((l) => l.loading)) {
-        this.phase = "importing";
-      } else {
-        await this.updateDesignSystem();
-      }
-
-      this.saving = false;
-      this.editing = false;
-    },
-    async updateDesignSystem() {
-      try {
-        const token = await this.getToken();
-        await fetch(`/api/design-systems/${this.designSystem.id}`, {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            design_system: {
-              name: this.designSystemName,
-              component_library_ids: this.libraries.map((l) => l.id),
-            },
-          }),
-        });
-      } catch { /* continue */ }
-    },
-    selectComponentByName(name) {
-      for (const lib of this.libraries) {
-        const found = lib.components.find((c) => c.name === name);
-        if (found) {
-          this.selectedItem = found;
-          return;
-        }
-      }
-    },
-    isSelected(comp) {
-      return (
-        this.selectedItem &&
-        this.selectedItem !== "overview" &&
-        this.selectedItem.id === comp.id &&
-        this.selectedItem.type === comp.type
-      );
-    },
-    typeLabel(comp) {
-      if (comp.is_vector) return "Vector";
-      if (comp.type === "component_set") return "Component Set";
-      return "Component";
-    },
-  },
-  async mounted() {
-    if (this.designSystem) {
-      this.designSystemName = this.designSystem.name;
-      for (const lib of this.designSystem.libraries || []) {
-        this.libraries.push({
-          id: lib.id,
-          name: lib.name,
-          figma_url: lib.figma_url || "",
-          status: "ready",
-          loading: false,
-          error: null,
-          progress: null,
-          components: [],
-        });
-        await this.loadComponents(lib.id);
-      }
-      this.phase = "done";
-    }
   },
   beforeUnmount() {
     this.pollingIntervals.forEach(clearInterval);
@@ -740,7 +377,7 @@ export default {
     flex-shrink: 0;
   }
 
-  // Browser (done phase)
+  // Browser (used by DesignSystemView)
   &__browser {
     display: flex;
     gap: 20px;
@@ -866,259 +503,8 @@ export default {
     width: 120px;
   }
 
-  // Component detail header
-  &__detail-header {
-    margin-bottom: 24px;
-  }
-
-  &__detail-header-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  &__detail-name {
-    font: var(--font-basic);
-    font-weight: 700;
-    font-size: 20px;
-  }
-
-  &__type-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    background: var(--fill);
-    color: var(--darkgray);
-  }
-
-  &__match-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    font-weight: 600;
-
-    &_high {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    &_medium {
-      background: #fef9c3;
-      color: #854d0e;
-    }
-
-    &_low {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-  }
-
-  &__detail-description {
-    font: var(--font-basic);
-    color: var(--darkgray);
-    margin-top: 8px;
-  }
-
-  &__figma-link {
-    display: inline-block;
-    margin-top: 6px;
-    font: var(--font-basic);
-    color: var(--black);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  // Collapsible sections
-  &__section {
-    border-top: 1px solid var(--fill);
-    padding-top: 4px;
-    margin-bottom: 4px;
-  }
-
-  &__section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    cursor: pointer;
-    font: var(--font-basic);
-    font-weight: 700;
-    user-select: none;
-
-    &:hover {
-      color: var(--black);
-    }
-  }
-
-  &__section-body {
-    padding-bottom: 12px;
-  }
-
-  &__chevron {
-    font-size: 10px;
-    color: var(--darkgray);
-    transition: transform 200ms ease;
-
-    &_open {
-      transform: rotate(90deg);
-    }
-  }
-
-  // Preview iframe
-  &__preview-frame {
-    width: 100%;
-    height: 200px;
-    border: 1px solid var(--fill);
-    border-radius: 12px;
-    background: var(--fill);
-  }
-
-  // Props table
-  &__props-table {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 0;
-    margin-bottom: 12px;
-  }
-
-  &__props-table-head {
-    display: contents;
-
-    > span {
-      font: var(--font-basic);
-      color: var(--darkgray);
-      text-transform: none;
-      letter-spacing: 0;
-      padding: 6px 12px 6px 0;
-      border-bottom: 1px solid var(--fill);
-    }
-  }
-
-  &__props-table-row {
-    display: contents;
-
-    > span {
-      font: var(--font-basic);
-      padding: 8px 12px 8px 0;
-      border-bottom: 1px solid var(--fill);
-    }
-  }
-
-  &__prop-name {
-    font-weight: 600;
-  }
-
-  &__prop-type-badge {
-    font: var(--font-basic);
-    padding: 1px 8px;
-    border-radius: 4px;
-    background: #e3f2fd;
-    color: #1565c0;
-    white-space: nowrap;
-  }
-
-  &__prop-default {
-    color: var(--darkgray);
-  }
-
-  // Code section
-  &__code-wrap {
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid var(--fill);
-    border-radius: 12px;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  // Old detail name kept for overview usage
-  &__detail-name-solo {
-    font: var(--font-basic);
-    font-weight: 700;
-    font-size: 20px;
-    margin-bottom: 20px;
-  }
-
-  &__detail-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  &__detail-row {
-    display: flex;
-    gap: 16px;
-    font: var(--font-basic);
-  }
-
-  &__detail-key {
-    color: var(--darkgray);
-    min-width: 80px;
-    flex-shrink: 0;
-  }
-
-  &__detail-values {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  &__detail-value {
-    background: var(--fill);
-    border-radius: 6px;
-    padding: 2px 10px;
-    font: var(--font-basic);
-  }
-
   &__detail-empty {
     font: var(--font-basic);
-    color: var(--darkgray);
-  }
-
-  // Interactive configuration
-  &__config {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--fill);
-  }
-
-  &__root-badge {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    background: var(--fill);
-    color: var(--darkgray);
-    display: inline-block;
-    margin-bottom: 8px;
-  }
-
-  &__children-section {
-    margin-top: 8px;
-  }
-
-  &__children-label {
-    font: var(--font-basic);
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  &__children-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  &__children-item {
-    font: var(--font-basic);
-    padding: 2px 10px;
-    border-radius: 6px;
-    background: var(--fill);
     color: var(--darkgray);
   }
 

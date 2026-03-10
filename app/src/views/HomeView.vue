@@ -1,8 +1,7 @@
 <template>
   <ModuleDesignSystem
     v-if="dsModal"
-    :designSystem="editingDS"
-    @close="dsModal = false; editingDS = null"
+    @close="dsModal = false"
     @saved="onDsSaved"
   />
 
@@ -65,7 +64,6 @@ export default {
       currentDesignSystemId: sessionStorage.getItem("home:dsId") || null,
       designSystems: [],
       dsModal: false,
-      editingDS: null,
     };
   },
   methods: {
@@ -74,7 +72,6 @@ export default {
     },
     async onDsSaved(newId) {
       this.dsModal = false;
-      this.editingDS = null;
       await this.refreshDesignSystems();
       if (newId) {
         this.currentDesignSystemId = newId;

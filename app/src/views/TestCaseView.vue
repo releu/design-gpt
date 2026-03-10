@@ -282,7 +282,7 @@
               </div>
             </template>
             <template #overlay>
-              <ModuleDesignSystem ref="dsOverlay" :designSystem="null" />
+              <ModuleDesignSystem ref="dsOverlay" />
             </template>
           </Layout>
         </template>

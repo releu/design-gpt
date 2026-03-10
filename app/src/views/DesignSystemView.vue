@@ -1,9 +1,30 @@
 <template>
-  <Layout layout="overlay" @close="$router.push({ name: 'home' })">
+  <Layout layout="overlay" :hideClose="syncing" @close="$router.push({ name: 'home' })">
     <template #content>
     <div v-if="loading" class="ModuleDesignSystem ModuleDesignSystem_wide">
       <div class="ModuleDesignSystem__detail-empty">Loading…</div>
     </div>
+
+    <!-- Syncing: compact card with progress bar -->
+    <div v-else-if="syncing" class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
+      <div class="ModuleDesignSystem__title">syncing</div>
+      <div class="ModuleDesignSystem__importing" qa="ds-box">
+        <div class="ModuleDesignSystem__importing-header">
+          <span class="ModuleDesignSystem__importing-desc">
+            {{ syncingLib ? syncingLib.name : 'Syncing…' }}
+            <template v-if="syncingLib && syncingLib.progress && syncingLib.progress.message">
+              — {{ syncingLib.progress.message }}
+            </template>
+          </span>
+          <span class="ModuleDesignSystem__importing-count" v-if="syncTotalSteps > 0">
+            {{ syncStepNumber }}/{{ syncTotalSteps }}
+          </span>
+        </div>
+        <ProgressBar :value="syncStepNumber" :max="syncTotalSteps || 1" />
+      </div>
+    </div>
+
+    <!-- Normal: wide browser layout -->
     <div v-else class="ModuleDesignSystem ModuleDesignSystem_wide" qa="ds-modal" data-testid="modal-card">
       <div class="ModuleDesignSystem__browser" qa="ds-browser">
         <!-- Left: menu -->
@@ -46,25 +67,62 @@
         <div class="ModuleDesignSystem__browser-detail" qa="ds-browser-detail">
           <!-- Overview -->
           <div class="ModuleDesignSystem__overview" v-if="view === 'overview'">
-            <div class="ModuleDesignSystem__overview-field">
-              <div class="ModuleDesignSystem__overview-label">system name</div>
-              <div class="ModuleDesignSystem__overview-value">{{ designSystemName }}</div>
-            </div>
-            <div class="ModuleDesignSystem__overview-field">
-              <div class="ModuleDesignSystem__overview-label">figma files</div>
-              <div class="ModuleDesignSystem__overview-files">
-                <a
-                  class="ModuleDesignSystem__overview-file-row"
-                  v-for="lib in libraries"
-                  :key="lib.id"
-                  :href="lib.figma_url"
-                  target="_blank"
-                >
-                  <Icon type="link" />
-                  <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
-                </a>
+            <!-- Read-only view -->
+            <template v-if="!editing">
+              <div class="ModuleDesignSystem__overview-field">
+                <div class="ModuleDesignSystem__overview-label">system name</div>
+                <div class="ModuleDesignSystem__overview-value">{{ designSystemName }}</div>
               </div>
-            </div>
+              <div class="ModuleDesignSystem__overview-field">
+                <div class="ModuleDesignSystem__overview-label">figma files</div>
+                <div class="ModuleDesignSystem__overview-files">
+                  <a
+                    class="ModuleDesignSystem__overview-file-row"
+                    v-for="lib in libraries"
+                    :key="lib.id"
+                    :href="lib.figma_url"
+                    target="_blank"
+                  >
+                    <Icon type="link" />
+                    <span class="ModuleDesignSystem__overview-file-name">{{ lib.name }}</span>
+                  </a>
+                </div>
+              </div>
+              <div class="ModuleDesignSystem__overview-edit" @click="startEditing">Edit</div>
+            </template>
+
+            <!-- Edit view -->
+            <template v-else>
+              <div class="ModuleDesignSystem__overview-field">
+                <div class="ModuleDesignSystem__overview-label">system name</div>
+                <input
+                  class="ModuleDesignSystem__pill-input"
+                  qa="ds-name-input"
+                  v-model="designSystemName"
+                />
+              </div>
+              <div class="ModuleDesignSystem__overview-field">
+                <div class="ModuleDesignSystem__overview-label">figma files</div>
+                <div class="ModuleDesignSystem__url-list">
+                  <input
+                    v-for="(url, index) in editUrlFields"
+                    :key="index"
+                    class="ModuleDesignSystem__pill-input"
+                    :value="url"
+                    placeholder="figma.com/..."
+                    @input="onEditUrlInput(index, $event.target.value)"
+                    @blur="cleanupEditUrls"
+                  />
+                </div>
+              </div>
+              <div
+                class="ModuleDesignSystem__do-import"
+                :class="{ 'ModuleDesignSystem__do-import_loading': saving }"
+                @click="saveEdits"
+              >
+                save
+              </div>
+            </template>
           </div>
 
           <!-- AI Schema -->
@@ -110,6 +168,11 @@ export default {
       loading: true,
       designSystemName: "",
       libraries: [],
+      syncing: false,
+      syncingLibId: null,
+      editing: false,
+      editUrlFields: [""],
+      saving: false,
     };
   },
   computed: {
@@ -142,6 +205,16 @@ export default {
     rendererUrl() {
       if (!this.selectedLibraryId) return null;
       return `/api/component-libraries/${this.selectedLibraryId}/renderer`;
+    },
+    syncingLib() {
+      if (!this.syncingLibId) return null;
+      return this.libraries.find((l) => l.id === this.syncingLibId) || null;
+    },
+    syncTotalSteps() {
+      return this.syncingLib?.progress?.total_steps || 0;
+    },
+    syncStepNumber() {
+      return this.syncingLib?.progress?.step_number || 0;
     },
   },
   methods: {
@@ -203,34 +276,173 @@ export default {
     async syncComponent(comp) {
       const libId = comp.component_library_id;
       if (!libId) return;
+      const prevCompId = Number(this.$route.params.componentId);
       const token = await this.getToken();
       const lib = this.libraries.find((l) => l.id === libId);
       if (lib) {
         lib.loading = true;
         lib.progress = null;
       }
+      this.syncing = true;
+      this.syncingLibId = libId;
       try {
         await fetch(`/api/component-libraries/${libId}/sync`, {
           method: "POST",
           credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });
-        // Poll until done
         const interval = setInterval(async () => {
           const r = await fetch(`/api/component-libraries/${libId}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${token}` },
           });
           const d = await r.json();
+          if (lib) lib.progress = d.progress || null;
           if (d.status === "ready" || d.status === "error") {
             clearInterval(interval);
             await this.loadComponents(libId);
             if (lib) lib.loading = false;
+            this.syncing = false;
+            this.syncingLibId = null;
+            // Navigate back to component if it still exists, otherwise overview
+            const stillExists = this.libraries.some((l) =>
+              l.components.some((c) => c.id === prevCompId)
+            );
+            if (!stillExists) {
+              this.$router.push({ name: "design-system", params: { id: this.dsId } });
+            }
           }
         }, 2000);
       } catch {
         if (lib) lib.loading = false;
+        this.syncing = false;
+        this.syncingLibId = null;
       }
+    },
+    startEditing() {
+      this.editUrlFields = [
+        ...this.libraries.map((l) => l.figma_url || ""),
+        "",
+      ];
+      this.editing = true;
+    },
+    onEditUrlInput(index, value) {
+      this.editUrlFields[index] = value;
+      if (index === this.editUrlFields.length - 1 && value.trim()) {
+        this.editUrlFields.push("");
+      }
+    },
+    cleanupEditUrls() {
+      const cleaned = this.editUrlFields.filter((u, i) => u.trim() || i === this.editUrlFields.length - 1);
+      if (cleaned.length === 0 || cleaned[cleaned.length - 1].trim()) {
+        cleaned.push("");
+      }
+      this.editUrlFields = cleaned;
+    },
+    async saveEdits() {
+      if (this.saving) return;
+      this.saving = true;
+
+      const newUrls = [...new Set(this.editUrlFields.filter((u) => u.trim()))];
+      const existingUrls = this.libraries.map((l) => l.figma_url);
+      const urlsToImport = newUrls.filter((u) => !existingUrls.includes(u));
+
+      // Remove libraries whose URLs were deleted
+      this.libraries = this.libraries.filter((l) => newUrls.includes(l.figma_url));
+
+      // Import new URLs
+      for (const url of urlsToImport) {
+        try {
+          const token = await this.getToken();
+          const createRes = await fetch("/api/component-libraries", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+          });
+          if (!createRes.ok) continue;
+          const lib = await createRes.json();
+          if (!lib.id) continue;
+
+          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+            method: "POST",
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          this.libraries.push({
+            id: lib.id,
+            name: lib.name || lib.figma_file_name || url,
+            figma_url: url,
+            status: lib.status || "pending",
+            loading: true,
+            error: null,
+            progress: null,
+            components: [],
+          });
+          this.pollLibrary(lib.id);
+        } catch { /* continue */ }
+      }
+
+      if (this.libraries.some((l) => l.loading)) {
+        this.syncing = true;
+        this.syncingLibId = this.libraries.find((l) => l.loading)?.id || null;
+      } else {
+        await this.updateDesignSystem();
+      }
+
+      this.saving = false;
+      this.editing = false;
+    },
+    async updateDesignSystem() {
+      try {
+        const token = await this.getToken();
+        await fetch(`/api/design-systems/${this.id}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            design_system: {
+              name: this.designSystemName,
+              component_library_ids: this.libraries.map((l) => l.id),
+            },
+          }),
+        });
+      } catch { /* continue */ }
+    },
+    pollLibrary(libraryId) {
+      const interval = setInterval(async () => {
+        try {
+          const token = await this.getToken();
+          const res = await fetch(`/api/component-libraries/${libraryId}`, {
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          const lib = this.libraries.find((l) => l.id === libraryId);
+          if (!lib) { clearInterval(interval); return; }
+
+          if (data.name) lib.name = data.name;
+          lib.progress = data.progress || null;
+
+          if (data.status === "ready" || data.status === "error") {
+            clearInterval(interval);
+            await this.loadComponents(libraryId);
+            lib.loading = false;
+            if (!this.libraries.some((l) => l.loading)) {
+              await this.updateDesignSystem();
+              this.syncing = false;
+              this.syncingLibId = null;
+            }
+          }
+        } catch { clearInterval(interval); }
+      }, 2000);
     },
     selectComponentByName(name) {
       for (const lib of this.libraries) {
