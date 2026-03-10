@@ -479,8 +479,9 @@ module Figma
       if visibility_ref
         prop = find_prop_for_reference(visibility_ref)
         if prop
-          if prop[:type] == "BOOLEAN"
-            return "" if prop[:default_value] == false && node["visible"] == false
+          # Boolean-controlled nodes are always generated; visibility is
+          # handled at runtime via the {prop && (...)} wrapper (see below).
+          if prop[:type] != "BOOLEAN"
             return "" if node["visible"] == false
           end
         else
