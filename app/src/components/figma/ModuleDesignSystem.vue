@@ -397,6 +397,11 @@ export default {
     }
   }
 
+  &__menu-items {
+    display: flex;
+    flex-direction: column;
+  }
+
   &__menu-item {
     padding: 12px 16px;
     border-radius: 900px;
@@ -407,7 +412,6 @@ export default {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
     &:hover {
       background: var(--fill);
     }
@@ -496,11 +500,15 @@ export default {
     white-space: nowrap;
   }
 
+  &__overview-actions {
+    display: flex;
+    gap: 16px;
+  }
+
   &__overview-edit {
     font: var(--font-basic);
     color: var(--lightgray);
     cursor: pointer;
-    width: 120px;
   }
 
   &__detail-empty {

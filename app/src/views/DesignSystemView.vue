@@ -50,16 +50,18 @@
           </div>
           <div class="ModuleDesignSystem__menu-group" v-for="lib in libraries" :key="lib.id">
             <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
-            <router-link
-              v-for="comp in lib.components"
-              :key="comp.type + comp.id"
-              :to="{ name: 'design-system-component', params: { id: dsId, componentId: comp.id } }"
-              class="ModuleDesignSystem__menu-item"
-              :class="{ 'ModuleDesignSystem__menu-item_active': selectedComp && selectedComp.id === comp.id && selectedComp.type === comp.type }"
-              qa="ds-menu-item"
-            >
-              {{ comp.name }}
-            </router-link>
+            <div class="ModuleDesignSystem__menu-items">
+              <router-link
+                v-for="comp in lib.components"
+                :key="comp.type + comp.id"
+                :to="{ name: 'design-system-component', params: { id: dsId, componentId: comp.id } }"
+                class="ModuleDesignSystem__menu-item"
+                :class="{ 'ModuleDesignSystem__menu-item_active': selectedComp && selectedComp.id === comp.id && selectedComp.type === comp.type }"
+                qa="ds-menu-item"
+              >
+                {{ comp.name }}
+              </router-link>
+            </div>
           </div>
         </div>
 
@@ -88,7 +90,10 @@
                   </a>
                 </div>
               </div>
-              <div class="ModuleDesignSystem__overview-edit" @click="startEditing">Edit</div>
+              <div class="ModuleDesignSystem__overview-actions">
+                <div class="ModuleDesignSystem__overview-edit" @click="startEditing">edit</div>
+                <div class="ModuleDesignSystem__overview-edit" @click="syncAll">sync all</div>
+              </div>
             </template>
 
             <!-- Edit view -->
@@ -319,6 +324,26 @@ export default {
         this.syncingLibId = null;
       }
     },
+    async syncAll() {
+      if (this.syncing) return;
+      this.syncing = true;
+      const token = await this.getToken();
+      for (const lib of this.libraries) {
+        lib.loading = true;
+        lib.progress = null;
+        try {
+          await fetch(`/api/component-libraries/${lib.id}/sync`, {
+            method: "POST",
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          this.syncingLibId = lib.id;
+          this.pollLibrary(lib.id);
+        } catch {
+          lib.loading = false;
+        }
+      }
+    },
     startEditing() {
       this.editUrlFields = [
         ...this.libraries.map((l) => l.figma_url || ""),
@@ -435,7 +460,10 @@ export default {
             clearInterval(interval);
             await this.loadComponents(libraryId);
             lib.loading = false;
-            if (!this.libraries.some((l) => l.loading)) {
+            const nextLoading = this.libraries.find((l) => l.loading);
+            if (nextLoading) {
+              this.syncingLibId = nextLoading.id;
+            } else {
               await this.updateDesignSystem();
               this.syncing = false;
               this.syncingLibId = null;
