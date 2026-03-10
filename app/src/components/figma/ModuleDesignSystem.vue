@@ -764,7 +764,12 @@ export default {
     padding: 12px 16px;
     border-radius: 900px;
     font: var(--font-basic);
+    color: var(--black);
+    text-decoration: none;
     cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &:hover {
       background: var(--fill);
@@ -787,6 +792,9 @@ export default {
     opacity: 0.4;
     text-transform: none;
     letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   // Right panel
