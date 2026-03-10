@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "-----> Building Vue frontend"
 cd app
-npm ci
+npm ci --include=dev
 npm run build
 cd ..
 
