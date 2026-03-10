@@ -10,7 +10,7 @@ class IterationsController < ApplicationController
     else
       libraries = iteration.design.figma_files
     end
-    html = render_component_libraries(libraries)
+    html = render_figma_files(libraries)
     render html: html.html_safe, layout: false
   end
 end

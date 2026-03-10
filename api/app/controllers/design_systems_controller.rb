@@ -5,7 +5,7 @@ class DesignSystemsController < ApplicationController
 
   def renderer
     ds = DesignSystem.find(params[:id])
-    html = render_component_libraries(ds.figma_files)
+    html = render_figma_files(ds.figma_files)
     render html: html.html_safe, layout: false
   end
 

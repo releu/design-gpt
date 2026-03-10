@@ -4,7 +4,7 @@ module Renderable
 
   private
 
-  def render_component_libraries(libraries)
+  def render_figma_files(libraries)
     browser_code_parts = []
     css_parts = []
     loaded_react_names = Set.new
