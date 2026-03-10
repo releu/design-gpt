@@ -252,6 +252,16 @@ export default {
       this.fetchDesign();
     },
   },
+  watch: {
+    id() {
+      this.stopPolling();
+      this.design = null;
+      this.code = "";
+      this.lastSavedCode = "";
+      this.currentIterationId = null;
+      this.fetchDesign();
+    },
+  },
   mounted() {
     this.fetchDesign();
     this.fetchAllDesigns();
