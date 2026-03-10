@@ -40,7 +40,8 @@ class AiTask < ApplicationRecord
       if obj.key?("imageQuery")
         q = obj.delete("imageQuery")
         unless q.nil? || q == ""
-          obj["imageUrl"] = "https://jan-designer.xyz/api/images?q=#{CGI.escape(q.to_s)}"
+          result = ImageCache.search(q.to_s)
+          obj["imageUrl"] = result[:url]
         end
       end
       obj.each_value { |v| materialize_image_urls(v) }

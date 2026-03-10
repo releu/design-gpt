@@ -7,8 +7,7 @@ class ImagesController < ApplicationController
       return
     end
 
-    engine = YandexImages.new
-    render json: engine.search(params[:q])
+    render json: ImageCache.search(params[:q])
   rescue => e
     Rails.logger.error("Image search failed: #{e.message}")
     render json: { results: [], error: "Search failed" }

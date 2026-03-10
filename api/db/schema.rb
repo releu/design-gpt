@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_10_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -51,9 +51,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
     t.string "figma_file_name"
     t.jsonb "prop_definitions", default: {}
     t.boolean "is_root", default: false, null: false
+    t.jsonb "slots", default: []
     t.string "status", default: "pending"
     t.text "error_message"
-    t.jsonb "slots", default: []
     t.index ["component_library_id", "node_id"], name: "index_component_sets_on_component_library_id_and_node_id", unique: true
     t.index ["component_library_id"], name: "index_component_sets_on_component_library_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -102,12 +102,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
     t.text "error_message"
     t.boolean "enabled", default: true
     t.boolean "is_root", default: false, null: false
+    t.jsonb "slots", default: []
     t.string "diff_image_path"
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
-    t.jsonb "slots", default: []
   end
 
   create_table "design_component_libraries", force: :cascade do |t|
@@ -172,6 +172,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_06_000001) do
     t.index ["component_id"], name: "index_figma_assets_on_component_id"
     t.index ["component_set_id"], name: "index_figma_assets_on_component_set_id"
     t.index ["node_id"], name: "index_figma_assets_on_node_id"
+  end
+
+  create_table "image_caches", force: :cascade do |t|
+    t.string "query", null: false
+    t.text "url", null: false
+    t.integer "width"
+    t.integer "height"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["query"], name: "index_image_caches_on_query", unique: true
   end
 
   create_table "iterations", force: :cascade do |t|
