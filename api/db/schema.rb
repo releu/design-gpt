@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_12_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -41,6 +41,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
     t.string "status", default: "pending"
     t.text "error_message"
     t.jsonb "slots", default: []
+    t.string "component_key"
     t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
     t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -60,6 +61,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
     t.string "diff_image_path"
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
+    t.string "component_key"
     t.index ["component_set_id", "node_id"], name: "index_component_variants_on_component_set_id_and_node_id", unique: true
     t.index ["component_set_id"], name: "index_component_variants_on_component_set_id"
     t.index ["node_id"], name: "index_component_variants_on_node_id"
@@ -95,6 +97,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
     t.jsonb "slots", default: []
+    t.string "component_key"
   end
 
   create_table "design_systems", force: :cascade do |t|
@@ -179,7 +182,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
     t.string "comment"
     t.bigint "design_system_id"
     t.integer "design_system_version"
+    t.jsonb "tree"
+    t.string "share_code", limit: 6
     t.index ["design_system_id"], name: "index_iterations_on_design_system_id"
+    t.index ["share_code"], name: "index_iterations_on_share_code", unique: true
   end
 
   create_table "renders", force: :cascade do |t|

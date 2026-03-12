@@ -21,6 +21,7 @@
         <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
           <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">design system</a>
           <a v-if="code" class="DesignView__export-item" qa="export-react" @click="exportReact">download react project</a>
+          <a v-if="code" class="DesignView__export-item" qa="export-figma" @click="exportFigma">export to figma</a>
         </div>
       </MoreButton>
     </template>
@@ -222,7 +223,11 @@ export default {
     },
     exportFigma() {
       this.showExportMenu = false;
-      // Figma plugin pairing
+      if (!this.currentIterationId) return;
+      this.$router.push({
+        name: "figma-export",
+        params: { id: this.id, iterationId: String(this.currentIterationId) },
+      });
     },
     async resetToIteration(iterationId) {
       const token = await this.getAccessTokenSilently({

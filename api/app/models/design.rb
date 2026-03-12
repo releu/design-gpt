@@ -107,7 +107,8 @@ class Design < ApplicationRecord
           text: i.comment,
           jsx: i.jsx,
           completed: i.jsx?,
-          has_screenshot: i.render_id.present?
+          has_screenshot: i.render_id.present?,
+          share_code: i.share_code
         }
       end,
       chat: chat_messages.order(:id).map(&:as_frontend_json)

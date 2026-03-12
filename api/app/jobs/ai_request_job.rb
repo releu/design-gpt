@@ -26,7 +26,7 @@ class AiRequestJob < ApplicationJob
       m = ChatMessage.find(message_id)
 
       if action == :set_jsx
-        i.update!(jsx: task.jsx)
+        i.update!(jsx: task.jsx, tree: task.args)
         m.update!(state: "completed", message: "Done. Version ##{i.id}")
         i.design.update!(status: "ready")
         i.design.render_last_iteration

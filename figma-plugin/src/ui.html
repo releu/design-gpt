@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, sans-serif; font-size: 13px; padding: 16px; color: #333; }
+    label { display: block; margin-bottom: 4px; font-weight: 500; }
+    input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; margin-bottom: 12px; text-align: center; letter-spacing: 4px; font-family: monospace; }
+    input:focus { outline: none; border-color: #18A0FB; }
+    button { width: 100%; padding: 10px; background: #18A0FB; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #0d8de5; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .status { margin-top: 12px; padding: 8px; border-radius: 4px; font-size: 12px; display: none; }
+    .status.error { display: block; background: #ffeaea; color: #d32f2f; }
+    .status.info { display: block; background: #e8f4fd; color: #1565c0; }
+    .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <label for="share-code">Iteration Code</label>
+  <input id="share-code" type="text" maxlength="6" placeholder="abc123" autofocus />
+
+  <button id="import-btn">Import to Figma</button>
+
+  <div id="status" class="status"></div>
+
+  <script>
+    const BASE_URL = 'https://design-gpt.xyz';
+    const btn = document.getElementById('import-btn');
+    const statusEl = document.getElementById('status');
+    const codeInput = document.getElementById('share-code');
+
+    function setStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + type;
+    }
+
+    btn.addEventListener('click', async () => {
+      const code = codeInput.value.trim().toLowerCase();
+
+      if (!code || code.length !== 6) {
+        setStatus('Enter a 6-character iteration code.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      setStatus('Fetching design...', 'info');
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/iterations/${code}/export_figma`);
+        if (res.status === 404) throw new Error('Iteration not found. Check the code and try again.');
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+        const data = await res.json();
+        if (!data.tree) throw new Error('No tree data. Generate a design first.');
+
+        setStatus('Rendering in Figma...', 'info');
+        parent.postMessage({ pluginMessage: { type: 'render-tree', tree: data.tree, name: data.name } }, '*');
+      } catch (err) {
+        setStatus(err.message, 'error');
+        btn.disabled = false;
+      }
+    });
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'render-done') {
+        setStatus(`Imported "${msg.name}" successfully!`, 'success');
+        btn.disabled = false;
+      } else if (msg.type === 'render-error') {
+        setStatus(msg.error, 'error');
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

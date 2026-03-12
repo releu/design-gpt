@@ -127,8 +127,11 @@ class DesignsController < ApplicationController
       return
     end
 
-    ai_task = AiTask.order(:id).last
-    tree = ai_task&.args
+    tree = iteration.tree
+    if tree && design.design_system
+      builder = Exports::FigmaTreeBuilder.new(design)
+      tree = builder.build(tree)
+    end
 
     render json: {
       design_id: design.id,

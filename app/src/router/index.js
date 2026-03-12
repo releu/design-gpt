@@ -4,6 +4,7 @@ import HomeView from "../views/HomeView.vue";
 import DesignView from "../views/DesignView.vue";
 import DesignSystemView from "../views/DesignSystemView.vue";
 import TestCaseView from "../views/TestCaseView.vue";
+import FigmaExportView from "../views/FigmaExportView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,6 +42,12 @@ const router = createRouter({
       path: "/design-systems/:id/components/:componentId",
       name: "design-system-component",
       component: DesignSystemView,
+      props: true,
+    },
+    {
+      path: "/designs/:id/iterations/:iterationId/figma",
+      name: "figma-export",
+      component: FigmaExportView,
       props: true,
     },
     {

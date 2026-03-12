@@ -13,4 +13,27 @@ class IterationsController < ApplicationController
     html = render_figma_files(libraries)
     render html: html.html_safe, layout: false
   end
+
+  def export_figma
+    iteration = Iteration.find_by!(share_code: params[:share_code])
+
+    if iteration.tree.blank?
+      head :not_found
+      return
+    end
+
+    design = iteration.design
+    tree = iteration.tree
+    if design.design_system
+      builder = Exports::FigmaTreeBuilder.new(design)
+      tree = builder.build(tree)
+    end
+
+    render json: {
+      design_id: design.id,
+      name: design.name,
+      tree: tree,
+      jsx: iteration.jsx
+    }
+  end
 end

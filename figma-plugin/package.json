@@ -1,0 +1,14 @@
+{
+  "name": "design-gpt-figma-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2015",
+    "watch": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2015 --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}

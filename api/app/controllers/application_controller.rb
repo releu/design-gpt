@@ -23,7 +23,7 @@ class ApplicationController < ActionController::API
   def current_user
     return @current_user if defined?(@current_user)
 
-    token = request.headers["Authorization"]&.split(" ", 2)&.last
+    token = request.headers["Authorization"]&.split(" ", 2)&.last || params[:token]
     return nil unless token
 
     payload = Auth0Service.decode_token(token)

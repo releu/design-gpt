@@ -39,6 +39,7 @@ Rails.application.routes.draw do
     resources :iterations, :only => [] do
       get :renderer, :on => :member
     end
+    get "iterations/:share_code/export_figma", to: "iterations#export_figma", as: :iteration_export_figma
 
     resources :designs, :only => [:show, :create, :index, :update, :destroy] do
       post :improve

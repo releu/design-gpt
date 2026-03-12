@@ -64,6 +64,7 @@ module Figma
           node_id: node_id,
           name: meta["name"],
           description: meta["description"],
+          component_key: meta["key"],
           variants: {}
         }
       end
@@ -76,14 +77,16 @@ module Figma
             component_sets[set_id][:variants][node_id] = {
               node_id: node_id,
               name: meta["name"],
-              description: meta["description"]
+              description: meta["description"],
+              component_key: meta["key"]
             }
           end
         else
           standalone_components[node_id] = {
             node_id: node_id,
             name: meta["name"],
-            description: meta["description"]
+            description: meta["description"],
+            component_key: meta["key"]
           }
         end
       end
@@ -265,7 +268,8 @@ module Figma
           figma_file_name: @file_name,
           prop_definitions: data[:prop_definitions] || {},
           slots: data[:slots] || [],
-          is_root: data[:is_root] || false
+          is_root: data[:is_root] || false,
+          component_key: data[:component_key]
         }
         if data[:invalid]
           attrs[:status] = "error"
@@ -289,14 +293,16 @@ module Figma
           variant.update!(
             name: variant_data[:name],
             figma_json: variant_data[:figma_json] || {},
-            is_default: variant_data[:is_default] || false
+            is_default: variant_data[:is_default] || false,
+            component_key: variant_data[:component_key]
           )
         rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
           variant = set.variants.find_by!(node_id: variant_id)
           variant.update!(
             name: variant_data[:name],
             figma_json: variant_data[:figma_json] || {},
-            is_default: variant_data[:is_default] || false
+            is_default: variant_data[:is_default] || false,
+            component_key: variant_data[:component_key]
           )
         end
       end
@@ -318,7 +324,8 @@ module Figma
           figma_file_key: @file_key,
           figma_file_name: @file_name,
           slots: data[:slots] || [],
-          is_root: data[:is_root] || false
+          is_root: data[:is_root] || false,
+          component_key: data[:component_key]
         }
         if data[:invalid]
           attrs[:status] = "error"
