@@ -29,11 +29,10 @@
 
     <!-- Layout 2: Phone (two columns) -->
     <template v-else-if="layout === 'phone'">
-      <div class="Layout__col Layout__col_chat Layout__prompt">
+      <div class="Layout__col Layout__col_chat Layout__connector_right Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="Layout__divider Layout__divider_v" />
       <div class="Layout__col Layout__col_phone-preview Layout__preview">
         <slot name="preview" />
       </div>
@@ -41,11 +40,10 @@
 
     <!-- Layout 3: Desktop (stacked) -->
     <template v-else-if="layout === 'desktop'">
-      <div class="Layout__row Layout__row_chat Layout__prompt">
+      <div class="Layout__row Layout__row_chat Layout__connector_down Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="Layout__divider Layout__divider_h" />
       <div class="Layout__row Layout__row_desktop-preview Layout__preview">
         <slot name="preview" />
       </div>
@@ -53,15 +51,13 @@
 
     <!-- Layout 4: Code (three columns) -->
     <template v-else-if="layout === 'code'">
-      <div class="Layout__col Layout__col_code-chat Layout__prompt">
+      <div class="Layout__col Layout__col_code-chat Layout__connector_right Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="Layout__divider Layout__divider_v" />
-      <div class="Layout__col Layout__col_code-editor">
+      <div class="Layout__col Layout__col_code-editor Layout__connector_right">
         <slot name="code-editor" />
       </div>
-      <div class="Layout__divider Layout__divider_v" />
       <div class="Layout__col Layout__col_code-preview Layout__preview">
         <slot name="preview" />
       </div>
@@ -138,6 +134,7 @@ export default {
 
   /* ----- Connectors between panels ----- */
   &__col#{&}__connector_down,
+  &__col#{&}__connector_right,
   &__row#{&}__connector_down,
   &__bottom-bar#{&}__connector_right {
     overflow: visible;
@@ -252,12 +249,12 @@ export default {
 
   /* ===== LAYOUT 2: PHONE (Two columns) ===== */
   &_layout-phone {
-    grid-template-columns: 3fr auto 2fr;
+    grid-template-columns: 1fr 320px;
     grid-template-rows: auto 1fr;
     grid-template-areas:
-      "header header header"
-      "chat   div1   preview";
-    gap: 0;
+      "header  header"
+      "chat    preview";
+    column-gap: var(--sp-3);
     row-gap: var(--sp-3);
 
     .Layout__col_chat { grid-area: chat; }
@@ -272,28 +269,25 @@ export default {
   /* ===== LAYOUT 3: DESKTOP (Stacked) ===== */
   &_layout-desktop {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto 1fr;
+    grid-template-rows: auto 1fr 1fr;
     grid-template-areas:
       "header"
       "chat"
-      "divh"
       "preview";
-    gap: 0;
-    row-gap: 0;
+    row-gap: var(--sp-3);
 
     .Layout__row_chat { grid-area: chat; }
-    .Layout__divider_h { grid-area: divh; }
     .Layout__row_desktop-preview { grid-area: preview; }
   }
 
   /* ===== LAYOUT 4: CODE (Three columns) ===== */
   &_layout-code {
-    grid-template-columns: 1fr auto 1.7fr auto 1.3fr;
+    grid-template-columns: 320px 1fr 320px;
     grid-template-rows: auto 1fr;
     grid-template-areas:
-      "header header header header header"
-      "chat   div1   code   div2   preview";
-    gap: 0;
+      "header header header"
+      "chat   code   preview";
+    column-gap: var(--sp-3);
     row-gap: var(--sp-3);
 
     .Layout__col_code-chat { grid-area: chat; }

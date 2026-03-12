@@ -26,7 +26,7 @@
         class="ModuleChat__input"
         qa="chat-input"
         v-model="inputText"
-        placeholder="Enter text..."
+        placeholder="enter text..."
         :disabled="sending || generating"
         @keydown="onKeydown"
       />
@@ -78,7 +78,7 @@ export default {
       });
     },
     onKeydown(e) {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         this.send();
       }
@@ -131,8 +131,8 @@ export default {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  gap: 0;
-  max-width: 640px;
+  gap: 12px;
+  width: 100%;
   overflow: hidden;
 
   &__messages {
@@ -143,6 +143,9 @@ export default {
     gap: 10px;
     min-height: 0;
     padding-bottom: 0;
+    max-width: 640px;
+    align-self: center;
+    width: 100%;
 
     &::-webkit-scrollbar {
       display: none;
@@ -159,6 +162,7 @@ export default {
     align-items: center;
     flex-shrink: 0;
     width: 100%;
+    box-sizing: border-box;
 
     /* User = LEFT, plain text, no bubble, right padding */
     &_user {

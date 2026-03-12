@@ -19,13 +19,7 @@
       <MoreButton @click.stop="showExportMenu = !showExportMenu">
         ...
         <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
-          <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">Design system</a>
-          <template v-if="code">
-            <div class="DesignView__export-item" @click="exportReact">Download React project</div>
-            <div class="DesignView__export-item" @click="exportImage">Download image</div>
-            <div class="DesignView__export-item" @click="exportFigma">Figma (alpha)</div>
-          </template>
-          <div v-else class="DesignView__export-item DesignView__export-item_disabled">No preview available</div>
+          <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">design system</a>
         </div>
       </MoreButton>
     </template>

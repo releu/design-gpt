@@ -49,7 +49,7 @@ export default {
   &__label {
     position: absolute;
     left: 24px;
-    top: 11px;
+    top: 15px;
     display: flex;
     align-items: center;
     gap: 4px;
