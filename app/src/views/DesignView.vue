@@ -20,6 +20,7 @@
         ...
         <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
           <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">design system</a>
+          <a v-if="code" class="DesignView__export-item" qa="export-react" @click="exportReact">download react project</a>
         </div>
       </MoreButton>
     </template>
