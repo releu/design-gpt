@@ -624,6 +624,19 @@ module Figma
 
     def generate_shape(node, root_name, class_name, css_rules, depth)
       styles = extract_shape_styles(node)
+
+      node_id = node["id"]
+      if @inline_svgs_by_node_id[node_id]
+        svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+        clean_svg = svg_content
+          .gsub(/<\?xml[^>]*\?>/, "")
+          .gsub(/xmlns="[^"]*"/, "")
+          .strip
+        styles.delete("background")
+        css_rules[class_name] = styles
+        return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
+      end
+
       css_rules[class_name] = styles
       "<div className=\"#{class_name}\" />"
     end
@@ -960,10 +973,17 @@ module Figma
     end
 
     def build_inline_svg_cache
-      FigmaAsset.where(component_id: nil, component_set_id: nil)
-        .where(asset_type: "svg")
+      component_ids = @figma_file.components.pluck(:id)
+      component_set_ids = @figma_file.component_sets.pluck(:id)
+
+      FigmaAsset.where(asset_type: "svg")
+        .where("node_id IS NOT NULL")
+        .where(
+          "component_id IN (?) OR component_set_id IN (?) OR (component_id IS NULL AND component_set_id IS NULL)",
+          component_ids, component_set_ids
+        )
         .find_each do |asset|
-          @inline_svgs_by_node_id[asset.node_id] = asset.content if asset.node_id.present?
+          @inline_svgs_by_node_id[asset.node_id] = asset.content
         end
     end
 

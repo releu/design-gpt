@@ -201,9 +201,10 @@ module Figma
     def find_inline_vectors(node, file_key, result)
       return unless node.is_a?(Hash)
 
-      if vector_frame?(node)
-        node_id = node["id"]
-        if node_id && !node_id.start_with?("I")
+      node_id = node["id"]
+
+      if VECTOR_TYPES.include?(node["type"]) || vector_frame?(node)
+        if node_id
           result[file_key] ||= []
           result[file_key] << node_id unless result[file_key].include?(node_id)
         end
