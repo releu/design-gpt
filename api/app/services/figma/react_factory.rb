@@ -509,7 +509,13 @@ module Figma
         when "SLOT"
           @has_slot = true
           slot_name = @slot_map[node["id"]] || "children"
-          "{props.#{slot_name}}"
+          if node["layoutMode"]
+            styles = extract_frame_styles(node, false)
+            css_rules[class_name] = styles
+            "<div className=\"#{class_name}\">{props.#{slot_name}}</div>"
+          else
+            "{props.#{slot_name}}"
+          end
         when "INSTANCE"
           ref = node["componentPropertyReferences"]&.dig("mainComponent")
           if @is_list_component && ref && instance_swap_ref?(ref)
