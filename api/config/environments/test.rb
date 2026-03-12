@@ -48,8 +48,9 @@ Rails.application.configure do
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
 
-  # Allow the test domain through Rails host authorization
-  config.hosts << "design-gpt-test.localtest.me"
+  # Allow any host in unit/request specs (default host is www.example.com);
+  # E2E tests use design-gpt-test.localtest.me via their own host config.
+  config.hosts.clear
 
   # E2E tests need jobs to actually run (Figma sync, etc.)
   if ENV["E2E_TEST_MODE"] == "true"
