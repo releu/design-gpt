@@ -43,8 +43,11 @@ module Figma
         styles["flex-wrap"] = "wrap" if node["layoutWrap"] == "WRAP"
       end
 
-      # All elements are position: relative by default for proper z-index stacking.
-      styles["position"] = "relative"
+      if node["layoutPositioning"] == "ABSOLUTE"
+        styles["position"] = "absolute"
+      else
+        styles["position"] = "relative"
+      end
 
       # Sizing mode
       primary_sizing = node["primaryAxisSizingMode"]
@@ -247,7 +250,11 @@ module Figma
       end
 
       styles["flex-shrink"] = "0"
-      styles["position"] = "relative"
+      if node["layoutPositioning"] == "ABSOLUTE"
+        styles["position"] = "absolute"
+      else
+        styles["position"] = "relative"
+      end
       styles["margin"] = "0"
       styles["word-wrap"] = "break-word"
       styles["overflow-wrap"] = "break-word"
@@ -307,7 +314,11 @@ module Figma
         styles["opacity"] = node["opacity"].round(2).to_s
       end
 
-      styles["position"] = "relative"
+      if node["layoutPositioning"] == "ABSOLUTE"
+        styles["position"] = "absolute"
+      else
+        styles["position"] = "relative"
+      end
       styles["box-sizing"] = "border-box"
       styles["flex-shrink"] = "0"
 
@@ -322,11 +333,44 @@ module Figma
 
       return styles if node_bbox.empty? || parent_bbox.empty?
 
-      left = (node_bbox["x"] || 0) - (parent_bbox["x"] || 0)
-      top = (node_bbox["y"] || 0) - (parent_bbox["y"] || 0)
+      constraints = node["constraints"] || {}
+      h_constraint = constraints["horizontal"] || "LEFT"
+      v_constraint = constraints["vertical"] || "TOP"
 
-      styles["left"] = "#{left.round}px"
-      styles["top"] = "#{top.round}px"
+      node_x = node_bbox["x"] || 0
+      node_y = node_bbox["y"] || 0
+      node_w = node_bbox["width"] || 0
+      node_h = node_bbox["height"] || 0
+      parent_x = parent_bbox["x"] || 0
+      parent_y = parent_bbox["y"] || 0
+      parent_w = parent_bbox["width"] || 0
+      parent_h = parent_bbox["height"] || 0
+
+      case h_constraint
+      when "RIGHT"
+        styles["right"] = "#{(parent_x + parent_w - node_x - node_w).round}px"
+      when "LEFT_RIGHT"
+        styles["left"] = "#{(node_x - parent_x).round}px"
+        styles["right"] = "#{(parent_x + parent_w - node_x - node_w).round}px"
+      when "CENTER"
+        left = node_x - parent_x
+        styles["left"] = "#{left.round}px"
+      else # LEFT
+        styles["left"] = "#{(node_x - parent_x).round}px"
+      end
+
+      case v_constraint
+      when "BOTTOM"
+        styles["bottom"] = "#{(parent_y + parent_h - node_y - node_h).round}px"
+      when "TOP_BOTTOM"
+        styles["top"] = "#{(node_y - parent_y).round}px"
+        styles["bottom"] = "#{(parent_y + parent_h - node_y - node_h).round}px"
+      when "CENTER"
+        top = node_y - parent_y
+        styles["top"] = "#{top.round}px"
+      else # TOP
+        styles["top"] = "#{(node_y - parent_y).round}px"
+      end
 
       styles
     end

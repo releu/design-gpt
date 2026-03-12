@@ -578,12 +578,21 @@ module Figma
       children_jsx = (node["children"] || []).map.with_index do |child, idx|
         child_jsx = generate_node(child, root_name, css_rules, depth + 1)
 
-        if uses_absolute && child_jsx.present?
-          child_styles = extract_absolute_position(child, node)
-          if child_styles.any?
-            wrapper_class = "#{class_name}-pos-#{idx}"
-            css_rules[wrapper_class] = child_styles.merge("position" => "absolute")
-            child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
+        if child_jsx.present?
+          if child.is_a?(Hash) && child["layoutPositioning"] == "ABSOLUTE"
+            # Child opted out of auto-layout — apply constraint-based positioning
+            child_class = child_jsx[/className="([^"]+)"/, 1]
+            if child_class && css_rules[child_class]
+              position_styles = extract_absolute_position(child, node)
+              css_rules[child_class].merge!(position_styles)
+            end
+          elsif uses_absolute
+            child_styles = extract_absolute_position(child, node)
+            if child_styles.any?
+              wrapper_class = "#{class_name}-pos-#{idx}"
+              css_rules[wrapper_class] = child_styles.merge("position" => "absolute")
+              child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
+            end
           end
         end
 
