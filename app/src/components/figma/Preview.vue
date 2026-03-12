@@ -1,5 +1,5 @@
 <template>
-  <div :class="mainClasses" :style="wrapperStyle" ref="wrapper">
+  <div :class="mainClasses" ref="wrapper">
     <iframe class="Preview__frame" qa="preview-frame" :src="renderer" :style="iframeStyle" ref="frame"></iframe>
   </div>
 </template>
@@ -16,8 +16,8 @@ export default {
     return {
       ready: false,
       contentWidth: null,
-      contentHeight: null,
       containerWidth: null,
+      containerHeight: null,
     };
   },
   computed: {
@@ -32,15 +32,11 @@ export default {
       if (!this.contentWidth || this.scaleFactor === 1) return {};
       return {
         width: this.contentWidth + "px",
-        height: this.contentHeight + "px",
+        height: this.containerHeight
+          ? Math.ceil(this.containerHeight / this.scaleFactor) + "px"
+          : "100%",
         transform: `scale(${this.scaleFactor})`,
         transformOrigin: "top left",
-      };
-    },
-    wrapperStyle() {
-      if (!this.contentHeight || this.scaleFactor === 1) return {};
-      return {
-        height: Math.ceil(this.contentHeight * this.scaleFactor) + "px",
       };
     },
   },
@@ -64,13 +60,13 @@ export default {
       }
       if (e.data && e.data.type === "resize") {
         this.contentWidth = e.data.width;
-        this.contentHeight = e.data.height;
       }
     };
     window.addEventListener("message", this._onMessage);
 
     this._resizeObserver = new ResizeObserver((entries) => {
       this.containerWidth = entries[0].contentRect.width;
+      this.containerHeight = entries[0].contentRect.height;
     });
     this._resizeObserver.observe(this.$refs.wrapper);
   },

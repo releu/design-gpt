@@ -138,7 +138,24 @@ module Figma
       add_border_radius(styles, node)
       add_effects(styles, node["effects"])
 
-      styles["overflow"] = "hidden" if node["clipsContent"]
+      case node["overflowDirection"]
+      when "HORIZONTAL_SCROLLING"
+        styles["overflow-x"] = "auto"
+        styles["overflow-y"] = "hidden"
+        # fit-content defeats scrolling — use bbox width instead
+        styles["width"] = "#{width}px" if styles["width"] == "fit-content"
+      when "VERTICAL_SCROLLING"
+        styles["overflow-x"] = "hidden"
+        styles["overflow-y"] = "auto"
+        # fit-content defeats scrolling — use bbox height instead
+        styles["height"] = "#{height}px" if styles["height"] == "fit-content"
+      when "HORIZONTAL_AND_VERTICAL_SCROLLING"
+        styles["overflow"] = "auto"
+        styles["width"] = "#{width}px" if styles["width"] == "fit-content"
+        styles["height"] = "#{height}px" if styles["height"] == "fit-content"
+      else
+        styles["overflow"] = "hidden" if node["clipsContent"]
+      end
 
       if node["opacity"] && node["opacity"] < 1
         styles["opacity"] = node["opacity"].round(2).to_s
