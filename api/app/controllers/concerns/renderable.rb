@@ -65,7 +65,7 @@ module Renderable
         <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
         <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
-        <style>#{all_css}</style>
+        <style>body{margin:0}#{all_css}</style>
       </head>
       <body>
         <div id="root"></div>
