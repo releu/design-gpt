@@ -1044,13 +1044,15 @@ module Figma
       referenced_set = @component_sets_by_node_id[component_id]
       if referenced_set
         component_name = to_component_name(referenced_set.name)
-        return "<#{component_name} />"
+        props_string = extract_instance_override_props(node, referenced_set, root_name, css_rules, depth)
+        return "<#{component_name}#{props_string} />"
       end
 
       variant = @variants_by_node_id[component_id]
       if variant
         component_name = to_component_name(variant.component_set.name)
-        return "<#{component_name} />"
+        props_string = extract_instance_override_props(node, variant.component_set, root_name, css_rules, depth)
+        return "<#{component_name}#{props_string} />"
       end
 
       styles = extract_frame_styles(node, false)
@@ -1067,6 +1069,94 @@ module Figma
         children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
         "<div className=\"#{class_name}\">\n#{children_indented}\n#{"  " * (depth + 1)}</div>"
       end
+    end
+
+    def extract_instance_override_props(node, component_set, root_name = nil, css_rules = nil, depth = 0)
+      component_properties = node["componentProperties"]
+      return "" unless component_properties.is_a?(Hash) && component_properties.any?
+
+      prop_definitions = component_set.prop_definitions || {}
+      props_parts = []
+
+      # Build a map from INSTANCE_SWAP prop key to child node for rendering
+      children_by_swap_ref = {}
+      (node["children"] || []).each do |child|
+        ref = child.dig("componentPropertyReferences", "mainComponent")
+        children_by_swap_ref[ref] = child if ref
+      end
+
+      component_properties.each do |key, prop_data|
+        prop_type = prop_data["type"]
+        value = prop_data["value"]
+
+        # Find matching prop definition (strip #N:M suffixes for matching)
+        clean_key = key.gsub(/#[\d:]+$/, "").strip
+        matching_def_key = prop_definitions.keys.find { |dk| dk.gsub(/#[\d:]+$/, "").strip == clean_key }
+        definition = matching_def_key ? prop_definitions[matching_def_key] : nil
+
+        # Skip if value matches default
+        next if definition && definition["defaultValue"].to_s == value.to_s
+
+        prop_name = to_prop_name(clean_key.gsub(/^[\s↳]+/, "").strip)
+
+        case prop_type
+        when "VARIANT"
+          props_parts << "#{prop_name}=\"#{value}\""
+        when "BOOLEAN"
+          props_parts << "#{prop_name}={#{value}}"
+        when "INSTANCE_SWAP"
+          next unless root_name && css_rules
+          # Find the child node that corresponds to this INSTANCE_SWAP prop
+          child_node = children_by_swap_ref[key]
+          next unless child_node
+          child_jsx = render_instance_swap_child(child_node, root_name, css_rules, depth)
+          next if child_jsx.blank?
+          props_parts << "#{prop_name}={#{child_jsx}}"
+        end
+      end
+
+      props_parts.empty? ? "" : " " + props_parts.join(" ")
+    end
+
+    # Render an INSTANCE_SWAP child node as inline JSX.
+    # If the child resolves to a known component, use it; otherwise render as detached.
+    def render_instance_swap_child(child_node, root_name, css_rules, depth)
+      child_component_id = child_node["componentId"]
+      if child_component_id
+        ref_comp = @components_by_node_id[child_component_id]
+        return "<#{to_component_name(ref_comp.name)} />" if ref_comp
+
+        ref_set = @component_sets_by_node_id[child_component_id]
+        if ref_set
+          name = to_component_name(ref_set.name)
+          child_props = extract_instance_override_props(child_node, ref_set, root_name, css_rules, depth)
+          return "<#{name}#{child_props} />"
+        end
+
+        ref_variant = @variants_by_node_id[child_component_id]
+        if ref_variant
+          name = to_component_name(ref_variant.component_set.name)
+          child_props = extract_instance_override_props(child_node, ref_variant.component_set, root_name, css_rules, depth)
+          return "<#{name}#{child_props} />"
+        end
+      end
+
+      # Detached: render children inline
+      children_jsx = (child_node["children"] || []).map do |gc|
+        generate_node(gc, root_name, css_rules, depth + 1)
+      end.join("\n")
+
+      return nil if children_jsx.strip.empty?
+
+      @class_index ||= 0
+      @class_index += 1
+      cls = "#{root_name.downcase.gsub(/[^a-z0-9]/, "")}-swap-#{@class_index}"
+      styles = extract_frame_styles(child_node, false)
+      css_rules[cls] = styles
+
+      indent = "  " * (depth + 2)
+      children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
+      "<div className=\"#{cls}\">#{children_indented}</div>"
     end
 
     def compile_for_browser(react_code, component_name, component_id)
