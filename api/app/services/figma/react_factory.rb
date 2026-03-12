@@ -1088,6 +1088,7 @@ module Figma
         scope_id = "#{component_name.downcase.gsub(/[^a-z0-9]/, "")}v#{idx}"
 
         @current_props = extract_props(prop_definitions)
+        @slot_map = build_slot_map(node, prop_definitions)
 
         collect_nested_instance_props(node)
 

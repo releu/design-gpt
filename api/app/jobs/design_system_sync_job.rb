@@ -13,6 +13,9 @@ class DesignSystemSyncJob < ApplicationJob
       return
     end
 
+    # Clean up leftover files from a previous failed sync at this version
+    ds.figma_files.where(version: new_version).destroy_all
+
     new_files = current_files.map do |ff|
       new_ff = ds.figma_files.create!(
         user: ds.user,

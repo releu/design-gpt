@@ -113,7 +113,11 @@ class JsonToJsx
       if val.start_with?("__id:")
         "{#{val.sub('__id:', '')}}"
       else
-        "\"#{val.gsub('"', '\"')}\""
+        if val.include?('"')
+          "{\"#{val.gsub('\\', '\\\\\\\\').gsub('"', '\\"')}\"}"
+        else
+          "\"#{val}\""
+        end
       end
     when Numeric
       "{#{val}}"

@@ -265,7 +265,7 @@ export default {
 
   &_wide {
     width: 780px;
-    align-self: stretch;
+    max-height: calc(100vh - 80px);
   }
 
   &::-webkit-scrollbar {
