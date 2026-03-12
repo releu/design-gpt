@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_10_000005) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_12_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -105,6 +105,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000005) do
     t.integer "version", default: 1, null: false
     t.string "status", default: "pending"
     t.jsonb "progress", default: {}
+    t.boolean "is_public", default: false, null: false
     t.index ["user_id"], name: "index_design_systems_on_user_id"
   end
 
@@ -154,7 +155,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_10_000005) do
     t.string "figma_file_name"
     t.string "status", default: "pending"
     t.jsonb "progress", default: {}
-    t.boolean "is_public", default: false, null: false
     t.integer "version", default: 1, null: false
     t.bigint "design_system_id"
     t.index ["design_system_id"], name: "index_figma_files_on_design_system_id"

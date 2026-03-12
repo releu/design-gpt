@@ -23,7 +23,7 @@ class DesignSystemSyncJob < ApplicationJob
         figma_url: ff.figma_url,
         figma_file_key: ff.figma_file_key,
         figma_file_name: ff.figma_file_name,
-        is_public: ff.is_public,
+
         version: new_version,
         status: "pending",
         progress: { "started_at" => Time.current.iso8601 }

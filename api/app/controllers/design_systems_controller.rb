@@ -67,7 +67,7 @@ class DesignSystemsController < ApplicationController
   end
 
   def sync
-    ds = find_user_design_system(params[:id])
+    ds = find_syncable_design_system(params[:id])
     new_version = ds.sync_async
     if new_version
       render json: { id: ds.id, status: ds.reload.status, version: new_version, progress: ds.progress }
@@ -88,11 +88,16 @@ class DesignSystemsController < ApplicationController
     current_user.design_systems.find(id)
   end
 
+  def find_syncable_design_system(id)
+    current_user.design_systems.find_by(id: id) ||
+      DesignSystem.where(is_public: true).find(id)
+  end
+
   def ds_params
     if params[:design_system].present?
-      params.require(:design_system).permit(:name, figma_file_ids: [])
+      params.require(:design_system).permit(:name, :is_public, figma_file_ids: [])
     else
-      params.permit(:name, figma_file_ids: [])
+      params.permit(:name, :is_public, figma_file_ids: [])
     end
   end
 end

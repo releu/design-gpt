@@ -68,7 +68,7 @@ class FigmaFilesController < ApplicationController
     render json: {
       id: cl.id,
       name: cl.name,
-      is_public: cl.is_public
+      is_public: cl.design_system&.is_public
     }
   end
 
@@ -76,7 +76,7 @@ class FigmaFilesController < ApplicationController
   # Returns user's own + all public libraries
   def available
     own = current_user.figma_files.to_a
-    public_libs = FigmaFile.where(is_public: true).where.not(user: current_user).to_a
+    public_libs = FigmaFile.joins(:design_system).where(design_systems: { is_public: true }).where.not(user: current_user).to_a
     all_libs = (own + public_libs).uniq
 
     render json: all_libs.map { |cl|
@@ -86,7 +86,7 @@ class FigmaFilesController < ApplicationController
         figma_url: cl.figma_url,
         figma_file_name: cl.figma_file_name,
         status: cl.status,
-        is_public: cl.is_public,
+        is_public: cl.design_system&.is_public,
         is_own: cl.user_id == current_user.id,
         component_sets_count: cl.component_sets.count,
         components_count: cl.components.count
@@ -534,7 +534,7 @@ class FigmaFilesController < ApplicationController
   private
 
   def figma_file_params
-    params.require(:figma_file).permit(:name, :is_public)
+    params.require(:figma_file).permit(:name)
   end
 
   def accessible_libraries
@@ -542,8 +542,9 @@ class FigmaFilesController < ApplicationController
   end
 
   def find_accessible_library(id)
-    # Look up by ID across all versions (not just latest) since sync may be called on any version
-    current_user.figma_files.find(id)
+    # Owner's own files, or files belonging to a public design system
+    current_user.figma_files.find_by(id: id) ||
+      FigmaFile.joins(:design_system).where(design_systems: { is_public: true }).find(id)
   end
 
   def build_component_cards(items_by_file)

@@ -72,16 +72,15 @@ RSpec.describe "Figma Files API", type: :request do
   end
 
   describe "PATCH /api/figma-files/:id" do
-    it "updates name and is_public" do
+    it "updates name" do
       cl = figma_files(:example_lib)
       patch "/api/figma-files/#{cl.id}",
-        params: { figma_file: { name: "Updated Name", is_public: true } },
+        params: { figma_file: { name: "Updated Name" } },
         headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json["name"]).to eq("Updated Name")
-      expect(json["is_public"]).to be true
     end
   end
 
