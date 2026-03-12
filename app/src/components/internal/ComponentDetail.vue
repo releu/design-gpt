@@ -83,6 +83,7 @@
         ref="previewIframe"
         :src="rendererUrl"
         class="ComponentDetail__preview-frame"
+        :style="previewHeight ? { height: previewHeight + 'px' } : {}"
         qa="component-preview-frame"
         @load="onPreviewIframeLoad"
       />
@@ -101,6 +102,7 @@ export default {
   data() {
     return {
       previewReady: false,
+      previewHeight: null,
       selectedProps: {},
     };
   },
@@ -215,6 +217,9 @@ export default {
         this.previewReady = true;
         this.sendPreviewRender();
       }
+      if (event.data?.type === "resize" && event.data.height) {
+        this.previewHeight = event.data.height;
+      }
     },
     onPreviewIframeLoad() {
       this.previewReady = false;
@@ -224,8 +229,9 @@ export default {
       if (!iframe) return;
       const jsx = this.previewJsx;
       if (!jsx) return;
+      const wrappedJsx = `<div style={{padding: '24px', display: 'flex', justifyContent: 'center', boxSizing: 'border-box'}}>${jsx}</div>`;
       try {
-        iframe.contentWindow.postMessage({ type: "render", jsx }, "*");
+        iframe.contentWindow.postMessage({ type: "render", jsx: wrappedJsx }, "*");
       } catch {
         // ignore if iframe not ready
       }
@@ -393,6 +399,7 @@ export default {
 
   &__preview-frame {
     width: 100%;
+    min-height: 100px;
     height: 218px;
     border: none;
     border-radius: 12px;

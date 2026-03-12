@@ -94,6 +94,9 @@ export default {
 
 <style lang="scss">
 .ModuleCode {
+  height: 100%;
+  overflow: hidden;
+
   .cm-editor {
     border: 0;
     width: 100%;

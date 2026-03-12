@@ -89,9 +89,8 @@ export default {
 .Preview {
   width: 100%;
   height: 100%;
-  overflow: hidden;
 
-  &_mobile &__frame {
+  &__frame {
     border: 0;
     margin: 0;
     width: 100%;
@@ -100,21 +99,8 @@ export default {
     overflow: auto;
     background: var(--white);
     border-radius: 0;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  &_desktop &__frame {
-    border: 0;
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    overflow: auto;
-    background: var(--white);
-    border-radius: 0;
+    position: relative;
+    z-index: 1;
 
     &::-webkit-scrollbar {
       display: none;

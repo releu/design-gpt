@@ -54,6 +54,9 @@ export default {
     align-items: center;
     gap: 4px;
     white-space: nowrap;
+    max-width: calc(100% - 72px);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__dropdown {

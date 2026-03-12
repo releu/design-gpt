@@ -16,6 +16,7 @@ module Figma
       @nested_instance_props = {}
       @nested_instance_counters = {}
       @class_index = 0
+      @image_refs = nil
     end
 
     def generate_all
@@ -1163,6 +1164,49 @@ module Figma
       indent = "  " * (depth + 2)
       children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
       "<div className=\"#{cls}\">#{children_indented}</div>"
+    end
+
+    def add_fills(styles, fills)
+      @current_image_fill = nil
+      super
+      if @current_image_fill
+        scale_mode = @current_image_fill["scaleMode"] || "FILL"
+        case scale_mode
+        when "FILL"
+          styles["background-size"] = "cover"
+          styles["background-position"] = "center"
+        when "FIT"
+          styles["background-size"] = "contain"
+          styles["background-position"] = "center"
+          styles["background-repeat"] = "no-repeat"
+        when "STRETCH"
+          styles["background-size"] = "100% 100%"
+        end
+      end
+    end
+
+    def handle_image_fill(fill)
+      image_ref = fill["imageRef"]
+      return nil unless image_ref
+
+      load_image_refs if @image_refs.nil?
+
+      url = @image_refs[image_ref]
+      return "#e0e0e0" unless url
+
+      @current_image_fill = fill
+      "url(#{url})"
+    end
+
+    def load_image_refs
+      @image_refs = {}
+      return unless @figma_file.figma_file_key.present?
+
+      response = @figma.get("/v1/files/#{@figma_file.figma_file_key}/images")
+      @image_refs = response.dig("meta", "images") || {}
+    rescue => e
+      log "Warning: could not fetch image fills: #{e.message}"
+      @image_refs = {}
     end
 
     def compile_for_browser(react_code, component_name, component_id)
