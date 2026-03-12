@@ -1,6 +1,6 @@
 <template>
-  <div :class="mainClasses">
-    <iframe class="Preview__frame" qa="preview-frame" :src="renderer" ref="frame"></iframe>
+  <div :class="mainClasses" :style="wrapperStyle" ref="wrapper">
+    <iframe class="Preview__frame" qa="preview-frame" :src="renderer" :style="iframeStyle" ref="frame"></iframe>
   </div>
 </template>
 
@@ -15,11 +15,33 @@ export default {
   data() {
     return {
       ready: false,
+      contentWidth: null,
+      contentHeight: null,
+      containerWidth: null,
     };
   },
   computed: {
     mainClasses() {
       return [`Preview`, `Preview_${this.layout}`];
+    },
+    scaleFactor() {
+      if (!this.contentWidth || !this.containerWidth) return 1;
+      return Math.min(1, this.containerWidth / this.contentWidth);
+    },
+    iframeStyle() {
+      if (!this.contentWidth || this.scaleFactor === 1) return {};
+      return {
+        width: this.contentWidth + "px",
+        height: this.contentHeight + "px",
+        transform: `scale(${this.scaleFactor})`,
+        transformOrigin: "top left",
+      };
+    },
+    wrapperStyle() {
+      if (!this.contentHeight || this.scaleFactor === 1) return {};
+      return {
+        height: Math.ceil(this.contentHeight * this.scaleFactor) + "px",
+      };
     },
   },
   methods: {
@@ -40,11 +62,21 @@ export default {
         this.$emit("inited", e.data);
         this.renderCode();
       }
+      if (e.data && e.data.type === "resize") {
+        this.contentWidth = e.data.width;
+        this.contentHeight = e.data.height;
+      }
     };
     window.addEventListener("message", this._onMessage);
+
+    this._resizeObserver = new ResizeObserver((entries) => {
+      this.containerWidth = entries[0].contentRect.width;
+    });
+    this._resizeObserver.observe(this.$refs.wrapper);
   },
   beforeUnmount() {
     window.removeEventListener("message", this._onMessage);
+    this._resizeObserver?.disconnect();
   },
   watch: {
     code: {
@@ -61,6 +93,7 @@ export default {
 .Preview {
   width: 100%;
   height: 100%;
+  overflow: hidden;
 
   &_mobile &__frame {
     border: 0;

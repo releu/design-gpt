@@ -120,6 +120,14 @@ module Renderable
               var compiled = Babel.transform(e.data.jsx, { presets: ['react'] }).code.replace(/;\\s*$/, '');
               var element = new Function('React', 'return (' + compiled + ')')(React);
               root.render(element);
+              requestAnimationFrame(function() {
+                setTimeout(function() {
+                  var root = document.getElementById('root');
+                  var h = root.scrollHeight;
+                  var w = root.scrollWidth;
+                  window.parent.postMessage({ type: 'resize', height: h, width: w }, '*');
+                }, 50);
+              });
             } catch (err) {
               console.warn('[renderer] Render error:', String(err));
               root.render(React.createElement('pre', {style: {color: 'red'}, className: 'render-error', 'data-error': 'true'}, String(err)));
