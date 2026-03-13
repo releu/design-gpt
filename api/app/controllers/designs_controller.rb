@@ -151,7 +151,8 @@ class DesignsController < ApplicationController
   def resolve_design_system
     ds_id = params.dig(:design, :design_system_id)
     return nil unless ds_id.present?
-    current_user.design_systems.find(ds_id)
+    current_user.design_systems.find_by(id: ds_id) ||
+      DesignSystem.where(is_public: true).find(ds_id)
   rescue ActiveRecord::RecordNotFound
     nil
   end
