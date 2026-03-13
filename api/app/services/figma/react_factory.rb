@@ -286,9 +286,16 @@ module Figma
           end
         end
 
-        if prop_type == "INSTANCE_SWAP" && default_value.present?
-          component_set = find_component_set_by_any_node_id(default_value)
-          default_value = component_set ? to_component_name(component_set.name) : nil
+        if prop_type == "INSTANCE_SWAP"
+          preferred = definition["preferredValues"] || []
+          if preferred.any? && preferred.all? { |pv| image_component_keys.include?(pv["key"]) }
+            # Image INSTANCE_SWAP — treat as TEXT prop (prompt string)
+            prop_type = "TEXT"
+            default_value = ""
+          elsif default_value.present?
+            component_set = find_component_set_by_any_node_id(default_value)
+            default_value = component_set ? to_component_name(component_set.name) : nil
+          end
         end
 
         props[key] = {
@@ -339,9 +346,37 @@ module Figma
     def slot_instance?(node)
       ref = node["componentPropertyReferences"]&.dig("mainComponent")
       return false unless ref
+      return false if image_swap_instance?(node)
 
       defn = find_prop_definition(ref)
       defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+    end
+
+    # Returns true if this INSTANCE node is bound to an INSTANCE_SWAP prop
+    # whose preferredValues all point to #image components.
+    def image_swap_instance?(node)
+      ref = node["componentPropertyReferences"]&.dig("mainComponent")
+      return false unless ref
+
+      defn = find_prop_definition(ref)
+      return false unless defn&.dig("type") == "INSTANCE_SWAP"
+
+      preferred = defn["preferredValues"] || []
+      preferred.any? && preferred.all? { |pv| image_component_keys.include?(pv["key"]) }
+    end
+
+    def image_component_keys
+      @image_component_keys ||= begin
+        keys = Set.new
+        @figma_file.component_sets.select(&:is_image).each do |cs|
+          keys << cs.component_key if cs.component_key
+          cs.variants.each { |v| keys << v.component_key if v.component_key }
+        end
+        @figma_file.components.select(&:is_image).each do |c|
+          keys << c.component_key if c.component_key
+        end
+        keys
+      end
     end
 
     # Pre-scan the component tree to build a map of node IDs to slot prop names.
@@ -360,7 +395,11 @@ module Figma
           if ref
             defn = prop_definitions[ref] || prop_definitions[strip_ref_suffix(ref)]
             if defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
-              entries << { ref: ref, node_id: n["id"] }
+              # Skip INSTANCE_SWAP props that point to #image components
+              preferred = defn["preferredValues"] || []
+              unless preferred.all? { |pv| image_component_keys.include?(pv["key"]) }
+                entries << { ref: ref, node_id: n["id"] }
+              end
             end
           end
         end
@@ -566,6 +605,13 @@ module Figma
               slot_name = @slot_map[node["id"]] || "children"
               "{props.#{slot_name}}"
             end
+          elsif image_swap_instance?(node)
+            ref = node["componentPropertyReferences"]["mainComponent"]
+            prop_name = to_prop_name(strip_ref_suffix(ref))
+            styles = extract_frame_styles(node, false) rescue {}
+            css_rules[class_name] = styles if styles.any?
+            wrap_class = styles.any? ? " className=\"#{class_name}\"" : ""
+            "<img#{wrap_class} src={props.#{prop_name} ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(props.#{prop_name})}` : ''} style={{width: '100%', height: '100%', objectFit: 'cover'}} />"
           elsif slot_instance?(node)
             @has_slot = true
             slot_name = @slot_map[node["id"]] || "children"

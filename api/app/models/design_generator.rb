@@ -122,7 +122,7 @@ class DesignGenerator
       when "INSTANCE_SWAP"
         preferred = prop_def["preferredValues"] || []
         if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
-          props[camel_name] = { type: "string" }
+          props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
         end
       end
@@ -187,7 +187,7 @@ class DesignGenerator
       when "INSTANCE_SWAP"
         preferred = prop_def["preferredValues"] || []
         if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
-          props[camel_name] = { type: "string" }
+          props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
         end
       end
