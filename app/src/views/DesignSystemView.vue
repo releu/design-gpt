@@ -7,7 +7,7 @@
 
     <!-- Syncing: compact card with progress bar -->
     <div v-else-if="syncing" class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
-      <div class="ModuleDesignSystem__title">syncing</div>
+      <div class="ModuleDesignSystem__title">syncing...</div>
       <div class="ModuleDesignSystem__importing" qa="ds-box">
         <div class="ModuleDesignSystem__importing-header">
           <span class="ModuleDesignSystem__importing-desc">
