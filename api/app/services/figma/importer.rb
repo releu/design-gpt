@@ -31,10 +31,13 @@ module Figma
       # 3. Build key → name map for resolving preferredValues
       key_to_name = build_key_to_name_map(file)
 
+      # 3b. Build set of component keys that are #image components
+      image_keys = build_image_component_keys(component_sets_data, standalone_data)
+
       # 4. Enrich with full JSON from document tree
       node_index = {}
       build_node_index(document, node_index)
-      enrich(component_sets_data, standalone_data, node_index, key_to_name)
+      enrich(component_sets_data, standalone_data, node_index, key_to_name, image_keys)
 
       # 5. Filter empties
       component_sets_data.reject! { |_, data| empty_component_set?(data) }
@@ -97,7 +100,7 @@ module Figma
       [component_sets, standalone_components]
     end
 
-    def enrich(component_sets, standalone_components, node_index, key_to_name = {})
+    def enrich(component_sets, standalone_components, node_index, key_to_name = {}, image_keys = Set.new)
       log "Enriching with full structure..."
 
       component_sets.each do |node_id, data|
@@ -106,8 +109,9 @@ module Figma
 
         data[:prop_definitions] = strip_figma_id_suffixes(set_node["componentPropertyDefinitions"] || {})
         data[:figma_json] = set_node
-        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, set_node)
+        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, set_node, image_keys)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
+        data[:is_image] = data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
 
         default_variant_id = find_default_variant_id(set_node, data[:prop_definitions])
 
@@ -130,8 +134,9 @@ module Figma
         data[:prop_definitions] = strip_figma_id_suffixes(comp_node["componentPropertyDefinitions"] || {})
         # Store raw figma_json as-is
         data[:figma_json] = comp_node
-        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, comp_node)
+        data[:slots] = extract_slots(data[:prop_definitions], key_to_name, comp_node, image_keys)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
+        data[:is_image] = data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
       end
     end
 
@@ -175,6 +180,22 @@ module Figma
       defs.transform_keys { |k| k.gsub(/#[\d:]+$/, "").strip }
     end
 
+    def build_image_component_keys(component_sets_data, standalone_data)
+      keys = Set.new
+      component_sets_data.each do |_, data|
+        if data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
+          keys << data[:component_key] if data[:component_key]
+          data[:variants]&.each { |_, v| keys << v[:component_key] if v[:component_key] }
+        end
+      end
+      standalone_data.each do |_, data|
+        if data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
+          keys << data[:component_key] if data[:component_key]
+        end
+      end
+      keys
+    end
+
     def build_key_to_name_map(file)
       map = {}
       (file["componentSets"] || {}).each { |_, meta| map[meta["key"]] = meta["name"] if meta["key"] }
@@ -182,7 +203,7 @@ module Figma
       map
     end
 
-    def extract_slots(prop_defs, key_to_name, node = nil)
+    def extract_slots(prop_defs, key_to_name, node = nil, image_keys = Set.new)
       slots = []
 
       # 1. Check native Figma Slots API first
@@ -190,6 +211,8 @@ module Figma
         node["slots"].each do |slot|
           name = slot["name"].to_s.presence || "children"
           preferred = slot["preferredValues"] || []
+          # Skip slots where all preferred values are #image components
+          next if preferred.any? && preferred.all? { |pv| image_keys.include?(pv["key"]) }
           children = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
           slots << { "name" => name, "allowed_children" => children }
         end
@@ -202,6 +225,8 @@ module Figma
       slot_props = prop_defs.select { |_, d| d["type"] == "SLOT" || d["type"] == "INSTANCE_SWAP" }
       slot_props.each do |prop_key, definition|
         preferred = definition["preferredValues"] || []
+        # Skip INSTANCE_SWAP props where all preferred values are #image components
+        next if preferred.any? && preferred.all? { |pv| image_keys.include?(pv["key"]) }
         children = preferred.filter_map { |pv| key_to_name[pv["key"]] }.uniq
         next unless children.any?
 
@@ -269,6 +294,7 @@ module Figma
           prop_definitions: data[:prop_definitions] || {},
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
+          is_image: data[:is_image] || false,
           component_key: data[:component_key]
         }
         if data[:invalid]
@@ -325,6 +351,7 @@ module Figma
           figma_file_name: @file_name,
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
+          is_image: data[:is_image] || false,
           component_key: data[:component_key]
         }
         if data[:invalid]

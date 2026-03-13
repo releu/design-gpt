@@ -80,6 +80,14 @@ module Figma
 
       component_name = to_component_name(component_set.name)
 
+      if component_set.is_image
+        code = generate_image_component_code(component_name)
+        compiled_code = compile_for_browser(code, component_name, "cs_#{component_set.id}")
+        @generated[component_set.node_id] = { name: component_name, code: code, compiled_code: compiled_code, node_id: component_set.node_id, type: :component_set }
+        default_variant.update!(react_code: code, react_code_compiled: compiled_code)
+        return @generated[component_set.node_id]
+      end
+
       normalized_name = normalize_icon_name(component_set.name)
       svg_content = @svg_assets_by_name[normalized_name]
 
@@ -149,6 +157,14 @@ module Figma
 
       component_name = to_component_name(component.name)
 
+      if component.is_image
+        code = generate_image_component_code(component_name)
+        compiled_code = compile_for_browser(code, component_name, "c_#{component.id}")
+        @generated[component.node_id] = { name: component_name, code: code, compiled_code: compiled_code, node_id: component.node_id }
+        component.update!(react_code: code, react_code_compiled: compiled_code)
+        return @generated[component.node_id]
+      end
+
       node = if figma["type"] == "COMPONENT_SET"
         default_variant_id = figma["defaultVariantId"]
         default_variant = (figma["children"] || []).find { |c| c["id"] == default_variant_id }
@@ -194,6 +210,28 @@ module Figma
     def next_class_index
       @class_index += 1
       @class_index
+    end
+
+    def generate_image_component_code(component_name)
+      <<~CODE
+        import React from 'react';
+
+        export function #{component_name}({ prompt, ...props }) {
+          const src = prompt
+            ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(prompt)}`
+            : '';
+          return (
+            <img
+              data-component="#{component_name}"
+              src={src}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              {...props}
+            />
+          );
+        }
+
+        export default #{component_name};
+      CODE
     end
 
     def generate_svg_component_code(component_name, svg_content)

@@ -62,12 +62,14 @@ class DesignGenerator
     defs = {}
 
     eligible_component_sets.each do |cs|
+      next if cs.is_image
       name = to_component_name(cs.name)
       next unless reachable_names.include?(name)
       defs[name] = build_component_set_def(cs, name)
     end
 
     eligible_standalone_components.each do |comp|
+      next if comp.is_image
       name = to_component_name(comp.name)
       next unless reachable_names.include?(name)
       defs[name] = build_standalone_component_def(comp, name)
@@ -117,8 +119,13 @@ class DesignGenerator
       when "BOOLEAN"
         props[camel_name] = { type: "boolean" }
         required << camel_name
+      when "INSTANCE_SWAP"
+        preferred = prop_def["preferredValues"] || []
+        if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
+          props[camel_name] = { type: "string" }
+          required << camel_name
+        end
       end
-      # Skip INSTANCE_SWAP and other types
     end
 
     slots = cs.slots || []
@@ -177,6 +184,12 @@ class DesignGenerator
       when "BOOLEAN"
         props[camel_name] = { type: "boolean" }
         required << camel_name
+      when "INSTANCE_SWAP"
+        preferred = prop_def["preferredValues"] || []
+        if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
+          props[camel_name] = { type: "string" }
+          required << camel_name
+        end
       end
     end
 
@@ -217,6 +230,20 @@ class DesignGenerator
     component_set.variants.map { |v|
       v.variant_properties[prop_name.downcase]
     }.compact.uniq
+  end
+
+  def image_component_keys
+    @image_component_keys ||= begin
+      keys = Set.new
+      eligible_component_sets.select(&:is_image).each do |cs|
+        keys << cs.component_key if cs.component_key
+        cs.variants.each { |v| keys << v.component_key if v.component_key }
+      end
+      eligible_standalone_components.select(&:is_image).each do |comp|
+        keys << comp.component_key if comp.component_key
+      end
+      keys
+    end
   end
 
   def eligible_component_sets

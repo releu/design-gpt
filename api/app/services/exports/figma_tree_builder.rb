@@ -62,13 +62,38 @@ module Exports
       prop_defs = record.respond_to?(:prop_definitions) ? record.prop_definitions : {}
       props = {}
       (prop_defs || {}).each do |prop_name, prop_def|
-        next unless prop_def["type"] == type
-
-        camel = to_prop_name(prop_name)
-        value = node[camel]
-        props[prop_name] = value unless value.nil?
+        if prop_def["type"] == type
+          camel = to_prop_name(prop_name)
+          value = node[camel]
+          props[prop_name] = value unless value.nil?
+        elsif type == "TEXT" && prop_def["type"] == "INSTANCE_SWAP"
+          # Image prompt props: INSTANCE_SWAP pointing to #image components
+          preferred = prop_def["preferredValues"] || []
+          if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
+            camel = to_prop_name(prop_name)
+            value = node[camel]
+            props[prop_name] = value unless value.nil?
+          end
+        end
       end
       props
+    end
+
+    def image_component_keys
+      @image_component_keys ||= begin
+        keys = Set.new
+        figma_files = @design.design_system&.current_figma_files || []
+        figma_files.each do |ff|
+          ff.component_sets.select(&:is_image).each do |cs|
+            keys << cs.component_key if cs.component_key
+            cs.variants.each { |v| keys << v.component_key if v.component_key }
+          end
+          ff.components.select(&:is_image).each do |comp|
+            keys << comp.component_key if comp.component_key
+          end
+        end
+        keys
+      end
     end
 
     def build_component_index

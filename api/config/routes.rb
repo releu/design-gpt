@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   scope :api do
     resources :images, :only => :index
+    get "images/render", to: "images#render_image"
 
     resources :tasks, :only => [:show, :update] do
       get :next, :on => :collection

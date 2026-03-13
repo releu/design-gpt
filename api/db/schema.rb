@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_13_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_13_121628) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -42,6 +42,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_13_000001) do
     t.string "status", default: "pending"
     t.text "error_message"
     t.string "component_key"
+    t.boolean "is_image", default: false, null: false
     t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
     t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -98,6 +99,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_13_000001) do
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
     t.string "component_key"
+    t.boolean "is_image", default: false, null: false
   end
 
   create_table "design_systems", force: :cascade do |t|
