@@ -118,6 +118,28 @@ class Design < ApplicationRecord
   private
 
   def set_default_name
-    self.name ||= prompt&.truncate(60) || "Untitled Design"
+    self.name ||= generate_short_name || prompt&.truncate(60) || "Untitled Design"
+  end
+
+  def generate_short_name
+    return nil if prompt.blank?
+
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    res = HTTP
+      .auth("Bearer #{ENV.fetch('OPENAI_API_KEY')}")
+      .post("https://api.openai.com/v1/responses", json: {
+        model: "gpt-4.1-nano",
+        input: "Describe this design request in 24 characters or less. Return only the short name, nothing else.\n\nRequest: #{prompt}"
+      }, ssl_context: ctx)
+      .body.to_s
+
+    parsed = JSON.parse(res)
+    text = parsed.dig("output", 0, "content", 0, "text")
+    text&.strip&.truncate(24) || nil
+  rescue => e
+    Rails.logger.warn("Short name generation failed: #{e.message}")
+    nil
   end
 end

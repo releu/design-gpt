@@ -2,13 +2,13 @@
   <div class="ModuleContentDesignSystem" qa="library-selector">
     <div class="ModuleContentDesignSystem__list">
       <div
-        :class="['ModuleContentDesignSystem__item', { 'ModuleContentDesignSystem__item_selected': modelValue === lib.id }]"
+        :class="['ModuleContentDesignSystem__item', { 'ModuleContentDesignSystem__item_selected': String(modelValue) === String(lib.id) }]"
         v-for="lib in fileList"
         :key="lib.id"
         @click="$emit('update:modelValue', lib.id)"
         qa="library-item"
       >
-        <div class="ModuleContentDesignSystem__item-name" qa="library-item-name">{{ lib.name || 'Unnamed' }}</div>
+        <div class="ModuleContentDesignSystem__item-name" qa="library-item-name"><span class="ModuleContentDesignSystem__item-prefix">{{ lib.is_public ? 'common' : lib.owner_name }} / </span>{{ lib.name || 'Unnamed' }}</div>
         <div class="ModuleContentDesignSystem__item-browse" qa="library-browse-btn" @click.stop="openDesignSystem(lib)">edit</div>
       </div>
     </div>
@@ -73,6 +73,10 @@ export default {
 
     &_selected {
       background: var(--fill);
+    }
+
+    &-prefix {
+      color: var(--darkgray);
     }
 
     &-name {

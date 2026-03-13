@@ -42,7 +42,7 @@ class DesignsController < ApplicationController
 
   def show
     design = find_accessible_design(params[:id])
-    render json: design.to_frontend_json
+    render json: design.to_frontend_json.merge(is_owner: design.user_id == current_user.id)
   end
 
   def update
@@ -58,7 +58,7 @@ class DesignsController < ApplicationController
   end
 
   def improve
-    design = find_accessible_design(params[:design_id])
+    design = find_user_design(params[:design_id])
 
     comment = params[:comment] || params[:message]
     if params[:messages].present?
@@ -72,7 +72,7 @@ class DesignsController < ApplicationController
   end
 
   def reset
-    design = find_accessible_design(params[:id])
+    design = find_user_design(params[:id])
     iterations = design.iterations.order(:id)
 
     if iterations.count <= 1
@@ -169,6 +169,6 @@ class DesignsController < ApplicationController
   end
 
   def accessible_designs
-    current_user.designs
+    Design.all
   end
 end

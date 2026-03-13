@@ -13,6 +13,7 @@ import iconLink from "../../assets/icons/type=link.png";
 import iconRefresh from "../../assets/icons/type=refresh.png";
 import iconNew from "../../assets/icons/type=new.png";
 import iconXmark from "../../assets/icons/type=xmark.png";
+import iconAdult from "../../assets/icons/type=adult.png";
 
 const icons = {
   down: iconDown,
@@ -25,6 +26,7 @@ const icons = {
   refresh: iconRefresh,
   new: iconNew,
   xmark: iconXmark,
+  adult: iconAdult,
 };
 
 export default {

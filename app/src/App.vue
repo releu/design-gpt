@@ -1,6 +1,10 @@
 <template>
   <div class="App" qa="app">
-    <template v-if="authorized">
+    <template v-if="isPublicRoute">
+      <RouterView />
+    </template>
+
+    <template v-else-if="authorized">
       <RouterView />
     </template>
 
@@ -48,6 +52,9 @@ export default {
     },
     authError() {
       return unrefMaybe(this.$auth0?.error);
+    },
+    isPublicRoute() {
+      return this.$route?.path?.startsWith("/share/");
     },
   },
 

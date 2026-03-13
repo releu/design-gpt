@@ -16,7 +16,7 @@
 
     <template #prompt>
       <Module label="prompt">
-        <ModuleContentPrompt v-model="prompt" placeholder="describe what you want to create" />
+        <ModuleContentPrompt v-model="prompt" placeholder="describe what you want to create" autofocus />
       </Module>
     </template>
 
@@ -41,7 +41,7 @@
     <template #preview>
       <div class="Layout__preview-panel Layout__preview-panel_mobile" qa="preview-panel-mobile">
         <div class="Layout__preview-empty" qa="preview-empty">
-          <div class="Layout__preview-empty-text">preview</div>
+          <div class="Layout__preview-empty-text">design</div>
         </div>
       </div>
     </template>
@@ -125,7 +125,8 @@ export default {
       });
       const data = res.ok ? await res.json() : [];
       this.designSystems = data;
-      if (!this.currentDesignSystemId && data.length > 0) {
+      const ids = data.map(d => String(d.id));
+      if ((!this.currentDesignSystemId || !ids.includes(String(this.currentDesignSystemId))) && data.length > 0) {
         this.currentDesignSystemId = data[0].id;
       }
     },

@@ -17,7 +17,7 @@
         </component>
         <slot name="menu-extra" />
       </div>
-      <div class="ModuleDesignSystem__menu-group" v-for="lib in figmaFiles" :key="lib.id">
+      <div class="ModuleDesignSystem__menu-group" v-for="lib in sortedFigmaFiles" :key="lib.id">
         <div class="ModuleDesignSystem__menu-subtitle" qa="ds-menu-subtitle">{{ lib.name }}</div>
         <div class="ModuleDesignSystem__menu-items">
           <component
@@ -51,7 +51,7 @@
             <div class="ModuleDesignSystem__overview-files">
               <a
                 class="ModuleDesignSystem__overview-file-row"
-                v-for="lib in figmaFiles"
+                v-for="lib in sortedFigmaFiles"
                 :key="lib.id"
                 :href="lib.figma_url"
                 target="_blank"
@@ -142,6 +142,14 @@ export default {
     };
   },
   computed: {
+    sortedFigmaFiles() {
+      return [...this.figmaFiles]
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+        .map((lib) => ({
+          ...lib,
+          components: [...lib.components].sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+        }));
+    },
     useRouter() {
       return !!this.routeNames;
     },

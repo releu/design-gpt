@@ -11,7 +11,8 @@
           :class="['ModuleChat__message', `ModuleChat__message_${msg.author}`]"
           :qa="msg.author === 'user' ? 'chat-message-user' : 'chat-message-ai'"
         >
-          <div class="ModuleChat__message-body" v-html="msg.html || msg.content || msg.body || ''" />
+          <div class="ModuleChat__message-body" v-if="isThinking(msg)">{{ thinkingText }}</div>
+          <div class="ModuleChat__message-body" v-else v-html="msg.html || msg.content || msg.body || ''" />
           <div
             v-if="msg.author === 'designer' && msg.iteration_id"
             class="ModuleChat__reset-btn"
@@ -27,7 +28,7 @@
         qa="chat-input"
         v-model="inputText"
         placeholder="enter text..."
-        :disabled="sending || generating"
+        :disabled="sending || generating || readonly"
         @keydown="onKeydown"
       />
       <button
@@ -45,6 +46,31 @@
 <script>
 import { useAuth0 } from "@auth0/auth0-vue";
 
+const thinkingPhrases = [
+  "creating...",
+  "thinking...",
+  "designing...",
+  "sketching ideas...",
+  "laying out components...",
+  "picking colors...",
+  "arranging pixels...",
+  "composing layout...",
+  "wiring up props...",
+  "generating markup...",
+  "iterating on design...",
+  "refining details...",
+  "building structure...",
+  "connecting pieces...",
+  "polishing edges...",
+  "shaping the view...",
+  "assembling blocks...",
+  "tuning spacing...",
+  "rendering concept...",
+  "crafting interface...",
+  "aligning elements...",
+  "mapping hierarchy...",
+];
+
 export default {
   name: "ModuleChat",
   setup() {
@@ -58,17 +84,29 @@ export default {
       type: Boolean,
       default: false,
     },
+    readonly: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["sent", "reset"],
   data() {
     return {
       inputText: sessionStorage.getItem(`chat:${this.designId}:draft`) || "",
       sending: false,
+      thinkingIndex: Math.floor(Math.random() * thinkingPhrases.length),
+      thinkingTimer: null,
     };
   },
   computed: {
     canSend() {
-      return this.inputText.trim().length > 0 && !this.sending && !this.generating;
+      return this.inputText.trim().length > 0 && !this.sending && !this.generating && !this.readonly;
+    },
+    thinkingText() {
+      return thinkingPhrases[this.thinkingIndex];
+    },
+    hasThinkingMessage() {
+      return (this.messages || []).some((m) => this.isThinking(m));
     },
   },
   methods: {
@@ -81,6 +119,25 @@ export default {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         this.send();
+      }
+    },
+    isThinking(msg) {
+      return msg.author === "designer" && msg.state === "thinking" && !msg.message;
+    },
+    startThinkingCycle() {
+      if (this.thinkingTimer) return;
+      this.thinkingTimer = setInterval(() => {
+        let next;
+        do {
+          next = Math.floor(Math.random() * thinkingPhrases.length);
+        } while (next === this.thinkingIndex);
+        this.thinkingIndex = next;
+      }, 10000);
+    },
+    stopThinkingCycle() {
+      if (this.thinkingTimer) {
+        clearInterval(this.thinkingTimer);
+        this.thinkingTimer = null;
       }
     },
     async send() {
@@ -105,11 +162,21 @@ export default {
       }
     },
   },
+  mounted() {
+    if (this.hasThinkingMessage) this.startThinkingCycle();
+  },
+  beforeUnmount() {
+    this.stopThinkingCycle();
+  },
   watch: {
     inputText(val) {
       const key = `chat:${this.designId}:draft`;
       if (val) sessionStorage.setItem(key, val);
       else sessionStorage.removeItem(key);
+    },
+    hasThinkingMessage(val) {
+      if (val) this.startThinkingCycle();
+      else this.stopThinkingCycle();
     },
     messages() {
       this.$nextTick(() => {

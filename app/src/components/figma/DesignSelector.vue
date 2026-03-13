@@ -1,14 +1,14 @@
 <template>
   <div class="DesignSelector">
     <div class="DesignSelector__label">
-      <template v-if="displayLabel">{{ displayLabel }}</template>
+      <template v-if="displayLabel"><Icon type="adult" /> {{ displayLabel }}</template>
       <template v-else><Icon type="new" /> new design</template>
     </div>
     <Icon class="DesignSelector__dropdown" type="down" />
     <select qa="design-selector" :value="modelValue" @change="$emit('update:modelValue', $event.target.value)">
       <option value="new">(+) new design</option>
       <option v-for="d in designs" :key="d.id" :value="String(d.id)">
-        {{ d.name || `design #${d.id}` }}
+        design #{{ d.id }}. {{ d.name || 'untitled' }}
       </option>
     </select>
   </div>
@@ -49,7 +49,7 @@ export default {
   &__label {
     position: absolute;
     left: 24px;
-    top: 15px;
+    top: 12px;
     display: flex;
     align-items: center;
     gap: 4px;

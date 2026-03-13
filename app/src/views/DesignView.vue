@@ -6,7 +6,7 @@
         v-if="design"
         :designs="allDesigns"
         :modelValue="id"
-        :displayLabel="design.name || `design #${id}`"
+        :displayLabel="`design #${id}`"
         @update:modelValue="onDesignSelect"
       />
     </template>
@@ -17,11 +17,12 @@
     <!-- More button -->
     <template #more-button>
       <MoreButton @click.stop="showExportMenu = !showExportMenu">
-        ...
+        <Icon :type="showExportMenu ? 'up' : 'down'" />
         <div v-if="showExportMenu" class="DesignView__export-dropdown" qa="export-menu">
           <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">design system</a>
           <a v-if="code" class="DesignView__export-item" qa="export-react" @click="exportReact">download react project</a>
           <a v-if="code" class="DesignView__export-item" qa="export-figma" @click="exportFigma">export to figma</a>
+          <a v-if="code" class="DesignView__export-item" qa="share-link" @click="openShareLink">share link</a>
         </div>
       </MoreButton>
     </template>
@@ -37,6 +38,7 @@
         :messages="design ? design.chat : []"
         :designId="id"
         :generating="design && design.status === 'generating'"
+        :readonly="design && !design.is_owner"
         @sent="fetchDesign"
         @reset="resetToIteration"
       />
@@ -62,8 +64,11 @@
         <div class="Layout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
           <div class="Layout__preview-empty-text">Generation failed. Send a new message to retry.</div>
         </div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-else-if="design && design.status === 'generating' && !code">
+          <ProgressEmoji />
+        </div>
         <div class="Layout__preview-empty" qa="preview-empty" v-else-if="!code">
-          <div class="Layout__preview-empty-text">preview</div>
+          <div class="Layout__preview-empty-text">design</div>
         </div>
         <Preview
           v-else
@@ -80,8 +85,11 @@
         <div class="Layout__preview-empty" qa="preview-empty" v-if="design && design.status === 'error'">
           <div class="Layout__preview-empty-text">Generation failed. Send a new message to retry.</div>
         </div>
+        <div class="Layout__preview-empty" qa="preview-empty" v-else-if="design && design.status === 'generating' && !code">
+          <ProgressEmoji />
+        </div>
         <div class="Layout__preview-empty" qa="preview-empty" v-else-if="!code">
-          <div class="Layout__preview-empty-text">preview</div>
+          <div class="Layout__preview-empty-text">design</div>
         </div>
         <Preview
           v-else
@@ -131,6 +139,14 @@ export default {
       if (this.viewMode === "desktop") return "desktop";
       if (this.viewMode === "code") return "code";
       return "phone";
+    },
+    shareCode() {
+      if (!this.design) return null;
+      const iters = this.design.iterations || [];
+      for (let i = iters.length - 1; i >= 0; i--) {
+        if (iters[i].jsx && iters[i].share_code) return iters[i].share_code;
+      }
+      return null;
     },
     previewRenderer() {
       if (this.currentIterationId) {
@@ -220,6 +236,12 @@ export default {
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
       window.open(`/api/designs/${this.id}/export_image?token=${token}`);
+    },
+    openShareLink() {
+      this.showExportMenu = false;
+      if (this.shareCode) {
+        window.open(`/share/${this.shareCode}`, '_blank');
+      }
     },
     exportFigma() {
       this.showExportMenu = false;

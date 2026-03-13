@@ -14,6 +14,19 @@ class IterationsController < ApplicationController
     render html: html.html_safe, layout: false
   end
 
+  def shared
+    iteration = Iteration.find_by!(share_code: params[:share_code])
+    design = iteration.design
+
+    render json: {
+      id: design.id,
+      name: design.name,
+      share_code: iteration.share_code,
+      iteration_id: iteration.id,
+      jsx: iteration.jsx
+    }
+  end
+
   def export_figma
     iteration = Iteration.find_by!(share_code: params[:share_code])
 

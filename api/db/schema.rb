@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_12_110000) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -38,9 +38,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_110000) do
     t.string "figma_file_name"
     t.jsonb "prop_definitions", default: {}
     t.boolean "is_root", default: false, null: false
+    t.jsonb "slots", default: []
     t.string "status", default: "pending"
     t.text "error_message"
-    t.jsonb "slots", default: []
     t.string "component_key"
     t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
     t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
@@ -91,12 +91,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_12_110000) do
     t.text "error_message"
     t.boolean "enabled", default: true
     t.boolean "is_root", default: false, null: false
+    t.jsonb "slots", default: []
     t.string "diff_image_path"
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
     t.string "source", default: "figma", null: false
     t.jsonb "prop_types", default: {}
-    t.jsonb "slots", default: []
     t.string "component_key"
   end
 

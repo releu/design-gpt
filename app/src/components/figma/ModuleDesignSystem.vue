@@ -2,7 +2,7 @@
   <Layout layout="overlay" :hideClose="phase === 'importing'" @close="$emit('close')">
     <template #content>
     <div class="ModuleDesignSystem" qa="ds-modal" data-testid="modal-card">
-      <div class="ModuleDesignSystem__title">new design system</div>
+      <div class="ModuleDesignSystem__title">creating new design system</div>
 
       <!-- Phase: add — name + URLs + Import -->
       <template v-if="phase === 'add'">

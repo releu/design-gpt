@@ -1,10 +1,12 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import HomeView from "../views/HomeView.vue";
+import SystemComponentView from "../views/SystemComponentView.vue";
 import DesignView from "../views/DesignView.vue";
 import DesignSystemView from "../views/DesignSystemView.vue";
 import TestCaseView from "../views/TestCaseView.vue";
 import FigmaExportView from "../views/FigmaExportView.vue";
+import SharedDesignView from "../views/SharedDesignView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,6 +50,18 @@ const router = createRouter({
       path: "/designs/:id/iterations/:iterationId/figma",
       name: "figma-export",
       component: FigmaExportView,
+      props: true,
+    },
+    {
+      path: "/share/:shareCode",
+      name: "shared-design",
+      component: SharedDesignView,
+      props: true,
+    },
+    {
+      path: "/system/components/:name",
+      name: "system-component",
+      component: SystemComponentView,
       props: true,
     },
     {

@@ -14,8 +14,12 @@ export default {
   props: {
     modelValue: { type: String, default: "" },
     placeholder: { type: String, default: "type..." },
+    autofocus: { type: Boolean, default: false },
   },
   emits: ["update:modelValue"],
+  mounted() {
+    if (this.autofocus) this.$el.focus();
+  },
 };
 </script>
 

@@ -10,12 +10,16 @@ class DesignSystemsController < ApplicationController
   end
 
   def index
-    design_systems = current_user.design_systems.order(created_at: :desc)
+    own = current_user.design_systems.order(created_at: :desc)
+    public_ds = DesignSystem.where(is_public: true).where.not(user_id: current_user.id).order(created_at: :desc)
+    design_systems = own + public_ds
     render json: design_systems.map { |ds|
       libs = ds.current_figma_files
       {
         id: ds.id,
         name: ds.name,
+        is_public: ds.is_public,
+        owner_name: ds.user&.username,
         version: ds.version,
         status: ds.status,
         figma_file_ids: libs.pluck(:id),
