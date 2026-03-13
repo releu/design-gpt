@@ -157,9 +157,8 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    cursor: grab;
     transition: transform 200ms ease;
-    cursor: hand;
 
     &:hover {
       transform: scale(1.03);

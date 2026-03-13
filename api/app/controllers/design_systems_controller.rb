@@ -19,7 +19,7 @@ class DesignSystemsController < ApplicationController
         id: ds.id,
         name: ds.name,
         is_public: ds.is_public,
-        owner_name: ds.user&.username,
+        owner_name: ds.user&.email&.split("@")&.first || ds.user&.username,
         version: ds.version,
         status: ds.status,
         figma_file_ids: libs.pluck(:id),

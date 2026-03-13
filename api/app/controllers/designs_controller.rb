@@ -2,7 +2,7 @@ class DesignsController < ApplicationController
   before_action :require_auth
 
   def index
-    designs = accessible_designs.order(created_at: :desc)
+    designs = current_user.designs.order(created_at: :desc)
     render json: designs.map { |d|
       {
         id: d.id,
