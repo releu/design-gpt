@@ -35,6 +35,7 @@
         :route-names="browserRouteNames"
         :extra-route-names="['design-system-ai-schema']"
         :parent-id="dsId"
+        :is-owner="isOwner"
         @sync-all="syncAll"
         @select-component="selectComponentByName"
         @save="saveEdits"
@@ -79,6 +80,7 @@ export default {
       syncing: false,
       saving: false,
       syncProgress: null,
+      isOwner: false,
     };
   },
   computed: {
@@ -106,14 +108,17 @@ export default {
     },
     async loadDesignSystem() {
       this.loading = true;
-      const token = await this.getToken();
+      let token;
+      try { token = await this.getToken(); } catch { /* unauthenticated */ }
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/design-systems/${this.id}`, {
         credentials: "include",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
       if (!res.ok) return;
       const ds = await res.json();
       this.designSystemName = ds.name;
+      this.isOwner = ds.is_owner || false;
       this.figmaFiles = [];
 
       for (const lib of ds.figma_files || []) {
@@ -132,10 +137,12 @@ export default {
       this.loading = false;
     },
     async loadComponents(libraryId) {
-      const token = await this.getToken();
+      let token;
+      try { token = await this.getToken(); } catch { /* unauthenticated */ }
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/figma-files/${libraryId}/components`, {
         credentials: "include",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
       const data = await res.json();
       const lib = this.figmaFiles.find((l) => l.id === libraryId);

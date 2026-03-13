@@ -61,7 +61,7 @@
               </a>
             </div>
           </div>
-          <div class="ModuleDesignSystem__overview-actions">
+          <div class="ModuleDesignSystem__overview-actions" v-if="isOwner">
             <div class="ModuleDesignSystem__overview-edit" @click="startEditing">edit</div>
             <div class="ModuleDesignSystem__overview-edit" @click="$emit('sync-all')">sync all</div>
           </div>
@@ -128,6 +128,7 @@ export default {
     loading: { type: Boolean, default: false },
     saving: { type: Boolean, default: false },
     name: { type: String, default: "" },
+    isOwner: { type: Boolean, default: false },
     routeNames: { type: Object, default: null },
     extraRouteNames: { type: Array, default: () => [] },
     parentId: { type: [String, Number], required: true },

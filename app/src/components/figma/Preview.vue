@@ -96,7 +96,7 @@ export default {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    overflow: auto;
+    overflow: hidden;
     background: var(--white);
     border-radius: 0;
     position: relative;

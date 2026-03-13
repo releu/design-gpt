@@ -2,7 +2,7 @@ class FigmaFilesController < ApplicationController
   include ComponentNaming
   include Renderable
 
-  before_action :require_auth, except: [:preview, :renderer]
+  before_action :require_auth, except: [:preview, :renderer, :components_list]
 
   def index
     figma_files = accessible_libraries

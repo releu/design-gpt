@@ -1,7 +1,7 @@
 class DesignSystemsController < ApplicationController
   include Renderable
 
-  before_action :require_auth, except: [:renderer]
+  before_action :require_auth, except: [:renderer, :show]
 
   def renderer
     ds = DesignSystem.find(params[:id])
@@ -50,14 +50,16 @@ class DesignSystemsController < ApplicationController
   end
 
   def show
-    ds = find_user_design_system(params[:id])
+    ds = find_viewable_design_system(params[:id])
     libs = ds.current_figma_files
+    is_owner = current_user&.id == ds.user_id
     render json: {
       id: ds.id,
       name: ds.name,
       version: ds.version,
       status: ds.status,
       progress: ds.progress,
+      is_owner: is_owner,
       figma_file_ids: libs.pluck(:id),
       figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
       created_at: ds.created_at
@@ -90,6 +92,14 @@ class DesignSystemsController < ApplicationController
 
   def find_user_design_system(id)
     current_user.design_systems.find(id)
+  end
+
+  def find_viewable_design_system(id)
+    if current_user
+      ds = current_user.design_systems.find_by(id: id)
+      return ds if ds
+    end
+    DesignSystem.find(id)
   end
 
   def find_syncable_design_system(id)
