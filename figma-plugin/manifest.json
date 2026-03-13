@@ -1,9 +1,10 @@
 {
   "name": "DesignGPT",
-  "id": "design-gpt-figma-importer",
+  "id": "1614204555279108898",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "src/ui.html",
+  "documentAccess": "dynamic-page",
   "editorType": ["figma"],
   "networkAccess": {
     "allowedDomains": ["https://design-gpt.xyz"],
