@@ -39,9 +39,9 @@ module Figma
       build_node_index(document, node_index)
       enrich(component_sets_data, standalone_data, node_index, key_to_name, image_keys)
 
-      # 5. Filter empties
-      component_sets_data.reject! { |_, data| empty_component_set?(data) }
-      standalone_data.reject! { |_, data| empty_component?(data[:figma_json]) }
+      # 5. Filter empties (but keep #image components — they're intentionally empty placeholders)
+      component_sets_data.reject! { |_, data| !data[:is_image] && empty_component_set?(data) }
+      standalone_data.reject! { |_, data| !data[:is_image] && empty_component?(data[:figma_json]) }
       log "After filtering: #{component_sets_data.size} component sets, #{standalone_data.size} standalone components"
 
       # 6. Persist
