@@ -31,13 +31,27 @@ class ApplicationController < ActionController::API
 
     auth0_id = payload["sub"]
     @current_user = User.find_by(auth0_id: auth0_id)
+
+    if @current_user && @current_user.email.blank?
+      info = Auth0Service.fetch_userinfo(token)
+      if info&.dig("email")
+        attrs = { email: info["email"] }
+        nice_name = info["nickname"] || info["name"] || info["email"]&.split("@")&.first
+        attrs[:username] = nice_name if nice_name && !User.where.not(id: @current_user.id).exists?(username: nice_name)
+        @current_user.update(attrs)
+      end
+      return @current_user
+    end
+
     return @current_user if @current_user
 
-    username = payload["nickname"] || payload["name"] || payload["email"]&.split("@")&.first || auth0_id
+    info = Auth0Service.fetch_userinfo(token)
+    email = info&.dig("email") || payload["email"]
+    username = info&.dig("nickname") || info&.dig("name") || email&.split("@")&.first || auth0_id
     username = "#{username}-#{auth0_id.split('|').last}" if User.exists?(username: username)
 
     attrs = { auth0_id: auth0_id, username: username }
-    attrs[:email] = payload["email"] if payload["email"]
+    attrs[:email] = email if email
     @current_user = User.create!(attrs)
   rescue ActiveRecord::RecordNotUnique
     @current_user = User.find_by(auth0_id: auth0_id)

@@ -53,6 +53,17 @@ class Auth0Service
     nil
   end
 
+  def self.fetch_userinfo(token)
+    response = Faraday.get("https://#{domain}/userinfo") do |req|
+      req.headers["Authorization"] = "Bearer #{token}"
+    end
+    return nil unless response.success?
+
+    JSON.parse(response.body)
+  rescue Faraday::Error, JSON::ParserError
+    nil
+  end
+
   private
 
   def self.build_rsa_key(jwk)
