@@ -8,7 +8,7 @@ class ApplicationController < ActionController::API
   def spa_fallback
     file = Rails.public_path.join("index.html")
     if file.exist?
-      render file: file, layout: false, content_type: "text/html"
+      send_file file, type: "text/html", disposition: "inline"
     else
       head :not_found
     end
