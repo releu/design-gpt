@@ -27,10 +27,10 @@ RSpec.describe "Components API", type: :request do
     end
   end
 
-  describe "GET /api/components/:id/figma_json" do
+  describe "GET /api/components/:id/figma-json" do
     it "returns the component figma_json" do
       comp = components(:divider)
-      get "/api/components/#{comp.id}/figma_json", headers: auth_headers(user)
+      get "/api/components/#{comp.id}/figma-json", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -39,22 +39,22 @@ RSpec.describe "Components API", type: :request do
     end
   end
 
-  describe "GET /api/components/:id/html_preview" do
+  describe "GET /api/components/:id/html-preview" do
     it "returns HTML preview for a component with html_code" do
       comp = components(:divider)
-      get "/api/components/#{comp.id}/html_preview", headers: auth_headers(user)
+      get "/api/components/#{comp.id}/html-preview", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("divider")
     end
   end
 
-  describe "GET /api/components/:id/visual_diff" do
+  describe "GET /api/components/:id/visual-diff" do
     it "returns visual diff results" do
       comp = components(:divider)
       comp.update!(match_percent: 95.5, diff_image_path: "/tmp/diff.png")
 
-      get "/api/components/#{comp.id}/visual_diff", headers: auth_headers(user)
+      get "/api/components/#{comp.id}/visual-diff", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -65,7 +65,7 @@ RSpec.describe "Components API", type: :request do
     it "returns null match_percent when no diff has been run" do
       comp = components(:badge)
 
-      get "/api/components/#{comp.id}/visual_diff", headers: auth_headers(user)
+      get "/api/components/#{comp.id}/visual-diff", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
@@ -74,11 +74,11 @@ RSpec.describe "Components API", type: :request do
     end
   end
 
-  describe "GET /api/components/:id/diff_image" do
+  describe "GET /api/components/:id/diff-image" do
     it "returns 404 when no diff image exists" do
       comp = components(:divider)
 
-      get "/api/components/#{comp.id}/diff_image", headers: auth_headers(user)
+      get "/api/components/#{comp.id}/diff-image", headers: auth_headers(user)
 
       expect(response).to have_http_status(:not_found)
     end
@@ -102,10 +102,10 @@ RSpec.describe "Components API", type: :request do
     end
   end
 
-  describe "GET /api/component-sets/:id/figma_json" do
+  describe "GET /api/component-sets/:id/figma-json" do
     it "returns the default variant figma_json" do
       cs = component_sets(:button_set)
-      get "/api/component-sets/#{cs.id}/figma_json", headers: auth_headers(user)
+      get "/api/component-sets/#{cs.id}/figma-json", headers: auth_headers(user)
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)

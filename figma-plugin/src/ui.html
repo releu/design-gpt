@@ -29,6 +29,7 @@
   <script>
     const PROD_URL = 'https://design-gpt.xyz';
     const DEV_URL = 'https://design-gpt.localtest.me';
+    const DEV_LOOP_URL = 'https://design-gpt.localtest.me/dev-loop';
     const btn = document.getElementById('import-btn');
     const devLoopBtn = document.getElementById('dev-loop-btn');
     const statusEl = document.getElementById('status');
@@ -66,7 +67,7 @@
 
       try {
         const baseUrl = code.startsWith('dev-') ? DEV_URL : PROD_URL;
-        const res = await fetch(`${baseUrl}/api/iterations/${code}/export_figma`);
+        const res = await fetch(`${baseUrl}/api/iterations/${code}/export-figma`);
         if (res.status === 404) throw new Error('Iteration not found. Check the code and try again.');
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
@@ -118,11 +119,15 @@
       if (!devLoopActive) return;
 
       try {
-        const res = await fetch(`${DEV_URL}/api/plugin/dev_poll`);
+        const res = await fetch(`${DEV_LOOP_URL}/poll`);
         const data = await res.json();
 
         if (data.action === 'run') {
           await executeDevRun(data.code || codeInput.value.trim().toLowerCase());
+        } else if (data.action === 'eval') {
+          await executeDevEval(data.js);
+        } else if (data.action === 'inspect') {
+          await executeDevInspect(data.expression);
         }
       } catch (err) {
         // Network errors are normal (server restart etc), just keep polling
@@ -134,12 +139,18 @@
       }
     }
 
-    async function reportResult(status, error, frameName, logs) {
+    async function reportResult(status, error, frameName, logs, value) {
       try {
-        await fetch(`${DEV_URL}/api/plugin/dev_result`, {
+        await fetch(`${DEV_LOOP_URL}/result`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, error: error || null, frame_name: frameName || null, logs: logs || [] }),
+          body: JSON.stringify({
+            status,
+            error: error || null,
+            frame_name: frameName || null,
+            logs: logs || [],
+            value: value || null,
+          }),
         });
       } catch (_) {}
     }
@@ -150,7 +161,7 @@
         // 1. Fetch fresh renderer bundle
         step = 'fetch-bundle';
         setStatus('Fetching fresh code...', 'dev-loop');
-        const bundleRes = await fetch(`${DEV_URL}/api/plugin/dev_bundle`);
+        const bundleRes = await fetch(`${DEV_LOOP_URL}/bundle`);
         if (!bundleRes.ok) throw new Error('Failed to fetch dev bundle: ' + bundleRes.status);
         const bundleCode = await bundleRes.text();
 
@@ -163,10 +174,10 @@
           throw new Error('eval failed: ' + (evalResult.error || 'unknown'));
         }
 
-        // 3. Fetch tree data
+        // 3. Fetch tree data from the main Rails app
         step = 'fetch-tree';
         setStatus('Fetching tree...', 'dev-loop');
-        const treeRes = await fetch(`${DEV_URL}/api/iterations/${shareCode}/export_figma`);
+        const treeRes = await fetch(`${DEV_URL}/api/iterations/${shareCode}/export-figma`);
         if (!treeRes.ok) throw new Error('Failed to fetch tree: ' + treeRes.status);
         const treeData = await treeRes.json();
         if (!treeData.tree) throw new Error('No tree data');
@@ -185,6 +196,48 @@
         const msg = `[${step}] ${err.message}`;
         setStatus('Dev run failed: ' + msg + ' — still polling...', 'error');
         await reportResult('error', msg);
+      }
+    }
+
+    async function executeDevEval(js) {
+      if (!js) {
+        await reportResult('error', 'No JS code provided');
+        return;
+      }
+      try {
+        setStatus('Eval-ing code...', 'dev-loop');
+        parent.postMessage({ pluginMessage: { type: 'dev-eval', code: js } }, '*');
+        const result = await waitForMessage('dev-eval-done', 'dev-eval-error', 15000);
+        if (result.type === 'dev-eval-error') {
+          await reportResult('error', 'eval failed: ' + (result.error || 'unknown'));
+        } else {
+          await reportResult('success', null, null, (globalThis.__devLogs || []));
+        }
+        setStatus('Eval done. Polling...', 'success');
+      } catch (err) {
+        setStatus('Eval failed: ' + err.message, 'error');
+        await reportResult('error', err.message);
+      }
+    }
+
+    async function executeDevInspect(expression) {
+      if (!expression) {
+        await reportResult('error', 'No expression provided');
+        return;
+      }
+      try {
+        setStatus('Inspecting...', 'dev-loop');
+        parent.postMessage({ pluginMessage: { type: 'dev-inspect', expression: expression } }, '*');
+        const result = await waitForMessage('dev-inspect-done', 'dev-inspect-error', 15000);
+        if (result.type === 'dev-inspect-error') {
+          await reportResult('error', 'inspect failed: ' + (result.error || 'unknown'));
+        } else {
+          await reportResult('success', null, null, [], result.value);
+        }
+        setStatus('Inspect done. Polling...', 'success');
+      } catch (err) {
+        setStatus('Inspect failed: ' + err.message, 'error');
+        await reportResult('error', err.message);
       }
     }
 
@@ -242,9 +295,14 @@
       } else if (msg.type === 'render-error' && !devLoopActive) {
         setStatus(msg.error, 'error');
         btn.disabled = false;
+      } else if (msg.type === 'fatal-error') {
+        setStatus('FATAL: ' + msg.error + ' — plugin still alive', 'error');
+        if (devLoopActive) {
+          reportResult('error', 'fatal: ' + msg.error);
+        }
       }
-      // dev-eval-done, dev-eval-error, render-done, render-error in dev mode
-      // are handled by waitForMessage promises
+      // dev-eval-done, dev-eval-error, dev-inspect-done, dev-inspect-error,
+      // render-done, render-error in dev mode are handled by waitForMessage promises
     };
   </script>
 </body>

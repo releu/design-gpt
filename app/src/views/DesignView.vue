@@ -228,14 +228,14 @@ export default {
       const token = await this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
-      window.open(`/api/designs/${this.id}/export_react?token=${token}`);
+      window.open(`/api/designs/${this.id}/export-react?token=${token}`);
     },
     async exportImage() {
       this.showExportMenu = false;
       const token = await this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
-      window.open(`/api/designs/${this.id}/export_image?token=${token}`);
+      window.open(`/api/designs/${this.id}/export-image?token=${token}`);
     },
     openShareLink() {
       this.showExportMenu = false;

@@ -10,6 +10,16 @@ figma.showUI(__html__, { width: 320, height: 340 });
     try {
       pendingImageFills.length = 0;
 
+      // Clean up previous dev frames before rendering a new one
+      if (msg.dev) {
+        const prevFrames = figma.currentPage.children.filter(
+          (n) => n.type === "FRAME" && n.name.startsWith("[v")
+        );
+        for (const f of prevFrames) {
+          try { f.remove(); } catch (_) {}
+        }
+      }
+
       const baseName = msg.name || "Design GPT Import";
       const rootFrame = figma.createFrame();
       rootFrame.name = msg.dev
@@ -42,6 +52,7 @@ figma.showUI(__html__, { width: 320, height: 340 });
       figma.ui.postMessage({
         type: "render-error",
         error: err.message || String(err),
+        logs: (globalThis as any).__devLogs || [],
       });
     }
   } else if (msg.type === "image-data") {
@@ -56,19 +67,34 @@ figma.showUI(__html__, { width: 320, height: 340 });
     } catch (err) {
       console.warn("Failed to apply image fill to " + msg.nodeId, err);
     }
+  } else if (msg.type === "dev-inspect") {
+    // Evaluate an expression and return the result (for reading Figma state)
+    try {
+      const value = eval(msg.expression);
+      const serialized = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+      figma.ui.postMessage({ type: "dev-inspect-done", value: serialized });
+    } catch (e: any) {
+      figma.ui.postMessage({ type: "dev-inspect-error", error: e.message || String(e) });
+    }
   }
 };
 
 // Stable dispatcher — never changes, supports dev-eval hot-reload
+// Top-level catch-all: the plugin must never die from an unhandled error
 figma.ui.onmessage = async (msg: any) => {
-  if (msg.type === "dev-eval") {
-    try {
-      eval(msg.code);
-      figma.ui.postMessage({ type: "dev-eval-done" });
-    } catch (e: any) {
-      figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
+  try {
+    if (msg.type === "dev-eval") {
+      try {
+        eval(msg.code);
+        figma.ui.postMessage({ type: "dev-eval-done" });
+      } catch (e: any) {
+        figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
+      }
+      return;
     }
-    return;
+    await (globalThis as any).__handlePluginMessage(msg);
+  } catch (e: any) {
+    // Last resort — report but never crash
+    figma.ui.postMessage({ type: "fatal-error", error: e.message || String(e) });
   }
-  await (globalThis as any).__handlePluginMessage(msg);
 };

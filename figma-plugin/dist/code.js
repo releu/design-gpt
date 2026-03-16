@@ -9,16 +9,16 @@
   };
   var __async = (__this, __arguments, generator) => {
     return new Promise((resolve, reject) => {
-      var fulfilled = (value) => {
+      var fulfilled = (value2) => {
         try {
-          step(generator.next(value));
+          step(generator.next(value2));
         } catch (e) {
           reject(e);
         }
       };
-      var rejected = (value) => {
+      var rejected = (value2) => {
         try {
-          step(generator.throw(value));
+          step(generator.throw(value2));
         } catch (e) {
           reject(e);
         }
@@ -48,8 +48,15 @@
         _componentCache.set(key, local);
         return local;
       }
+      const MAX_PAGE_SEARCH = 5;
+      let pagesSearched = 0;
       for (const page of figma.root.children) {
         if (page === figma.currentPage) continue;
+        if (pagesSearched >= MAX_PAGE_SEARCH) {
+          console.warn("[find] Hit page search limit (" + MAX_PAGE_SEARCH + "), stopping: key=" + key.substring(0, 8));
+          break;
+        }
+        pagesSearched++;
         try {
           yield page.loadAsync();
           const found = page.findOne(
@@ -126,26 +133,29 @@
     const treeVariantKeys = Object.keys(node.variantProperties || {}).join(", ");
     console.log("[props] " + instance.name + " \u2014 figma: [" + availKeys + "] tree-text: [" + treeTextKeys + "] tree-variant: [" + treeVariantKeys + "]");
     if (node.variantProperties) {
-      for (const [name, value] of Object.entries(node.variantProperties)) {
-        const figmaKey = keyMap.get(name.toLowerCase());
+      for (const [name, value2] of Object.entries(node.variantProperties)) {
+        const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+        const figmaKey = keyMap.get(normalized);
         if (figmaKey && ((_a = instanceProps[figmaKey]) == null ? void 0 : _a.type) === "VARIANT") {
-          toSet[figmaKey] = value;
+          toSet[figmaKey] = value2;
         }
       }
     }
     if (node.textProperties) {
-      for (const [name, value] of Object.entries(node.textProperties)) {
-        const figmaKey = keyMap.get(name.toLowerCase());
+      for (const [name, value2] of Object.entries(node.textProperties)) {
+        const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+        const figmaKey = keyMap.get(normalized);
         if (figmaKey && ((_b = instanceProps[figmaKey]) == null ? void 0 : _b.type) === "TEXT") {
-          toSet[figmaKey] = String(value);
+          toSet[figmaKey] = String(value2);
         }
       }
     }
     if (node.booleanProperties) {
-      for (const [name, value] of Object.entries(node.booleanProperties)) {
-        const figmaKey = keyMap.get(name.toLowerCase());
+      for (const [name, value2] of Object.entries(node.booleanProperties)) {
+        const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+        const figmaKey = keyMap.get(normalized);
         if (figmaKey && ((_c = instanceProps[figmaKey]) == null ? void 0 : _c.type) === "BOOLEAN") {
-          toSet[figmaKey] = value;
+          toSet[figmaKey] = value2;
         }
       }
     }
@@ -203,21 +213,21 @@
           if (keysBefore.has(propKey)) continue;
           const baseName = propKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
           if (propDef.type === "TEXT" && child.textProperties) {
-            for (const [name, value] of Object.entries(child.textProperties)) {
+            for (const [name, value2] of Object.entries(child.textProperties)) {
               if (name.toLowerCase() === baseName) {
-                toSet[propKey] = String(value);
+                toSet[propKey] = String(value2);
               }
             }
           } else if (propDef.type === "BOOLEAN" && child.booleanProperties) {
-            for (const [name, value] of Object.entries(child.booleanProperties)) {
+            for (const [name, value2] of Object.entries(child.booleanProperties)) {
               if (name.toLowerCase() === baseName) {
-                toSet[propKey] = value;
+                toSet[propKey] = value2;
               }
             }
           } else if (propDef.type === "VARIANT" && child.variantProperties) {
-            for (const [name, value] of Object.entries(child.variantProperties)) {
+            for (const [name, value2] of Object.entries(child.variantProperties)) {
               if (name.toLowerCase() === baseName) {
-                toSet[propKey] = value;
+                toSet[propKey] = value2;
               }
             }
           }
@@ -261,6 +271,16 @@
         }
         return overflow;
       }
+      if ("children" in slotFrame) {
+        const defaults = [...slotFrame.children];
+        for (const d of defaults) {
+          try {
+            d.remove();
+          } catch (_) {
+          }
+        }
+        console.log("[slot] Removed " + defaults.length + " default children from '" + frameName + "'");
+      }
       for (const child of children) {
         const rendered = yield renderNode(child);
         try {
@@ -287,10 +307,10 @@
       }
       const orderedSlots = Array.from(swapMap.entries()).sort(([a], [b]) => a.localeCompare(b, void 0, { numeric: true })).map(([, v]) => v);
       const usedSlotKeys = /* @__PURE__ */ new Set();
-      for (const [key, value] of Object.entries(node)) {
+      for (const [key, value2] of Object.entries(node)) {
         if (["component", "componentKey", "isImage", "variantProperties", "textProperties", "booleanProperties", "_slotFrames"].includes(key)) continue;
-        if (!Array.isArray(value)) continue;
-        const slotChildren = value.filter(
+        if (!Array.isArray(value2)) continue;
+        const slotChildren = value2.filter(
           (item) => item != null && typeof item === "object" && "component" in item
         );
         if (slotChildren.length === 0) continue;
@@ -343,7 +363,7 @@
   }
   function collectChildNodes(node) {
     const children = [];
-    for (const [key, value] of Object.entries(node)) {
+    for (const [key, value2] of Object.entries(node)) {
       if ([
         "component",
         "componentKey",
@@ -354,8 +374,8 @@
       ].includes(key)) {
         continue;
       }
-      if (Array.isArray(value)) {
-        for (const item of value) {
+      if (Array.isArray(value2)) {
+        for (const item of value2) {
           if (item && typeof item === "object" && "component" in item) {
             children.push(item);
           }
@@ -386,13 +406,24 @@
       init_tree_renderer();
       var PLUGIN_VERSION = "v7";
       figma.showUI(__html__, { width: 320, height: 340 });
-      globalThis.__handlePluginMessage = (msg2) => __async(null, null, function* () {
-        if (msg2.type === "render-tree") {
+      globalThis.__handlePluginMessage = (msg) => __async(exports, null, function* () {
+        if (msg.type === "render-tree") {
           try {
             pendingImageFills.length = 0;
-            const baseName = msg2.name || "Design GPT Import";
+            if (msg.dev) {
+              const prevFrames = figma.currentPage.children.filter(
+                (n) => n.type === "FRAME" && n.name.startsWith("[v")
+              );
+              for (const f of prevFrames) {
+                try {
+                  f.remove();
+                } catch (_) {
+                }
+              }
+            }
+            const baseName = msg.name || "Design GPT Import";
             const rootFrame = figma.createFrame();
-            rootFrame.name = msg2.dev ? `[${PLUGIN_VERSION}] ${baseName}` : baseName;
+            rootFrame.name = msg.dev ? `[${PLUGIN_VERSION}] ${baseName}` : baseName;
             rootFrame.layoutMode = "VERTICAL";
             rootFrame.primaryAxisSizingMode = "AUTO";
             rootFrame.counterAxisSizingMode = "AUTO";
@@ -400,7 +431,7 @@
             rootFrame.fills = [
               { type: "SOLID", color: { r: 1, g: 1, b: 1 } }
             ];
-            const rendered = yield renderNode(msg2.tree);
+            const rendered = yield renderNode(msg.tree);
             rootFrame.appendChild(rendered);
             const viewport = figma.viewport.center;
             rootFrame.x = Math.round(viewport.x - rootFrame.width / 2);
@@ -410,38 +441,51 @@
             if (pendingImageFills.length > 0) {
               figma.ui.postMessage({ type: "fetch-images", fills: [...pendingImageFills] });
             }
-            figma.ui.postMessage({ type: "render-done", name: msg2.name, logs: globalThis.__devLogs || [] });
+            figma.ui.postMessage({ type: "render-done", name: msg.name, logs: globalThis.__devLogs || [] });
           } catch (err) {
             figma.ui.postMessage({
               type: "render-error",
-              error: err.message || String(err)
+              error: err.message || String(err),
+              logs: globalThis.__devLogs || []
             });
           }
-        } else if (msg2.type === "image-data") {
+        } else if (msg.type === "image-data") {
           try {
-            const node = figma.getNodeById(msg2.nodeId);
+            const node = figma.getNodeById(msg.nodeId);
             if (node && "fills" in node) {
-              const image = figma.createImage(new Uint8Array(msg2.bytes));
+              const image = figma.createImage(new Uint8Array(msg.bytes));
               node.fills = [
                 { type: "IMAGE", imageHash: image.hash, scaleMode: "FILL" }
               ];
             }
           } catch (err) {
-            console.warn("Failed to apply image fill to " + msg2.nodeId, err);
+            console.warn("Failed to apply image fill to " + msg.nodeId, err);
+          }
+        } else if (msg.type === "dev-inspect") {
+          try {
+            const value = eval(msg.expression);
+            const serialized = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+            figma.ui.postMessage({ type: "dev-inspect-done", value: serialized });
+          } catch (e) {
+            figma.ui.postMessage({ type: "dev-inspect-error", error: e.message || String(e) });
           }
         }
       });
-      figma.ui.onmessage = (msg) => __async(null, null, function* () {
-        if (msg.type === "dev-eval") {
-          try {
-            eval(msg.code);
-            figma.ui.postMessage({ type: "dev-eval-done" });
-          } catch (e) {
-            figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
+      figma.ui.onmessage = (msg) => __async(exports, null, function* () {
+        try {
+          if (msg.type === "dev-eval") {
+            try {
+              eval(msg.code);
+              figma.ui.postMessage({ type: "dev-eval-done" });
+            } catch (e) {
+              figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
+            }
+            return;
           }
-          return;
+          yield globalThis.__handlePluginMessage(msg);
+        } catch (e) {
+          figma.ui.postMessage({ type: "fatal-error", error: e.message || String(e) });
         }
-        yield globalThis.__handlePluginMessage(msg);
       });
     }
   });

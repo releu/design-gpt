@@ -95,9 +95,15 @@ api/                            # Rails 8 API-only backend
 caddy/                          # Reverse proxy (local dev only)
   Caddyfile
   certs/                        # Local TLS certificates (mkcert)
+figma-dev-loop/                 # Dev-only relay server (Claude ↔ Figma plugin automation)
+  server.js                     # Plain Node HTTP server, port 4000, no dependencies
+figma-plugin/                   # Figma plugin source (code.ts, dev-entry.ts, tree-renderer.ts, ui.html)
+  src/                          # TypeScript source
+  dist/                         # Built bundles (code.js, dev-bundle.js)
+  manifest.json                 # Figma plugin manifest
 Makefile                        # dev, clean_dev, test, test-api, test-app,
                                 #   test-e2e, test-render, test-render-fresh,
-                                #   setup, setup-e2e targets
+                                #   setup, setup-e2e, dev-loop targets
 Procfile                        # Heroku process definitions (web, worker, release)
 ```
 

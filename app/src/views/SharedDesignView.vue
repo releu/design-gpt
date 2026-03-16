@@ -112,7 +112,7 @@ export default {
   methods: {
     exportReact() {
       this.showMenu = false;
-      window.open(`/api/iterations/${this.shareCode}/export_react`);
+      window.open(`/api/iterations/${this.shareCode}/export-react`);
     },
     exportFigma() {
       this.showMenu = false;

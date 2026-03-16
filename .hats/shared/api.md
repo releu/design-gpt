@@ -7,7 +7,7 @@ All endpoints are scoped under `/api`. The frontend accesses them via Caddy at `
 ## Authentication
 
 - All endpoints require `Authorization: Bearer <JWT>` header unless noted otherwise
-- Unauthenticated endpoints: renderer pages (`/api/figma-files/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON (`/api/components/:id/figma_json`, `/api/component-sets/:id/figma_json`), SVG assets (`/api/components/:id/svg`, `/api/component-sets/:id/svg`), HTML preview (`/api/components/:id/html_preview`), library preview page (`/api/figma-files/:id/preview`)
+- Unauthenticated endpoints: renderer pages (`/api/figma-files/:id/renderer`, `/api/design-systems/:id/renderer`, `/api/iterations/:id/renderer`), health check (`/api/up`), Figma JSON (`/api/components/:id/figma-json`, `/api/component-sets/:id/figma-json`), SVG assets (`/api/components/:id/svg`, `/api/component-sets/:id/svg`), HTML preview (`/api/components/:id/html-preview`), library preview page (`/api/figma-files/:id/preview`)
 - Task endpoints (`/api/tasks/*`) use `TASKS_TOKEN` header auth instead of JWT
 
 ## Response Format
@@ -56,7 +56,7 @@ _(URL paths use `/api/figma-files/`.)_
 |--------|------|------|-------------|
 | PATCH | /api/component-sets/:id | Yes | Update is_root, slots |
 | POST | /api/component-sets/:id/reimport | Yes | Re-import single component set |
-| GET | /api/component-sets/:id/figma_json | No | Raw Figma JSON |
+| GET | /api/component-sets/:id/figma-json | No | Raw Figma JSON |
 | GET | /api/component-sets/:id/svg | No | SVG asset |
 
 ### Components
@@ -64,12 +64,12 @@ _(URL paths use `/api/figma-files/`.)_
 |--------|------|------|-------------|
 | PATCH | /api/components/:id | Yes | Update component fields |
 | POST | /api/components/:id/reimport | Yes | Re-import single component |
-| GET | /api/components/:id/visual_diff | Yes | Visual diff results |
-| GET | /api/components/:id/diff_image | Yes | Diff PNG |
+| GET | /api/components/:id/visual-diff | Yes | Visual diff results |
+| GET | /api/components/:id/diff-image | Yes | Diff PNG |
 | GET | /api/components/:id/screenshots/:type | Yes | Figma or React screenshot PNG |
-| GET | /api/components/:id/figma_json | No | Raw Figma JSON |
+| GET | /api/components/:id/figma-json | No | Raw Figma JSON |
 | GET | /api/components/:id/svg | No | SVG asset |
-| GET | /api/components/:id/html_preview | No | Standalone HTML preview |
+| GET | /api/components/:id/html-preview | No | Standalone HTML preview |
 
 ### Custom Components
 
@@ -93,9 +93,9 @@ _No feature spec. Status TBD._
 | POST | /api/designs/:id/reset | Yes | Revert design to previous iteration |
 | POST | /api/designs/:id/apply/:message_id | Yes | Apply art director comments (route live; feature currently disabled) |
 | POST | /api/designs/:id/duplicate | Yes | Duplicate design |
-| GET | /api/designs/:id/export_image | Yes | Export as PNG |
-| GET | /api/designs/:id/export_react | Yes | Export as React project zip |
-| GET | /api/designs/:id/export_figma | Yes | Returns a code for copy-pasting into the DesignGPT Figma plugin |
+| GET | /api/designs/:id/export-image | Yes | Export as PNG |
+| GET | /api/designs/:id/export-react | Yes | Export as React project zip |
+| GET | /api/designs/:id/export-figma | Yes | Returns a code for copy-pasting into the DesignGPT Figma plugin |
 
 ### Renders
 | Method | Path | Auth | Description |

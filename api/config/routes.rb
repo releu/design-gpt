@@ -18,16 +18,16 @@ Rails.application.routes.draw do
     end
 
     resources :components, :only => [:update] do
-      get :figma_json, :on => :member
+      get :figma_json, :on => :member, :path => "figma-json"
       get :svg, :on => :member
-      get :html_preview, :on => :member
-      get :visual_diff, :on => :member
-      get :diff_image, :on => :member
+      get :html_preview, :on => :member, :path => "html-preview"
+      get :visual_diff, :on => :member, :path => "visual-diff"
+      get :diff_image, :on => :member, :path => "diff-image"
       get "screenshots/:type", :on => :member, :action => :screenshot, :as => :screenshot
     end
 
     resources :component_sets, :only => [:update], :path => "component-sets" do
-      get :figma_json, :on => :member, :action => :component_set_figma_json, :controller => :components
+      get :figma_json, :on => :member, :action => :component_set_figma_json, :controller => :components, :path => "figma-json"
       get :svg, :on => :member, :action => :component_set_svg, :controller => :components
     end
 
@@ -40,25 +40,18 @@ Rails.application.routes.draw do
     resources :iterations, :only => [] do
       get :renderer, :on => :member
     end
-    get "iterations/:share_code/export_figma", to: "iterations#export_figma", as: :iteration_export_figma
-    get "iterations/:share_code/export_react", to: "iterations#export_react", as: :iteration_export_react
+    get "iterations/:share_code/export-figma", to: "iterations#export_figma", as: :iteration_export_figma
+    get "iterations/:share_code/export-react", to: "iterations#export_react", as: :iteration_export_react
     get "share/:share_code", to: "iterations#shared", as: :shared_design
 
     resources :designs, :only => [:show, :create, :index, :update, :destroy] do
       post :improve
       post :duplicate, :on => :member
       post :reset, :on => :member
-      get :export_image, :on => :member
-      get :export_react, :on => :member
-      get :export_figma, :on => :member
+      get :export_image, :on => :member, :path => "export-image"
+      get :export_react, :on => :member, :path => "export-react"
+      get :export_figma, :on => :member, :path => "export-figma"
     end
-
-    # Dev plugin hot-reload loop
-    get "plugin/dev_bundle", to: "dev_plugin#bundle"
-    post "plugin/dev_trigger", to: "dev_plugin#trigger"
-    get "plugin/dev_poll", to: "dev_plugin#poll"
-    post "plugin/dev_result", to: "dev_plugin#result"
-    get "plugin/dev_result", to: "dev_plugin#get_result"
 
     get "up" => "application#health_check", :as => :rails_health_check
   end

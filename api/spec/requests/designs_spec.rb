@@ -103,9 +103,9 @@ RSpec.describe "Designs API", type: :request do
     end
   end
 
-  describe "GET /api/designs/:id/export_image" do
+  describe "GET /api/designs/:id/export-image" do
     it "returns 404 when no screenshot exists" do
-      get "/api/designs/#{design.id}/export_image", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-image", headers: auth_headers(user)
       expect(response).to have_http_status(:not_found)
     end
 
@@ -113,29 +113,29 @@ RSpec.describe "Designs API", type: :request do
       render_record = Render.create!(image: "FAKE_PNG_DATA")
       design.iterations.order(:id).last.update!(render: render_record)
 
-      get "/api/designs/#{design.id}/export_image", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-image", headers: auth_headers(user)
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("image/png")
     end
   end
 
-  describe "GET /api/designs/:id/export_react" do
+  describe "GET /api/designs/:id/export-react" do
     it "returns 404 when no JSX exists" do
       design.iterations.update_all(jsx: nil)
-      get "/api/designs/#{design.id}/export_react", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-react", headers: auth_headers(user)
       expect(response).to have_http_status(:not_found)
     end
 
     it "returns a zip file when JSX exists" do
-      get "/api/designs/#{design.id}/export_react", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-react", headers: auth_headers(user)
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to include("application/zip")
     end
   end
 
-  describe "GET /api/designs/:id/export_figma" do
+  describe "GET /api/designs/:id/export-figma" do
     it "returns design data as JSON" do
-      get "/api/designs/#{design.id}/export_figma", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-figma", headers: auth_headers(user)
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json["design_id"]).to eq(design.id)
@@ -144,7 +144,7 @@ RSpec.describe "Designs API", type: :request do
 
     it "returns 404 when no iteration has JSX" do
       design.iterations.update_all(jsx: nil)
-      get "/api/designs/#{design.id}/export_figma", headers: auth_headers(user)
+      get "/api/designs/#{design.id}/export-figma", headers: auth_headers(user)
       expect(response).to have_http_status(:not_found)
     end
   end

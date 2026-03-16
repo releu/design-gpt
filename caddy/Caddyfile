@@ -11,6 +11,12 @@ design-gpt.localtest.me {
     }
   }
 
+  @devloop path /dev-loop/*
+  handle @devloop {
+    uri strip_prefix /dev-loop
+    reverse_proxy 127.0.0.1:4000
+  }
+
   handle {
     reverse_proxy 127.0.0.1:5173
   }

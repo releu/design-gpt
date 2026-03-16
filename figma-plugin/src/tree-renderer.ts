@@ -50,9 +50,16 @@ async function findComponentByKey(key: string): Promise<ComponentNode> {
     return local;
   }
 
-  // Try loading each page individually to find the component
+  // Try loading pages individually — cap at 5 to avoid hanging on large files
+  const MAX_PAGE_SEARCH = 5;
+  let pagesSearched = 0;
   for (const page of figma.root.children) {
     if (page === figma.currentPage) continue;
+    if (pagesSearched >= MAX_PAGE_SEARCH) {
+      console.warn("[find] Hit page search limit (" + MAX_PAGE_SEARCH + "), stopping: key=" + key.substring(0, 8));
+      break;
+    }
+    pagesSearched++;
     try {
       await page.loadAsync();
       const found = page.findOne(
@@ -113,7 +120,29 @@ async function renderComponentInstance(
     }
   }
 
-  // Recursively render slot children and append
+  const slotFrames = (node._slotFrames || {}) as Record<string, string>;
+  const hasSlotFrames = Object.keys(slotFrames).length > 0;
+
+  if (hasSlotFrames) {
+    // Detach instance so SLOT nodes become regular frames (avoids ghost sublayer refs)
+    const detached = instance.detachInstance();
+    console.log("[slot] Detached instance '" + detached.name + "' to manipulate slot frames");
+
+    // Populate each slot frame directly
+    for (const [key, frameName] of Object.entries(slotFrames)) {
+      const value = node[key];
+      if (!Array.isArray(value)) continue;
+      const slotChildren = value.filter(
+        (item: unknown): item is TreeNode => item != null && typeof item === "object" && "component" in (item as object)
+      );
+      if (slotChildren.length > 0) {
+        await populateSlotFrame(detached as unknown as InstanceNode, frameName, slotChildren);
+      }
+    }
+    return detached;
+  }
+
+  // No slot frames — use standard INSTANCE_SWAP slot logic
   const overflow = await renderSlotChildren(instance, node);
 
   if (overflow.length === 0) return instance;
@@ -152,7 +181,8 @@ function applyProperties(instance: InstanceNode, node: TreeNode): void {
   // Variant properties
   if (node.variantProperties) {
     for (const [name, value] of Object.entries(node.variantProperties)) {
-      const figmaKey = keyMap.get(name.toLowerCase());
+      const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+      const figmaKey = keyMap.get(normalized);
       if (figmaKey && instanceProps[figmaKey]?.type === "VARIANT") {
         toSet[figmaKey] = value;
       }
@@ -162,7 +192,8 @@ function applyProperties(instance: InstanceNode, node: TreeNode): void {
   // Text properties
   if (node.textProperties) {
     for (const [name, value] of Object.entries(node.textProperties)) {
-      const figmaKey = keyMap.get(name.toLowerCase());
+      const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+      const figmaKey = keyMap.get(normalized);
       if (figmaKey && instanceProps[figmaKey]?.type === "TEXT") {
         toSet[figmaKey] = String(value);
       }
@@ -172,7 +203,8 @@ function applyProperties(instance: InstanceNode, node: TreeNode): void {
   // Boolean properties
   if (node.booleanProperties) {
     for (const [name, value] of Object.entries(node.booleanProperties)) {
-      const figmaKey = keyMap.get(name.toLowerCase());
+      const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
+      const figmaKey = keyMap.get(normalized);
       if (figmaKey && instanceProps[figmaKey]?.type === "BOOLEAN") {
         toSet[figmaKey] = value;
       }
@@ -323,8 +355,16 @@ async function populateSlotFrame(
     return overflow;
   }
 
+  // Remove default placeholder children (safe after detachInstance — no ghost refs)
+  if ("children" in slotFrame) {
+    const defaults = [...slotFrame.children];
+    for (const d of defaults) {
+      try { d.remove(); } catch (_) {}
+    }
+    console.log("[slot] Removed " + defaults.length + " default children from '" + frameName + "'");
+  }
+
   // Render and add each child to the slot frame.
-  // Default slot children are automatically hidden by Figma when new children are added.
   for (const child of children) {
     const rendered = await renderNode(child);
     try {

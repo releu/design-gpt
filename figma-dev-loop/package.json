@@ -1,0 +1,9 @@
+{
+  "name": "figma-dev-loop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev-only relay server for Claude ↔ Figma plugin automation",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
