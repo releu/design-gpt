@@ -112,14 +112,13 @@ export default {
   methods: {
     exportReact() {
       this.showMenu = false;
-      window.open(`/api/designs/${this.designId}/export_react`);
+      window.open(`/api/iterations/${this.shareCode}/export_react`);
     },
     exportFigma() {
       this.showMenu = false;
-      if (!this.iterationId) return;
       this.$router.push({
-        name: "figma-export",
-        params: { id: String(this.designId), iterationId: String(this.iterationId) },
+        name: "shared-figma-export",
+        params: { shareCode: this.shareCode },
       });
     },
     async fetchShared() {

@@ -27,6 +27,21 @@ class IterationsController < ApplicationController
     }
   end
 
+  def export_react
+    iteration = Iteration.find_by!(share_code: params[:share_code])
+    design = iteration.design
+    jsx = iteration.jsx
+
+    if jsx.blank?
+      head :not_found
+      return
+    end
+
+    zip_data = Exports::ReactProjectBuilder.new(design).build
+    send_data zip_data, type: "application/zip", disposition: "attachment",
+      filename: "#{design.name.parameterize}-react.zip"
+  end
+
   def export_figma
     iteration = Iteration.find_by!(share_code: params[:share_code])
 

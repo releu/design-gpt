@@ -2,7 +2,7 @@
   <Layout layout="overlay" @close="goBack">
     <template #content>
       <div class="FigmaExport__card">
-        <div class="FigmaExport__text">code: {{ shareCode }}</div>
+        <div class="FigmaExport__text">{{ resolvedShareCode }}</div>
       </div>
     </template>
   </Layout>
@@ -17,17 +17,26 @@ export default {
     return { getAccessTokenSilently };
   },
   props: {
-    id: { type: String, required: true },
-    iterationId: { type: String, required: true },
+    id: { type: String, default: null },
+    iterationId: { type: String, default: null },
+    shareCode: { type: String, default: null },
   },
   data() {
-    return { shareCode: "" };
+    return { resolvedShareCode: this.shareCode || "" };
   },
   methods: {
     goBack() {
-      this.$router.push({ name: "design", params: { id: this.id } });
+      if (this.shareCode) {
+        this.$router.push({ name: "shared-design", params: { shareCode: this.shareCode } });
+      } else {
+        this.$router.push({ name: "design", params: { id: this.id } });
+      }
     },
     async fetchShareCode() {
+      if (this.shareCode) {
+        this.resolvedShareCode = this.shareCode;
+        return;
+      }
       const token = await this.getAccessTokenSilently({
         authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
       });
@@ -39,7 +48,7 @@ export default {
       const iter = (data.iterations || []).find(
         (i) => String(i.id) === this.iterationId
       );
-      if (iter) this.shareCode = iter.share_code;
+      if (iter) this.resolvedShareCode = iter.share_code;
     },
   },
   mounted() {
@@ -58,6 +67,5 @@ export default {
 .FigmaExport__text {
   font: var(--font-basic);
   color: var(--black);
-  user-select: all;
 }
 </style>

@@ -59,6 +59,12 @@ const router = createRouter({
       props: true,
     },
     {
+      path: "/share/:shareCode/figma",
+      name: "shared-figma-export",
+      component: FigmaExportView,
+      props: true,
+    },
+    {
       path: "/system/components/:name",
       name: "system-component",
       component: SystemComponentView,

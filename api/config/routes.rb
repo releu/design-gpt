@@ -41,6 +41,7 @@ Rails.application.routes.draw do
       get :renderer, :on => :member
     end
     get "iterations/:share_code/export_figma", to: "iterations#export_figma", as: :iteration_export_figma
+    get "iterations/:share_code/export_react", to: "iterations#export_react", as: :iteration_export_react
     get "share/:share_code", to: "iterations#shared", as: :shared_design
 
     resources :designs, :only => [:show, :create, :index, :update, :destroy] do
