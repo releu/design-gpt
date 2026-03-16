@@ -418,7 +418,7 @@ module Figma
       spacing_margin_prop = node["layoutMode"] == "HORIZONTAL" ? "margin-left" : "margin-top" if negative_spacing
 
       total_flow_children = if negative_spacing
-        children.count { |c| c["layoutPositioning"] != "ABSOLUTE" && c["layoutPositioning"] != "FIXED" && c["visible"] != false }
+        children.count { |c| c["visible"] != false }
       else
         0
       end
@@ -428,7 +428,7 @@ module Figma
       children_html = children.map.with_index do |child, idx|
         child_html = generate_node(child, root_name, depth + 1)
 
-        child_is_absolute = child["layoutPositioning"] == "ABSOLUTE" || child["layoutPositioning"] == "FIXED"
+        child_is_absolute = false
         needs_absolute_wrapper = (uses_absolute_for_all || (has_layout_mode && child_is_absolute)) && child_html.present?
 
         if needs_absolute_wrapper

@@ -29,10 +29,12 @@ module Exports
           end
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
+          enriched["isImage"] = true if record.is_image
         when Component
           enriched["componentKey"] = record.component_key
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
+          enriched["isImage"] = true if record.is_image
         end
       end
 

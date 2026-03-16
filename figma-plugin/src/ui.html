@@ -62,11 +62,33 @@
       }
     });
 
+    async function fetchImageFills(fills) {
+      for (const fill of fills) {
+        try {
+          const url = `${BASE_URL}/api/images/render?prompt=${encodeURIComponent(fill.prompt)}`;
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const buffer = await res.arrayBuffer();
+          parent.postMessage({
+            pluginMessage: {
+              type: 'image-data',
+              nodeId: fill.nodeId,
+              bytes: Array.from(new Uint8Array(buffer)),
+            },
+          }, '*');
+        } catch (err) {
+          console.warn('Failed to fetch image for', fill.prompt, err);
+        }
+      }
+    }
+
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
 
-      if (msg.type === 'render-done') {
+      if (msg.type === 'fetch-images') {
+        fetchImageFills(msg.fills);
+      } else if (msg.type === 'render-done') {
         setStatus(`Imported "${msg.name}" successfully!`, 'success');
         btn.disabled = false;
       } else if (msg.type === 'render-error') {

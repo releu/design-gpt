@@ -43,11 +43,7 @@ module Figma
         styles["flex-wrap"] = "wrap" if node["layoutWrap"] == "WRAP"
       end
 
-      if node["layoutPositioning"] == "ABSOLUTE"
-        styles["position"] = "absolute"
-      else
-        styles["position"] = "relative"
-      end
+      styles["position"] = "relative"
 
       # Sizing mode
       primary_sizing = node["primaryAxisSizingMode"]
@@ -138,24 +134,8 @@ module Figma
       add_border_radius(styles, node)
       add_effects(styles, node["effects"])
 
-      case node["overflowDirection"]
-      when "HORIZONTAL_SCROLLING"
-        styles["overflow-x"] = "auto"
-        styles["overflow-y"] = "hidden"
-        # fit-content defeats scrolling — use bbox width instead
-        styles["width"] = "#{width}px" if styles["width"] == "fit-content"
-      when "VERTICAL_SCROLLING"
-        styles["overflow-x"] = "hidden"
-        styles["overflow-y"] = "auto"
-        # fit-content defeats scrolling — use bbox height instead
-        styles["height"] = "#{height}px" if styles["height"] == "fit-content"
-      when "HORIZONTAL_AND_VERTICAL_SCROLLING"
-        styles["overflow"] = "auto"
-        styles["width"] = "#{width}px" if styles["width"] == "fit-content"
-        styles["height"] = "#{height}px" if styles["height"] == "fit-content"
-      else
-        styles["overflow"] = "hidden" if node["clipsContent"]
-      end
+      # Treat all scrolling frames as static clipped content — no scroll in our renderer
+      styles["overflow"] = "hidden" if node["clipsContent"]
 
       if node["opacity"] && node["opacity"] < 1
         styles["opacity"] = node["opacity"].round(2).to_s
@@ -267,11 +247,7 @@ module Figma
       end
 
       styles["flex-shrink"] = "0"
-      if node["layoutPositioning"] == "ABSOLUTE"
-        styles["position"] = "absolute"
-      else
-        styles["position"] = "relative"
-      end
+      styles["position"] = "relative"
       styles["margin"] = "0"
       styles["word-wrap"] = "break-word"
       styles["overflow-wrap"] = "break-word"
@@ -331,11 +307,7 @@ module Figma
         styles["opacity"] = node["opacity"].round(2).to_s
       end
 
-      if node["layoutPositioning"] == "ABSOLUTE"
-        styles["position"] = "absolute"
-      else
-        styles["position"] = "relative"
-      end
+      styles["position"] = "relative"
       styles["box-sizing"] = "border-box"
       styles["flex-shrink"] = "0"
 
