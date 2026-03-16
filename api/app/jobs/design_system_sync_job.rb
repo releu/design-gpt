@@ -1,5 +1,6 @@
 class DesignSystemSyncJob < ApplicationJob
   queue_as :default
+  limits_concurrency key: ->(design_system_id, _new_version) { "ds_sync_#{design_system_id}" }, to: 1
 
   def perform(design_system_id, new_version)
     ds = DesignSystem.find(design_system_id)

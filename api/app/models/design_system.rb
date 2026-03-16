@@ -17,10 +17,15 @@ class DesignSystem < ApplicationRecord
   end
 
   def sync_async
-    return if %w[importing converting].include?(status)
-
+    # Atomic status guard: only transition to "pending" if not already syncing
     new_version = version + 1
-    update!(status: "pending", progress: { "started_at" => Time.current.iso8601 })
+    rows = self.class.where(id: id)
+      .where.not(status: %w[pending importing converting])
+      .update_all(["status = ?, version = ?, progress = ?::jsonb", "pending", new_version,
+        { "started_at" => Time.current.iso8601 }.to_json])
+    return if rows == 0
+
+    reload
     DesignSystemSyncJob.perform_later(id, new_version)
     new_version
   end
