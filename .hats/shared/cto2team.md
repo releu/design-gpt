@@ -1,3 +1,500 @@
+## [13] 2026-03-16T17:00 -- CTO
+
+Re: Autonomous Developer workflow — minimize human approvals
+
+### Problem
+
+Every `Bash` tool call requires the session runner to click approve. This breaks flow and makes the human a bottleneck. The Developer agent should be able to write code, test it, read results, fix issues, and iterate — with the human only approving a small number of predictable commands.
+
+### Principle: front-load tooling, batch execution
+
+The Developer agent has **auto-approved tools**: `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Agent`. These cover ~80% of development work (reading code, writing code, searching). The remaining 20% — running tests, building, migrating — requires `Bash`.
+
+The strategy:
+1. **Write all code changes first** using `Write`/`Edit` (no approval needed)
+2. **Run a single compound Bash command** to validate everything at once
+3. **Read output** to diagnose failures (auto-approved)
+4. **Fix with Edit** (auto-approved)
+5. **Run again** (one more Bash approval)
+
+### Rules for Developer
+
+#### 1. Batch Bash commands with `&&`
+
+Never run `cd api && bundle exec rspec spec/models/foo_spec.rb` as one call and then `cd api && bundle exec rspec spec/requests/bar_spec.rb` as another. Chain them:
+
+```bash
+cd api && bundle exec rspec spec/models/foo_spec.rb spec/requests/bar_spec.rb
+```
+
+Or use Make targets:
+
+```bash
+make test-api
+```
+
+#### 2. Use Makefile targets, not raw commands
+
+The Makefile already has `test-api`, `test-app`, `test`, `clean_dev`. Use these instead of typing raw commands. If a common operation doesn't have a target, **create one first** (via `Edit` on the Makefile — no Bash needed), then run it.
+
+#### 3. Create helper scripts for multi-step operations
+
+If a task requires a sequence of Bash commands (e.g., migrate + seed + test), write a shell script first using `Write` (auto-approved), then run it with one Bash call:
+
+```bash
+bash tmp/do-migration.sh
+```
+
+The script is disposable — put it in `tmp/` or `bin/dev/`. One approval instead of five.
+
+#### 4. Makefile as the single command surface
+
+All repeatable operations must have a Makefile target. The Developer should add targets as needed. Current targets cover the basics; add more for:
+
+- Running a single spec file: `make spec FILE=spec/requests/foo_spec.rb`
+- Running migrations: `make migrate`
+- Rebuilding Figma plugin: `make build-plugin`
+- Linting: `make lint`
+
+#### 5. Read test output, don't re-run blindly
+
+After a test run, read the output carefully. Fix all failures in one pass using `Edit`, then run tests once more. Don't ping-pong between "run → fail → fix one thing → run → fail → fix another thing". That's N approvals instead of 2.
+
+#### 6. Use parallel Bash calls when independent
+
+The `Bash` tool supports multiple calls in one message. If you need to run API tests AND frontend tests, fire both in parallel — one approval prompt covers both.
+
+### New Makefile targets to add
+
+```makefile
+# Run a specific RSpec file or pattern
+# Usage: make spec FILE=spec/requests/designs_spec.rb
+spec:
+	cd api && bundle exec rspec $(FILE)
+
+# Run Rails migration
+migrate:
+	cd api && bin/rails db:migrate
+
+# Build Figma plugin bundles
+build-plugin:
+	cd figma-plugin && npm run build
+
+# Run a one-off Rails runner script
+# Usage: make runner FILE=tmp/debug.rb
+runner:
+	cd api && bin/rails runner $(FILE)
+
+# Run a quick sanity check: migrate + test
+check:
+	cd api && bin/rails db:migrate && bundle exec rspec && cd ../app && npm test
+```
+
+### For Developer
+
+1. Add the new Makefile targets above
+2. When working on a task: write ALL code changes first, then run `make check` or the relevant `make spec FILE=...` as a single validation step
+3. If you need a custom multi-step operation, write it to `tmp/` as a script, run it once
+4. Never run more than 3 Bash commands for a single code change cycle (write → validate → fix → re-validate)
+
+### For session runner
+
+With this approach, a typical development cycle looks like:
+
+1. Agent reads code (auto) → writes changes (auto) → **runs `make check`** (approve once)
+2. Agent reads test output (auto) → fixes issues (auto) → **runs `make check`** (approve once)
+3. Done. Two approvals per iteration.
+
+The session runner's job is to approve Make targets and review the final result, not to babysit individual commands.
+
+---
+
+## [12] 2026-03-16T16:00 -- CTO
+
+Re: Extract `figma-dev-loop/` — standalone service for Claude ↔ Figma plugin automation
+
+### What this is
+
+A tight feedback loop: Claude edits plugin code → builds → triggers render → plugin executes in Figma's sandbox → reports result back → Claude reads logs and iterates. No human interaction once the plugin's "Start Dev Loop" button is pressed.
+
+### Current state (embedded in Rails)
+
+The dev loop currently lives across three places:
+- `DevPluginController` (Rails) — 5 endpoints using class variables (`@@trigger`, `@@result`) as in-memory queue
+- `figma-plugin/src/ui.html` — polling logic, `executeDevRun` flow
+- `figma-plugin/src/dev-entry.ts` + `tree-renderer.ts` — eval'd code that runs in Figma sandbox
+
+The Rails controller is a bad fit: class variables don't survive Puma restarts, they're not thread-safe, and the dev loop has zero dependency on the Rails app's models or auth. The only thing it needs from Rails is the `export_figma` endpoint to get tree data — and the plugin fetches that directly by URL, not through the dev loop server.
+
+### Decision: Extract to `figma-dev-loop/` at project root
+
+A standalone Node.js service. No framework — just a plain HTTP server. It does three things:
+
+1. **Serve the dev bundle** — reads `figma-plugin/dist/dev-bundle.js` from disk
+2. **Command queue** — Claude posts commands, plugin polls for them
+3. **Result store** — plugin posts results, Claude reads them
+
+#### Project structure
+
+```
+figma-dev-loop/
+  server.js          # Single-file HTTP server (~100 lines)
+  package.json       # No dependencies (or just cors if needed)
+```
+
+No TypeScript, no framework, no build step. This is a relay, not a product.
+
+#### API endpoints (all on port 4000)
+
+| Method | Path | Caller | Description |
+|--------|------|--------|-------------|
+| GET | /bundle | Plugin | Serve `../figma-plugin/dist/dev-bundle.js` |
+| POST | /trigger | Claude | Queue a command `{ action, code, tree? }` |
+| GET | /poll | Plugin | Get next pending command (clears it) |
+| POST | /result | Plugin | Post render result `{ status, error?, logs }` |
+| GET | /result | Claude | Read latest result |
+| GET | /health | Either | `{ status: "ok", pending: bool }` |
+
+No `/api` prefix — this isn't the main app. Short paths for a dev tool.
+
+#### Command types
+
+The current system only has one command: `run` (fetch bundle → eval → fetch tree → render). But we should support two more for Claude to be effective:
+
+| Command | What it does |
+|---------|-------------|
+| `run` | Full cycle: eval fresh bundle + render tree from a share code |
+| `eval` | Eval arbitrary JS in the Figma sandbox (no render). For testing small snippets. |
+| `inspect` | Run a JS expression and return the result. For reading Figma state (node tree, properties, etc.) |
+
+The `eval` and `inspect` commands let Claude debug without a full render cycle. Critical for the "try code, check what works" workflow.
+
+#### Plugin-side changes
+
+The plugin UI's dev loop code needs to point to `http://localhost:4000` instead of `${DEV_URL}/api/plugin/...`. The `executeDevRun` function needs to handle the new command types.
+
+In `ui.html`, the dev loop URL becomes a constant:
+```js
+const DEV_LOOP_URL = 'http://localhost:4000';
+```
+
+The plugin still fetches tree data from the main Rails app (`DEV_URL/api/iterations/:code/export-figma`). The dev loop server doesn't proxy this — the plugin has direct access.
+
+#### Command flow
+
+```
+Claude                    figma-dev-loop (port 4000)           Plugin (Figma)
+  │                              │                                │
+  │ POST /trigger {action:"run"} │                                │
+  │─────────────────────────────>│                                │
+  │                              │   GET /poll                    │
+  │                              │<───────────────────────────────│
+  │                              │   {action:"run", code:"dev-x"} │
+  │                              │───────────────────────────────>│
+  │                              │                                │
+  │                              │                    [fetch bundle from /bundle]
+  │                              │                    [eval in sandbox]
+  │                              │                    [fetch tree from Rails]
+  │                              │                    [render in Figma]
+  │                              │                                │
+  │                              │   POST /result {status, logs}  │
+  │                              │<───────────────────────────────│
+  │  GET /result                 │                                │
+  │─────────────────────────────>│                                │
+  │  {status:"success", logs:[]} │                                │
+  │<─────────────────────────────│                                │
+```
+
+### Error resilience — the plugin must never die
+
+This is the most critical design principle. If the plugin crashes or hangs, the entire feedback loop is broken and requires human intervention (reopening the plugin in Figma). Every error must be caught and reported, never propagated.
+
+#### 1. Top-level try/catch in the dispatcher
+
+`code.ts` already has this partially. The `__handlePluginMessage` handler must wrap ALL work in try/catch:
+
+```typescript
+figma.ui.onmessage = async (msg: any) => {
+  try {
+    if (msg.type === "dev-eval") {
+      try {
+        eval(msg.code);
+        figma.ui.postMessage({ type: "dev-eval-done" });
+      } catch (e: any) {
+        figma.ui.postMessage({ type: "dev-eval-error", error: e.message });
+      }
+      return;
+    }
+    await (globalThis as any).__handlePluginMessage(msg);
+  } catch (e: any) {
+    // Last resort — never let an unhandled error kill the plugin
+    figma.ui.postMessage({ type: "fatal-error", error: e.message || String(e) });
+  }
+};
+```
+
+#### 2. Eval isolation — bad code must not corrupt global state
+
+The eval'd dev-bundle.ts overwrites `__handlePluginMessage`. If the eval'd code throws during setup (not during execution), the handler is left in a broken state. Fix: wrap the overwrite in a transaction pattern:
+
+```typescript
+// In dev-entry.ts — save previous handler before overwriting
+const _previousHandler = (globalThis as any).__handlePluginMessage;
+try {
+  (globalThis as any).__handlePluginMessage = async (msg: any) => {
+    // ... new handler code ...
+  };
+} catch (e) {
+  // Restore previous handler if setup fails
+  (globalThis as any).__handlePluginMessage = _previousHandler;
+  throw e;
+}
+```
+
+#### 3. Render timeout — the plugin side
+
+The UI's `waitForMessage` already has a timeout (120s for render, 15s for eval). But if the render hangs inside the Figma sandbox (infinite loop in tree-renderer), `waitForMessage` times out and reports an error — good. The plugin stays alive because the hang is in an async function, not a sync infinite loop.
+
+**Sync infinite loops are unrecoverable.** If eval'd code has `while(true){}`, the Figma sandbox freezes. There's no workaround for this in the plugin environment. The dev-entry.ts code must be carefully written to avoid sync loops. The dev loop server should document this as a known limitation.
+
+#### 4. Memory cleanup between runs
+
+Each dev run creates Figma nodes. Over many iterations these accumulate. The plugin should clean up previous dev frames before rendering a new one:
+
+```typescript
+// Before creating a new rootFrame, remove previous dev frames
+const prevFrames = figma.currentPage.children.filter(
+  n => n.type === "FRAME" && n.name.startsWith("[v")
+);
+for (const f of prevFrames) f.remove();
+```
+
+#### 5. Console capture must be restorable
+
+`dev-entry.ts` overwrites `console.log` and `console.warn`. If eval'd multiple times, the overrides stack (wrapping wrappers). The current code already saves `_origLog`/`_origWarn`, but on re-eval those get overwritten with the previous wrapped version. Fix: save originals on first eval only:
+
+```typescript
+if (!(globalThis as any).__origConsoleLog) {
+  (globalThis as any).__origConsoleLog = console.log;
+  (globalThis as any).__origConsoleWarn = console.warn;
+}
+const _origLog = (globalThis as any).__origConsoleLog;
+const _origWarn = (globalThis as any).__origConsoleWarn;
+```
+
+### Makefile integration
+
+```makefile
+# Start the Figma dev loop relay server
+dev-loop:
+	cd figma-dev-loop && node server.js
+```
+
+### What to remove from Rails
+
+- Delete `DevPluginController`
+- Delete the 5 routes in `routes.rb` under `# Dev plugin hot-reload loop`
+- Remove the CORS entry for `/api/plugin/*` in `cors.rb`
+
+### What stays in `figma-plugin/`
+
+Everything. The plugin source (`code.ts`, `dev-entry.ts`, `tree-renderer.ts`, `ui.html`, `manifest.json`) stays in `figma-plugin/`. The dev loop server reads the built bundle from `figma-plugin/dist/`. The plugin is not moved.
+
+### For Developer
+
+1. Create `figma-dev-loop/server.js` — plain Node HTTP server on port 4000 with the 6 endpoints above
+2. Create `figma-dev-loop/package.json` — no dependencies
+3. Update `figma-plugin/src/ui.html` — dev loop URLs point to `http://localhost:4000`
+4. Update `figma-plugin/src/dev-entry.ts` — console capture fix (save originals once), handler rollback on eval failure
+5. Update `figma-plugin/src/code.ts` — top-level catch-all in dispatcher
+6. Add cleanup of previous dev frames before each render
+7. Support `eval` and `inspect` command types in the plugin
+8. Delete `DevPluginController` and its routes/CORS from Rails
+9. Add `dev-loop` target to Makefile
+10. Rebuild plugin bundles
+
+### Stack note
+
+`figma-dev-loop/` is a dev-only tool. It does not deploy to Heroku, has no database, and has no auth. It's a local relay between Claude Code (CLI) and the Figma plugin.
+
+---
+
+## [11] 2026-03-16T15:30 -- CTO
+
+Re: URL convention — hyphens everywhere, no underscores in routes
+
+### Decision
+
+All URL paths use **hyphens** (`kebab-case`), never underscores. This applies to resource paths (already done) and member/collection action paths (not yet done).
+
+Rails convention is underscores in route helpers and controller methods — that's fine internally. The URL the user sees must use hyphens.
+
+### Current state
+
+Already correct:
+- `/api/figma-files`, `/api/component-sets`, `/api/design-systems`
+
+Need fixing — member actions with underscores:
+
+| Current | New |
+|---------|-----|
+| `/api/components/:id/figma_json` | `/api/components/:id/figma-json` |
+| `/api/components/:id/html_preview` | `/api/components/:id/html-preview` |
+| `/api/components/:id/visual_diff` | `/api/components/:id/visual-diff` |
+| `/api/components/:id/diff_image` | `/api/components/:id/diff-image` |
+| `/api/component-sets/:id/figma_json` | `/api/component-sets/:id/figma-json` |
+| `/api/designs/:id/export_image` | `/api/designs/:id/export-image` |
+| `/api/designs/:id/export_react` | `/api/designs/:id/export-react` |
+| `/api/designs/:id/export_figma` | `/api/designs/:id/export-figma` |
+| `/api/iterations/:share_code/export_figma` | `/api/iterations/:share_code/export-figma` |
+| `/api/iterations/:share_code/export_react` | `/api/iterations/:share_code/export-react` |
+| `/api/images/render` | OK (single word, no change) |
+| `/api/plugin/dev_bundle` | `/api/plugin/dev-bundle` |
+| `/api/plugin/dev_trigger` | `/api/plugin/dev-trigger` |
+| `/api/plugin/dev_poll` | `/api/plugin/dev-poll` |
+| `/api/plugin/dev_result` | `/api/plugin/dev-result` |
+| `/api/designs/:id/export_image` | `/api/designs/:id/export-image` |
+
+### How to fix in Rails
+
+Use the `:path` option on member routes. Controller method names stay as underscores (Ruby convention). Example:
+
+```ruby
+resources :components, only: [:update] do
+  get :figma_json, on: :member, path: "figma-json"
+  get :html_preview, on: :member, path: "html-preview"
+  get :visual_diff, on: :member, path: "visual-diff"
+  get :diff_image, on: :member, path: "diff-image"
+  get "screenshots/:type", on: :member, action: :screenshot, as: :screenshot
+end
+```
+
+For standalone routes:
+```ruby
+get "iterations/:share_code/export-figma", to: "iterations#export_figma", as: :iteration_export_figma
+get "iterations/:share_code/export-react", to: "iterations#export_react", as: :iteration_export_react
+```
+
+### Frontend changes required
+
+Search the Vue app for any hardcoded API paths containing underscores and update them. Likely in:
+- Export actions (`export_figma`, `export_react`, `export_image`)
+- Component detail views (`figma_json`, `html_preview`, `visual_diff`, `diff_image`)
+- Figma plugin UI (`dev_bundle`, `dev_trigger`, `dev_poll`, `dev_result`)
+
+### For Developer
+
+1. Update `routes.rb` — add `path:` overrides on all underscore member routes
+2. Grep the Vue `app/src/` directory for underscore API paths and update
+3. Update the Figma plugin `ui.html` URLs (`dev_bundle` → `dev-bundle`, etc.)
+4. No controller/method renaming needed — only URL paths change
+
+### For QA
+
+After developer ships, verify no E2E tests break on the renamed URLs. Step definitions that hit API endpoints directly (not through the UI) will need path updates.
+
+### Going forward
+
+Any new endpoint must use hyphens in the URL path. Controller methods remain Ruby snake_case.
+
+---
+
+## [10] 2026-03-16T15:00 -- CTO
+
+Re: Local prod DB for debugging production bugs
+
+### Problem
+
+When a user reports a bug in production, we can't reproduce it locally because dev and prod have different data. We need a safe, repeatable way to pull the prod database down and run the dev server against it.
+
+### Decision: `make prod-db` target + `PROD_DB` env var
+
+#### 1. Pull prod DB — new Makefile target `prod-db`
+
+```makefile
+# Pull production database to local for debugging
+prod-db:
+	@echo "Pulling production database..."
+	dropdb --if-exists jan_designer_api_prodcopy
+	heroku pg:pull DATABASE_URL jan_designer_api_prodcopy --app design-gpt
+	@echo "Done. Run: make dev-prod"
+```
+
+This uses `heroku pg:pull` which:
+- Creates a local PostgreSQL database (`jan_designer_api_prodcopy`)
+- Pulls a full snapshot from the Heroku Postgres add-on
+- Works without `pg_dump` file management — one command
+- Requires the Heroku CLI and `heroku login`
+
+The local DB name is `jan_designer_api_prodcopy` — deliberately NOT `_development` or `_test` so it cannot be confused with or overwritten by `db:drop`, `clean_dev`, or test setup.
+
+#### 2. Run dev server against prod copy — new Makefile target `dev-prod`
+
+```makefile
+# Start dev servers against local prod DB copy
+dev-prod:
+	@trap 'kill -- -$$; sleep 1; kill -9 -- -$$ 2>/dev/null; exit' INT TERM; \
+	cd api && DATABASE_URL=postgres://localhost/jan_designer_api_prodcopy bin/rails server -p 3000 -b 127.0.0.1 & \
+	cd app && npm run dev & \
+	cd caddy && caddy run --config Caddyfile & \
+	wait
+```
+
+When `DATABASE_URL` is set, Rails uses it over `database.yml` — this is standard Rails behavior (documented in `database.yml` line 66-77). The dev server connects to the prod copy. Everything else (Vite, Caddy, Auth0) works identically.
+
+#### 3. Safety guarantees
+
+- **Read-only by convention, not enforcement**: The local copy is a regular PostgreSQL database. You can read and write to it. This is intentional — you may need to test a fix against prod data. But `DATABASE_URL` only points to the LOCAL copy, never to the remote Heroku database.
+- **No risk of writing to prod**: `heroku pg:pull` creates a one-way local snapshot. Rails connects to `postgres://localhost/...`. There is no connection string to the remote database anywhere in the dev environment.
+- **Isolated from dev/test**: The database name `jan_designer_api_prodcopy` is separate from `_development` and `_test`. Running `make clean_dev` or `db:drop` won't touch it (those target `jan_designer_api_development`).
+- **Disposable**: `dropdb jan_designer_api_prodcopy` cleans up. The `prod-db` target drops and recreates on each run.
+
+#### 4. No schema migration step needed
+
+`heroku pg:pull` copies the full database including schema. The prod DB is always at the latest migration (the `release` Procfile entry runs `db:migrate` on every deploy). No local `db:migrate` is needed after pulling.
+
+#### 5. Auth note
+
+Prod users authenticate via Auth0 with real RS256 JWTs. When running `dev-prod`, the mock Auth0 plugin in the frontend will still be active (because Vite runs in dev mode). You'll be logged in as the mock user (`auth0|alice123`), but the prod DB may not have that user. Auto-creation via `current_user` in `ApplicationController` will handle it — a new User row is created on first request. This is fine for debugging; you'll see the app with an empty user state but can navigate to any URL.
+
+If you need to impersonate a specific prod user, look up their `auth0_id` in the prod copy and set it in `mock-auth0.js`.
+
+### For Developer
+
+Add two targets to `Makefile`:
+
+```makefile
+# Pull production database to local for debugging
+prod-db:
+	@echo "Pulling production database..."
+	dropdb --if-exists jan_designer_api_prodcopy
+	heroku pg:pull DATABASE_URL jan_designer_api_prodcopy --app design-gpt
+	@echo "Done. Run: make dev-prod"
+
+# Start dev servers against local prod DB copy
+dev-prod:
+	@trap 'kill -- -$$; sleep 1; kill -9 -- -$$ 2>/dev/null; exit' INT TERM; \
+	cd api && DATABASE_URL=postgres://localhost/jan_designer_api_prodcopy bin/rails server -p 3000 -b 127.0.0.1 & \
+	cd app && npm run dev & \
+	cd caddy && caddy run --config Caddyfile & \
+	wait
+```
+
+Also add to `setup.md` under a new "Debugging Production Bugs" section:
+
+```
+## Debugging Production Bugs
+
+Pull the production database locally and run against it:
+
+    make prod-db      # Pull prod DB snapshot (requires: heroku login)
+    make dev-prod     # Start dev servers against prod copy
+
+Access at https://design-gpt.localtest.me as usual. The database is a local copy — safe to read and modify.
+```
+
+---
+
 ## [9] 2026-03-09T12:00 -- CTO (updated 2026-03-09T13:00)
 
 Re: CRITICAL -- Dev and test databases not properly separated at runtime
