@@ -380,19 +380,30 @@
     }
   });
 
-  // src/code.ts
-  var require_code = __commonJS({
-    "src/code.ts"(exports, module) {
+  // src/dev-entry.ts
+  var require_dev_entry = __commonJS({
+    "src/dev-entry.ts"(exports) {
       init_tree_renderer();
-      var PLUGIN_VERSION = "v7";
-      figma.showUI(__html__, { width: 320, height: 340 });
-      globalThis.__handlePluginMessage = (msg2) => __async(null, null, function* () {
-        if (msg2.type === "render-tree") {
+      var PLUGIN_VERSION = "v11";
+      globalThis.__devLogs = [];
+      var _origLog = console.log;
+      var _origWarn = console.warn;
+      console.log = (...args) => {
+        globalThis.__devLogs.push(args.join(" "));
+        _origLog.apply(console, args);
+      };
+      console.warn = (...args) => {
+        globalThis.__devLogs.push("[WARN] " + args.join(" "));
+        _origWarn.apply(console, args);
+      };
+      globalThis.__handlePluginMessage = (msg) => __async(null, null, function* () {
+        if (msg.type === "render-tree") {
           try {
+            globalThis.__devLogs = [];
             pendingImageFills.length = 0;
-            const baseName = msg2.name || "Design GPT Import";
+            const baseName = msg.name || "Design GPT Import";
             const rootFrame = figma.createFrame();
-            rootFrame.name = msg2.dev ? `[${PLUGIN_VERSION}] ${baseName}` : baseName;
+            rootFrame.name = msg.dev ? `[${PLUGIN_VERSION}] ${baseName}` : baseName;
             rootFrame.layoutMode = "VERTICAL";
             rootFrame.primaryAxisSizingMode = "AUTO";
             rootFrame.counterAxisSizingMode = "AUTO";
@@ -400,7 +411,7 @@
             rootFrame.fills = [
               { type: "SOLID", color: { r: 1, g: 1, b: 1 } }
             ];
-            const rendered = yield renderNode(msg2.tree);
+            const rendered = yield renderNode(msg.tree);
             rootFrame.appendChild(rendered);
             const viewport = figma.viewport.center;
             rootFrame.x = Math.round(viewport.x - rootFrame.width / 2);
@@ -410,40 +421,29 @@
             if (pendingImageFills.length > 0) {
               figma.ui.postMessage({ type: "fetch-images", fills: [...pendingImageFills] });
             }
-            figma.ui.postMessage({ type: "render-done", name: msg2.name, logs: globalThis.__devLogs || [] });
+            figma.ui.postMessage({ type: "render-done", name: msg.name, logs: globalThis.__devLogs || [] });
           } catch (err) {
             figma.ui.postMessage({
               type: "render-error",
-              error: err.message || String(err)
+              error: err.message || String(err),
+              logs: globalThis.__devLogs || []
             });
           }
-        } else if (msg2.type === "image-data") {
+        } else if (msg.type === "image-data") {
           try {
-            const node = figma.getNodeById(msg2.nodeId);
+            const node = figma.getNodeById(msg.nodeId);
             if (node && "fills" in node) {
-              const image = figma.createImage(new Uint8Array(msg2.bytes));
+              const image = figma.createImage(new Uint8Array(msg.bytes));
               node.fills = [
                 { type: "IMAGE", imageHash: image.hash, scaleMode: "FILL" }
               ];
             }
           } catch (err) {
-            console.warn("Failed to apply image fill to " + msg2.nodeId, err);
+            console.warn("Failed to apply image fill to " + msg.nodeId, err);
           }
         }
-      });
-      figma.ui.onmessage = (msg) => __async(null, null, function* () {
-        if (msg.type === "dev-eval") {
-          try {
-            eval(msg.code);
-            figma.ui.postMessage({ type: "dev-eval-done" });
-          } catch (e) {
-            figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
-          }
-          return;
-        }
-        yield globalThis.__handlePluginMessage(msg);
       });
     }
   });
-  require_code();
+  require_dev_entry();
 })();

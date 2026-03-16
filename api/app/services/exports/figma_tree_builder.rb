@@ -36,6 +36,9 @@ module Exports
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
           enriched["isImage"] = true if record.is_image
         end
+
+        slot_frames = build_slot_frames(node, record)
+        enriched["_slotFrames"] = slot_frames if slot_frames.any?
       end
 
       # Recursively enrich children in slot arrays
@@ -96,6 +99,28 @@ module Exports
         end
         keys
       end
+    end
+
+    # Map tree slot keys to Figma internal frame names for SLOT-type properties.
+    # E.g. tree key "children" → Figma SLOT property "Scroll" → { "children" => "Scroll" }
+    def build_slot_frames(node, record)
+      prop_defs = record.respond_to?(:prop_definitions) ? record.prop_definitions : {}
+      slots = record.respond_to?(:slots) ? (record.slots || []) : []
+
+      # Collect SLOT-type property names from prop_definitions
+      slot_prop_names = (prop_defs || {}).select { |_, d| d["type"] == "SLOT" }.keys
+
+      mapping = {}
+      # Match each tree slot key to a SLOT property name
+      slots.each_with_index do |slot_def, i|
+        slot_name = slot_def["name"]
+        next unless slot_name && node.key?(slot_name)
+        # Use positional matching: slot_def[i] → slot_prop_names[i]
+        frame_name = slot_prop_names[i]
+        mapping[slot_name] = frame_name if frame_name
+      end
+
+      mapping
     end
 
     def build_component_index

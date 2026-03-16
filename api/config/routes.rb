@@ -53,6 +53,13 @@ Rails.application.routes.draw do
       get :export_figma, :on => :member
     end
 
+    # Dev plugin hot-reload loop
+    get "plugin/dev_bundle", to: "dev_plugin#bundle"
+    post "plugin/dev_trigger", to: "dev_plugin#trigger"
+    get "plugin/dev_poll", to: "dev_plugin#poll"
+    post "plugin/dev_result", to: "dev_plugin#result"
+    get "plugin/dev_result", to: "dev_plugin#get_result"
+
     get "up" => "application#health_check", :as => :rails_health_check
   end
 

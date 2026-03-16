@@ -7,39 +7,57 @@
     label { display: block; margin-bottom: 4px; font-weight: 500; }
     input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; margin-bottom: 12px; text-align: center; letter-spacing: 4px; font-family: monospace; }
     input:focus { outline: none; border-color: #18A0FB; }
-    button { width: 100%; padding: 10px; background: #18A0FB; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button { width: 100%; padding: 10px; background: #18A0FB; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 6px; }
     button:hover { background: #0d8de5; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     .status { margin-top: 12px; padding: 8px; border-radius: 4px; font-size: 12px; display: none; }
     .status.error { display: block; background: #ffeaea; color: #d32f2f; }
     .status.info { display: block; background: #e8f4fd; color: #1565c0; }
     .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+    .dev-loop { display: block; background: #fff3e0; color: #e65100; }
   </style>
 </head>
 <body>
   <label for="share-code">Iteration Code</label>
-  <input id="share-code" type="text" maxlength="6" placeholder="abc123" autofocus />
+  <input id="share-code" type="text" maxlength="10" placeholder="abc123" />
 
   <button id="import-btn">Import to Figma</button>
+  <button id="dev-loop-btn" style="background:#ff9800; display:none;">Start Dev Loop</button>
 
   <div id="status" class="status"></div>
 
   <script>
-    const BASE_URL = 'https://design-gpt.xyz';
+    const PROD_URL = 'https://design-gpt.xyz';
+    const DEV_URL = 'https://design-gpt.localtest.me';
     const btn = document.getElementById('import-btn');
+    const devLoopBtn = document.getElementById('dev-loop-btn');
     const statusEl = document.getElementById('status');
     const codeInput = document.getElementById('share-code');
+    let devLoopActive = false;
+    let devPollTimer = null;
 
     function setStatus(msg, type) {
       statusEl.textContent = msg;
       statusEl.className = 'status ' + type;
     }
 
+    // Default dev code
+    codeInput.value = 'dev-vlxljd';
+
+    // Show dev loop button for dev codes
+    function updateDevButton() {
+      const code = codeInput.value.trim().toLowerCase();
+      devLoopBtn.style.display = code.startsWith('dev-') ? 'block' : 'none';
+    }
+    codeInput.addEventListener('input', updateDevButton);
+    updateDevButton();
+
+    // --- Normal import flow ---
     btn.addEventListener('click', async () => {
       const code = codeInput.value.trim().toLowerCase();
 
-      if (!code || code.length !== 6) {
-        setStatus('Enter a 6-character iteration code.', 'error');
+      if (!code || code.length < 6) {
+        setStatus('Enter an iteration code.', 'error');
         return;
       }
 
@@ -47,7 +65,8 @@
       setStatus('Fetching design...', 'info');
 
       try {
-        const res = await fetch(`${BASE_URL}/api/iterations/${code}/export_figma`);
+        const baseUrl = code.startsWith('dev-') ? DEV_URL : PROD_URL;
+        const res = await fetch(`${baseUrl}/api/iterations/${code}/export_figma`);
         if (res.status === 404) throw new Error('Iteration not found. Check the code and try again.');
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
@@ -55,17 +74,146 @@
         if (!data.tree) throw new Error('No tree data. Generate a design first.');
 
         setStatus('Rendering in Figma...', 'info');
-        parent.postMessage({ pluginMessage: { type: 'render-tree', tree: data.tree, name: data.name } }, '*');
+        const isDev = code.startsWith('dev-');
+        parent.postMessage({ pluginMessage: { type: 'render-tree', tree: data.tree, name: data.name, dev: isDev } }, '*');
       } catch (err) {
         setStatus(err.message, 'error');
         btn.disabled = false;
       }
     });
 
+    // --- Dev loop flow ---
+    devLoopBtn.addEventListener('click', () => {
+      if (devLoopActive) {
+        stopDevLoop();
+      } else {
+        startDevLoop();
+      }
+    });
+
+    function startDevLoop() {
+      const code = codeInput.value.trim().toLowerCase();
+      if (!code.startsWith('dev-')) return;
+
+      devLoopActive = true;
+      devLoopBtn.textContent = 'Stop Dev Loop';
+      devLoopBtn.style.background = '#d32f2f';
+      btn.disabled = true;
+      codeInput.disabled = true;
+      setStatus('Dev loop active — polling for commands...', 'dev-loop');
+      pollDevServer();
+    }
+
+    function stopDevLoop() {
+      devLoopActive = false;
+      if (devPollTimer) clearTimeout(devPollTimer);
+      devLoopBtn.textContent = 'Start Dev Loop';
+      devLoopBtn.style.background = '#ff9800';
+      btn.disabled = false;
+      codeInput.disabled = false;
+      setStatus('Dev loop stopped.', 'info');
+    }
+
+    async function pollDevServer() {
+      if (!devLoopActive) return;
+
+      try {
+        const res = await fetch(`${DEV_URL}/api/plugin/dev_poll`);
+        const data = await res.json();
+
+        if (data.action === 'run') {
+          await executeDevRun(data.code || codeInput.value.trim().toLowerCase());
+        }
+      } catch (err) {
+        // Network errors are normal (server restart etc), just keep polling
+      }
+
+      // ALWAYS schedule next poll, never stop
+      if (devLoopActive) {
+        devPollTimer = setTimeout(pollDevServer, 2000);
+      }
+    }
+
+    async function reportResult(status, error, frameName, logs) {
+      try {
+        await fetch(`${DEV_URL}/api/plugin/dev_result`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, error: error || null, frame_name: frameName || null, logs: logs || [] }),
+        });
+      } catch (_) {}
+    }
+
+    async function executeDevRun(shareCode) {
+      let step = 'init';
+      try {
+        // 1. Fetch fresh renderer bundle
+        step = 'fetch-bundle';
+        setStatus('Fetching fresh code...', 'dev-loop');
+        const bundleRes = await fetch(`${DEV_URL}/api/plugin/dev_bundle`);
+        if (!bundleRes.ok) throw new Error('Failed to fetch dev bundle: ' + bundleRes.status);
+        const bundleCode = await bundleRes.text();
+
+        // 2. Send to main thread for eval
+        step = 'eval';
+        setStatus('Eval-ing fresh code...', 'dev-loop');
+        parent.postMessage({ pluginMessage: { type: 'dev-eval', code: bundleCode } }, '*');
+        const evalResult = await waitForMessage('dev-eval-done', 'dev-eval-error', 15000);
+        if (evalResult.type === 'dev-eval-error') {
+          throw new Error('eval failed: ' + (evalResult.error || 'unknown'));
+        }
+
+        // 3. Fetch tree data
+        step = 'fetch-tree';
+        setStatus('Fetching tree...', 'dev-loop');
+        const treeRes = await fetch(`${DEV_URL}/api/iterations/${shareCode}/export_figma`);
+        if (!treeRes.ok) throw new Error('Failed to fetch tree: ' + treeRes.status);
+        const treeData = await treeRes.json();
+        if (!treeData.tree) throw new Error('No tree data');
+
+        // 4. Send render command
+        step = 'render';
+        setStatus('Rendering...', 'dev-loop');
+        parent.postMessage({ pluginMessage: { type: 'render-tree', tree: treeData.tree, name: treeData.name, dev: true } }, '*');
+        const result = await waitForMessage('render-done', 'render-error', 120000);
+
+        // 5. Report result
+        const status = result.type === 'render-done' ? 'success' : 'error';
+        await reportResult(status, result.error, result.name, result.logs);
+        setStatus(`Dev run: ${status}. Polling...`, status === 'success' ? 'success' : 'error');
+      } catch (err) {
+        const msg = `[${step}] ${err.message}`;
+        setStatus('Dev run failed: ' + msg + ' — still polling...', 'error');
+        await reportResult('error', msg);
+      }
+    }
+
+    // Promise-based message waiter — always resolves (never rejects except timeout)
+    function waitForMessage(successType, errorType, timeout) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          window.removeEventListener('message', handler);
+          reject(new Error('Timeout (' + (timeout/1000) + 's) waiting for ' + successType));
+        }, timeout);
+
+        function handler(event) {
+          const msg = event.data.pluginMessage;
+          if (!msg) return;
+          if (msg.type === successType || msg.type === errorType) {
+            clearTimeout(timer);
+            window.removeEventListener('message', handler);
+            resolve(msg);
+          }
+        }
+        window.addEventListener('message', handler);
+      });
+    }
+
+    // --- Image fills + result handling ---
     async function fetchImageFills(fills) {
       for (const fill of fills) {
         try {
-          const url = `${BASE_URL}/api/images/render?prompt=${encodeURIComponent(fill.prompt)}`;
+          const url = `${DEV_URL}/api/images/render?prompt=${encodeURIComponent(fill.prompt)}`;
           const res = await fetch(url);
           if (!res.ok) continue;
           const buffer = await res.arrayBuffer();
@@ -88,13 +236,15 @@
 
       if (msg.type === 'fetch-images') {
         fetchImageFills(msg.fills);
-      } else if (msg.type === 'render-done') {
+      } else if (msg.type === 'render-done' && !devLoopActive) {
         setStatus(`Imported "${msg.name}" successfully!`, 'success');
         btn.disabled = false;
-      } else if (msg.type === 'render-error') {
+      } else if (msg.type === 'render-error' && !devLoopActive) {
         setStatus(msg.error, 'error');
         btn.disabled = false;
       }
+      // dev-eval-done, dev-eval-error, render-done, render-error in dev mode
+      // are handled by waitForMessage promises
     };
   </script>
 </body>

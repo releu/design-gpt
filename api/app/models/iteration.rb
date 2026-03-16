@@ -8,8 +8,10 @@ class Iteration < ApplicationRecord
   private
 
   def generate_share_code
+    prefix = Rails.env.development? ? "dev-" : ""
+    suffix_length = Rails.env.development? ? 6 : 6
     loop do
-      self.share_code = SecureRandom.alphanumeric(6).downcase
+      self.share_code = "#{prefix}#{SecureRandom.alphanumeric(suffix_length).downcase}"
       break unless Iteration.exists?(share_code: share_code)
     end
   end

@@ -7,7 +7,7 @@
   "documentAccess": "dynamic-page",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["https://design-gpt.xyz"],
+    "allowedDomains": ["https://design-gpt.xyz", "https://design-gpt.localtest.me"],
     "reasoning": "Fetches design tree data from the Design GPT API to recreate designs in Figma"
   }
 }

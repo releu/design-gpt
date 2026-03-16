@@ -23,6 +23,53 @@ const LAYOUT_COMPONENTS: Record<string, "VERTICAL" | "HORIZONTAL"> = {
   Row: "HORIZONTAL",
 };
 
+// Cache of component key → ComponentNode (survives across dev-eval cycles)
+const _componentCache: Map<string, ComponentNode> = (globalThis as any).__componentCache || new Map();
+(globalThis as any).__componentCache = _componentCache;
+
+async function findComponentByKey(key: string): Promise<ComponentNode> {
+  // Check cache first
+  const cached = _componentCache.get(key);
+  if (cached) return cached;
+
+  // Try importing (works for published library components)
+  try {
+    const imported = await figma.importComponentByKeyAsync(key);
+    console.log("[find] Imported: " + imported.name + " (key=" + key.substring(0, 8) + ")");
+    _componentCache.set(key, imported);
+    return imported;
+  } catch (_) {}
+
+  // Fallback: search current page only (fast, no loadAllPagesAsync)
+  const local = figma.currentPage.findOne(
+    (n) => n.type === "COMPONENT" && n.key === key
+  ) as ComponentNode | null;
+  if (local) {
+    console.log("[find] Found on current page: " + local.name + " (key=" + key.substring(0, 8) + ")");
+    _componentCache.set(key, local);
+    return local;
+  }
+
+  // Try loading each page individually to find the component
+  for (const page of figma.root.children) {
+    if (page === figma.currentPage) continue;
+    try {
+      await page.loadAsync();
+      const found = page.findOne(
+        (n) => n.type === "COMPONENT" && n.key === key
+      ) as ComponentNode | null;
+      if (found) {
+        console.log("[find] Found on page '" + page.name + "': " + found.name + " (key=" + key.substring(0, 8) + ")");
+        _componentCache.set(key, found);
+        return found;
+      }
+    } catch (_) {}
+  }
+
+  console.warn("[find] Not found anywhere: key=" + key.substring(0, 8));
+  throw new Error("Component not found: " + key);
+}
+
 export async function renderNode(
   node: TreeNode
 ): Promise<SceneNode> {
@@ -47,10 +94,9 @@ async function renderComponentInstance(
   node: TreeNode
 ): Promise<SceneNode> {
   try {
-    var component = await figma.importComponentByKeyAsync(node.componentKey!);
+    var component = await findComponentByKey(node.componentKey!);
   } catch (e) {
-    // Component not published as library — fall back to a labeled frame
-    console.warn("Could not import component " + node.component + " (" + node.componentKey + "), using fallback frame");
+    console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
     return await renderFallbackFrame(node, node.component || "");
   }
 
@@ -98,6 +144,11 @@ function applyProperties(instance: InstanceNode, node: TreeNode): void {
     keyMap.set(normalized.toLowerCase(), figmaKey);
   }
 
+  const availKeys = Array.from(keyMap.keys()).join(", ");
+  const treeTextKeys = Object.keys(node.textProperties || {}).join(", ");
+  const treeVariantKeys = Object.keys(node.variantProperties || {}).join(", ");
+  console.log("[props] " + instance.name + " — figma: [" + availKeys + "] tree-text: [" + treeTextKeys + "] tree-variant: [" + treeVariantKeys + "]");
+
   // Variant properties
   if (node.variantProperties) {
     for (const [name, value] of Object.entries(node.variantProperties)) {
@@ -129,7 +180,10 @@ function applyProperties(instance: InstanceNode, node: TreeNode): void {
   }
 
   if (Object.keys(toSet).length > 0) {
+    console.log("[props] " + instance.name + " — setting " + Object.keys(toSet).length + " props");
     instance.setProperties(toSet);
+  } else {
+    console.log("[props] " + instance.name + " — nothing to set");
   }
 }
 
@@ -186,7 +240,7 @@ async function swapAndApplyProperties(
     // Snapshot property keys before the swap
     const keysBefore = new Set(Object.keys(instance.componentProperties));
 
-    const swapComponent = await figma.importComponentByKeyAsync(child.componentKey);
+    const swapComponent = await findComponentByKey(child.componentKey);
     instance.setProperties({ [figmaKey]: swapComponent.id });
 
     // Diff to find newly appeared properties from the swapped component
@@ -229,12 +283,70 @@ async function swapAndApplyProperties(
   }
 }
 
+// Find a named node inside an instance by traversing its children recursively.
+// Matches FRAME, COMPONENT, INSTANCE, and SECTION nodes (slot frames may have any of these types).
+function findChildByName(node: SceneNode, name: string): (FrameNode | InstanceNode) | null {
+  if ("children" in node) {
+    for (const child of (node as FrameNode).children) {
+      if (child.name === name && "children" in child) {
+        return child as FrameNode;
+      }
+      if ("children" in child) {
+        const found = findChildByName(child, name);
+        if (found) return found;
+      }
+    }
+  }
+  return null;
+}
+
+// Populate a slot frame inside the instance: remove defaults, add rendered children
+async function populateSlotFrame(
+  instance: InstanceNode,
+  frameName: string,
+  children: TreeNode[]
+): Promise<SceneNode[]> {
+  const overflow: SceneNode[] = [];
+  const slotFrame = findChildByName(instance, frameName);
+  console.log("[slot] Looking for frame '" + frameName + "' in instance '" + instance.name + "', found: " + (slotFrame ? slotFrame.type + " '" + slotFrame.name + "'" : "null"));
+  if (!slotFrame) {
+    // Debug: list instance children to understand structure
+    if ("children" in instance) {
+      for (const c of instance.children) {
+        console.log("[slot]   child: type=" + c.type + " name='" + c.name + "'");
+      }
+    }
+    // Can't find slot frame — all children become overflow
+    for (const child of children) {
+      overflow.push(await renderNode(child));
+    }
+    return overflow;
+  }
+
+  // Render and add each child to the slot frame.
+  // Default slot children are automatically hidden by Figma when new children are added.
+  for (const child of children) {
+    const rendered = await renderNode(child);
+    try {
+      slotFrame.appendChild(rendered);
+    } catch (e: any) {
+      console.warn("[slot] appendChild failed for '" + rendered.name + "': " + e.message);
+      overflow.push(rendered);
+    }
+  }
+
+  return overflow;
+}
+
 async function renderSlotChildren(
   instance: InstanceNode,
   node: TreeNode
 ): Promise<SceneNode[]> {
   const overflow: SceneNode[] = [];
   const instanceProps = instance.componentProperties;
+
+  // _slotFrames maps tree keys to Figma internal frame names for SLOT-type properties
+  const slotFrames = (node._slotFrames || {}) as Record<string, string>;
 
   // Build INSTANCE_SWAP lookup: normalized name -> figma key
   const swapMap = new Map<string, { figmaKey: string; propDef: ComponentProperties[string] }>();
@@ -255,13 +367,21 @@ async function renderSlotChildren(
 
   // Iterate slot arrays on the node
   for (const [key, value] of Object.entries(node)) {
-    if (["component", "componentKey", "isImage", "variantProperties", "textProperties", "booleanProperties"].includes(key)) continue;
+    if (["component", "componentKey", "isImage", "variantProperties", "textProperties", "booleanProperties", "_slotFrames"].includes(key)) continue;
     if (!Array.isArray(value)) continue;
 
     const slotChildren = value.filter(
       (item: unknown): item is TreeNode => item != null && typeof item === "object" && "component" in (item as object)
     );
     if (slotChildren.length === 0) continue;
+
+    // Check if this key has a _slotFrames mapping (SLOT-type property)
+    const frameName = slotFrames[key];
+    if (frameName) {
+      const slotOverflow = await populateSlotFrame(instance, frameName, slotChildren);
+      overflow.push(...slotOverflow);
+      continue;
+    }
 
     const slotNorm = key.toLowerCase();
     const directSwap = swapMap.get(slotNorm);

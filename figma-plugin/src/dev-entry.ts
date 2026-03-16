@@ -1,13 +1,22 @@
+// Hot-reloadable rendering logic.
+// This file is bundled as IIFE → served by Rails → eval'd in the Figma plugin sandbox.
+// It overwrites the global handler so fresh code runs without reloading the plugin.
+
 import { renderNode, pendingImageFills } from "./tree-renderer";
 
-const PLUGIN_VERSION = "v7";
+const PLUGIN_VERSION = "v11";
 
-figma.showUI(__html__, { width: 320, height: 340 });
+// Capture logs for dev result reporting
+(globalThis as any).__devLogs = [];
+const _origLog = console.log;
+const _origWarn = console.warn;
+console.log = (...args: any[]) => { (globalThis as any).__devLogs.push(args.join(" ")); _origLog.apply(console, args); };
+console.warn = (...args: any[]) => { (globalThis as any).__devLogs.push("[WARN] " + args.join(" ")); _origWarn.apply(console, args); };
 
-// Default handler — can be overwritten by dev-eval with fresh code
 (globalThis as any).__handlePluginMessage = async (msg: any) => {
   if (msg.type === "render-tree") {
     try {
+      (globalThis as any).__devLogs = [];
       pendingImageFills.length = 0;
 
       const baseName = msg.name || "Design GPT Import";
@@ -42,6 +51,7 @@ figma.showUI(__html__, { width: 320, height: 340 });
       figma.ui.postMessage({
         type: "render-error",
         error: err.message || String(err),
+        logs: (globalThis as any).__devLogs || [],
       });
     }
   } else if (msg.type === "image-data") {
@@ -57,18 +67,4 @@ figma.showUI(__html__, { width: 320, height: 340 });
       console.warn("Failed to apply image fill to " + msg.nodeId, err);
     }
   }
-};
-
-// Stable dispatcher — never changes, supports dev-eval hot-reload
-figma.ui.onmessage = async (msg: any) => {
-  if (msg.type === "dev-eval") {
-    try {
-      eval(msg.code);
-      figma.ui.postMessage({ type: "dev-eval-done" });
-    } catch (e: any) {
-      figma.ui.postMessage({ type: "dev-eval-error", error: e.message || String(e) });
-    }
-    return;
-  }
-  await (globalThis as any).__handlePluginMessage(msg);
 };

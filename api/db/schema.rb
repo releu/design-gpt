@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_13_121628) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_16_104123) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -185,7 +185,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_13_121628) do
     t.bigint "design_system_id"
     t.integer "design_system_version"
     t.jsonb "tree"
-    t.string "share_code", limit: 6
+    t.string "share_code", limit: 10
     t.index ["design_system_id"], name: "index_iterations_on_design_system_id"
     t.index ["share_code"], name: "index_iterations_on_share_code", unique: true
   end
