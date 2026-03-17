@@ -50,3 +50,23 @@ Feature: Design Management
     Given a DESIGN belongs to a different user
     When the current user tries to view the DESIGN
     Then the DESIGN is not found
+
+  # --- Shared Design Links ---
+
+  Scenario: Share a DESIGN via link
+    Given DESIGN #132 has a generated PREVIEW
+    When the user copies the share link
+    Then a URL containing the ITERATION's share code is provided
+
+  Scenario: View a shared DESIGN without authentication
+    Given an ITERATION has share code "abc123"
+    When an unauthenticated user visits /share/abc123
+    Then the DESIGN name, JSX, and share code are returned
+    And no login is required
+
+  Scenario: Export from shared link without authentication
+    Given an ITERATION has share code "abc123"
+    When an unauthenticated user requests /iterations/abc123/export-react
+    Then a zip file is downloaded
+    When an unauthenticated user requests /iterations/abc123/export-figma
+    Then the Figma export JSON is returned
