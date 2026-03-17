@@ -1,3 +1,85 @@
+## [14] 2026-03-17T19:00 -- CTO
+
+Re: Autonomous agent workflow — self-verify, don't declare victory, don't stop early
+
+### Problem
+
+Agents write code and say "done" without verifying it works. The human then has to manually check, find it broken, and ask the agent to fix it. This defeats the purpose of autonomous agents. The human cannot sit and babysit — agents must do their best to ship working code without supervision.
+
+### Principles
+
+#### 1. Don't ask what you can check yourself
+
+Before asking the human a question, ask yourself: can I answer this by reading code, running a command, or searching the codebase? If yes, do that instead. Examples of questions you should never ask:
+
+- "Does this file exist?" → use Glob
+- "What's the current schema?" → read schema.rb
+- "Is the API key configured?" → read .env or check ENV in a test
+- "Did the migration run?" → check schema.rb or run db:migrate:status
+- "What does this component look like?" → read the code
+
+The human's time is the scarcest resource. Only ask when you genuinely cannot determine the answer yourself.
+
+#### 2. Self-verify end-to-end — never declare "done" without proof
+
+Writing code is half the job. The other half is proving it works. After implementing a feature or fix:
+
+1. **Run the relevant tests** — not just fast tests, the full suite that covers your change
+2. **If tests pass, check the actual behavior** — does the API return what the spec says? Does the UI render? Does the Figma plugin work?
+3. **If tests fail, fix them** — don't report failures and stop. Read the error, diagnose, fix, re-run
+4. **If no tests exist for your change, write them** — untested code is unfinished code
+
+"Done" means: code written + tests pass + behavior verified. Not just "code written."
+
+#### 3. Never stop at "fast tests passed"
+
+Fast tests cover basic request/response. They don't cover:
+- Figma import pipeline end-to-end
+- AI generation with real components
+- Preview rendering with real JSX
+- Plugin export with real tree data
+
+If your change touches any of these, run the workflow tests too. "93/93 fast passed" is not a finish line — it's a checkpoint.
+
+#### 4. Never stop at "API key needed" or "environment issue"
+
+All API keys (Figma, OpenAI, Yandex) are configured in both dev and test environments. If a test fails with "key not found" or "unauthorized", the bug is in your code (wrong env var name, wrong config path, missing initialization), not in the environment. Investigate, don't punt.
+
+#### 5. Maximize auto-approved tool usage
+
+These tools don't need human approval: `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Agent`. Use them aggressively:
+
+- Read test output with `Read`, not by re-running
+- Search for patterns with `Grep`, not by asking
+- Fix code with `Edit`, not by describing what to change
+- Use `Agent` subagents for parallel research
+
+When you do need `Bash`, batch everything into one command (see decision [13]). The goal: the human approves 2-3 Bash calls per task, not 15.
+
+#### 6. Iterate until it works, not until you've tried once
+
+The workflow is:
+```
+write code → run tests → read failures → fix → run tests → read failures → fix → ...
+```
+
+Not:
+```
+write code → run tests → report failures → stop
+```
+
+If something breaks, you have all the tools to diagnose and fix it. Keep going. Only stop and ask the human when you've genuinely exhausted your options — you've tried multiple approaches and none work, or you need a design decision that isn't covered by the specs.
+
+#### 7. When in doubt, do more rather than less
+
+If you're unsure whether to run one more test, check one more edge case, or verify one more thing — do it. The cost of being thorough is a few extra minutes of compute. The cost of shipping broken code is the human's time and trust.
+
+### For all agents
+
+This applies to Developer, QA, and any agent that writes or tests code. The human is not a debugger, not a test runner, and not a search engine. You are.
+
+---
+
 ## [13] 2026-03-16T17:00 -- CTO
 
 Re: Autonomous Developer workflow — minimize human approvals
