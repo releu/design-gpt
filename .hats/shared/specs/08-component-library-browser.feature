@@ -60,6 +60,27 @@ Feature: Component Browser
     When the user views the component detail
     Then a message indicates that React code is not available
 
+  # --- Image Components ---
+
+  Scenario: IMAGE components shown with placeholder indicator
+    Given the DESIGN_SYSTEM has components tagged with #image
+    When the user browses the component browser
+    Then IMAGE components are listed with an image type indicator
+    And IMAGE components are shown alongside ROOT and VECTOR conventions
+
+  # --- Validation Warnings ---
+
+  Scenario: Components with validation warnings show a warning indicator
+    Given the DESIGN_SYSTEM has components with validation warnings
+    When the user browses the component browser
+    Then those components are listed with a warning indicator
+    And the warning indicator is visible alongside other type indicators (ROOT, VECTOR, IMAGE)
+
+  Scenario: Component detail displays validation warning messages
+    Given the user is viewing a component that has validation warnings
+    Then the validation warnings are displayed as a list of messages
+    And the messages describe what needs to be fixed in Figma
+
   # --- AI Schema ---
 
   Scenario: AI Schema shows component tree reachable from ROOT
@@ -68,10 +89,12 @@ Feature: Component Browser
     Then a tree is displayed starting from PAGE
     And each SLOT shows its ALLOWED_CHILDREN
 
-  Scenario: DESIGN_SYSTEM with no ROOT components shows empty AI Schema
+  Scenario: DESIGN_SYSTEM with no ROOT components shows a warning
     Given the DESIGN_SYSTEM has no ROOT components
+    Then the DESIGN_SYSTEM shows a warning in the home page list
+    And the DESIGN_SYSTEM overview page shows a warning explaining that no ROOT components were found and how to mark them in Figma
     When the user views the AI Schema
-    Then a message explains that no ROOT components were found and how to mark them in Figma
+    Then the AI Schema is empty
 
   # --- Figma JSON ---
 

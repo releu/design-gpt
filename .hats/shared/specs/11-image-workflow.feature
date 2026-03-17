@@ -1,7 +1,27 @@
 Feature: Image Workflow
-  The image render endpoint accepts a prompt, searches for an image via
-  Yandex, caches the result, and redirects to the image URL. Design
-  previews render image components as divs with CSS background-image.
+  The image workflow spans three layers: Figma convention (`#image` tag marks
+  image placeholder components), web preview rendering (div + CSS background-image
+  fetched via the image render endpoint), and Figma plugin export (IMAGE fills
+  applied to component instances).
+
+  # --- Figma Convention ---
+
+  Scenario: Components tagged #image are detected during import
+    Given a FIGMA_FILE contains a component with "#image" in its description
+    And the component is a plain rectangle frame with a background fill, no children, and no corner radius
+    When the import completes
+    Then the component is marked as an IMAGE component
+    And IMAGE components are excluded from SLOT ALLOWED_CHILDREN lists
+
+  Scenario: Invalid #image component structure is imported with validation warnings
+    Given a FIGMA_FILE contains a component with "#image" in its description
+    But the component has children, text layers, component properties, or corner radius
+    When the import completes
+    Then the component is marked as an IMAGE component
+    And the component has validation warnings describing each structural issue
+    And components with validation warnings are excluded from the AI schema
+
+  # --- Image Render Endpoint ---
 
   Scenario: Image render endpoint returns proxied image bytes
     When the user requests GET /api/images/render?prompt=modern+office
@@ -22,8 +42,19 @@ Feature: Image Workflow
     When an unauthenticated user requests GET /api/images?q=office
     Then the response status is 401
 
+  # --- Web Preview Rendering ---
+
   Scenario: Design preview renders image component with background-image
     Given the user has a design with an image component
     When the design preview loads
     Then the preview contains a div with backgroundImage style
     And the preview does not contain an img tag for the image component
+    And the background-image URL points to the image render endpoint
+
+  # --- Figma Plugin Export ---
+
+  Scenario: Figma plugin applies IMAGE fills to image components
+    Given a design tree contains image component instances
+    When the Figma plugin processes the export
+    Then image components receive IMAGE fills from the image search API
+    And the fill replaces the component's existing fills

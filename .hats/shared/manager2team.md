@@ -1,5 +1,119 @@
 # Manager to Team
 
+## [9] 2026-03-17T18:00 -- Manager
+
+Re: Component validation warnings — specs updated across import, browser, generation, and image workflow
+
+### Summary
+
+Components that fail validation for their convention (e.g. `#image` with children) were previously rejected or silently dropped. Now they are **imported with validation warnings** — visible to the user but excluded from AI generation.
+
+### Spec changes (4 files)
+
+1. **`03-figma-import.feature`** — Replaced 3 image rejection scenarios with warning scenarios. Added general validation warnings section covering: glass effects, overflowing children without clipping, skewed/distorted transforms, scrolling content, and fixed-position elements. Any component with warnings is imported but flagged.
+
+2. **`05-design-generation.feature`** — New section "Validation Warnings": components with validation warnings are excluded from the AI schema and cannot be used in generated designs.
+
+3. **`08-component-library-browser.feature`** — New section "Validation Warnings": components with warnings show a warning indicator in the list, and the detail view displays the warning messages so users know what to fix in Figma.
+
+4. **`11-image-workflow.feature`** — Updated "Invalid #image component structure" scenario: component is now imported with `is_image: true` plus validation warnings, excluded from AI schema. No longer silently dropped.
+
+### Implementation notes
+
+**Database**: Add a `validation_warnings` column (JSONB, default `[]`) to both `components` and `component_sets` tables. Each entry is a plain string describing one validation issue.
+
+**Importer**: During import, run validation checks on all components. Instead of skipping invalid components, import them and populate `validation_warnings`. Validations:
+- `#image` convention: no children, no component properties, no corner radius
+- General (all components): no glass effects, no overflowing children without clipping, no skewed/distorted transforms, no scrolling content, no fixed-position elements
+- Note: test frame validation in `figma2react_test.rake` already detects glass, overflow, and skew — reuse that logic
+
+**API**: Expose `validation_warnings` in component/component_set JSON responses. No new endpoints needed.
+
+**AI Schema**: Filter out components where `validation_warnings` is non-empty when building the schema for generation.
+
+**Frontend**: Show a warning badge/indicator on components with non-empty `validation_warnings` in the component list. In the detail view, render the warnings as a list.
+
+### Action required
+
+**CTO** (`/hats:cto`): Confirm the `validation_warnings` JSONB column approach.
+
+**Developer** (`/hats:developer`): Implement the migration, importer changes, API exposure, AI schema filtering, and UI indicators.
+
+**QA** (`/hats:qa`): Update E2E tests to match the new warning behavior (components imported with warnings, not rejected).
+
+---
+
+## [8] 2026-03-17T12:00 -- Manager
+
+Re: Post-implementation spec sync — 6 specs updated, 1 new spec created
+
+### Summary
+
+Feature specs were last overhauled on March 6. Since then, 11 days of development shipped major new capabilities without updating specs. This update brings specs in line with reality.
+
+### Updated Specs (6)
+
+1. **`03-figma-import.feature`** — Added `#image` convention: components with `#image` in name or description are marked as IMAGE components. IMAGE components are excluded from SLOT ALLOWED_CHILDREN lists. Two new scenarios.
+
+2. **`04-design-system-management.feature`** — Added public design systems (is_public flag, visible to other users, view-only for non-owners). Added versioning (sync increments version, iterations render with their original version). Added sync concurrency guard (one sync at a time per design system). Six new scenarios.
+
+3. **`05-design-generation.feature`** — Added IMAGE components in generation: AI places search queries as INSTANCE_SWAP props, preview renders as div+background-image via /api/images/render endpoint. Two new scenarios.
+
+4. **`07-design-management.feature`** — Added shared design links: iterations have share codes, designs viewable without auth via /share/:share_code, exports (React + Figma) work from shared URLs without auth. Three new scenarios.
+
+5. **`08-component-library-browser.feature`** — Added IMAGE component display in browser alongside ROOT and VECTOR conventions. One new scenario.
+
+6. **`11-image-workflow.feature`** — Expanded from API-only to full pipeline: Figma convention (#image tag), web preview rendering (div + CSS background-image), Figma plugin fill pipeline. Restructured into three sections.
+
+### New Spec (1)
+
+7. **`12-figma-export.feature`** — Figma plugin export flow. Share code generation, export-figma API endpoint (no auth via share_code, auth via design ID), plugin tree rendering (component instances, text/variant/boolean properties, slot children, IMAGE fills). Eleven scenarios.
+
+### Action required: Glossary + Test Contract updates
+
+The Manager role cannot write to glossary.md or test-contract.md. **CTO or Developer** — please apply these changes:
+
+#### glossary.md additions
+
+Add to "Design System & Components" table:
+| **Image Component** | A component tagged with `#image` in its description in Figma. Must be a plain frame with a background fill and no children — components with child nodes or component properties (variant, boolean, text) are not valid image components. Acts as an AI-driven image placeholder — the AI places search query strings as props, and the preview/plugin fetches matching images at render time. |
+
+Update "Root Component" definition: conventions (`#root`, `#image`) are detected in the component **description only**, not the name.
+
+Update "Iteration" definition to mention it stores `design_system_version` for rendering with correct library version.
+
+Add to "Design Generation" table:
+| **Share Code** | A short unique alphanumeric code assigned to each iteration. Used to share designs via public URLs and to export to Figma via the plugin. No authentication required to access shared content. |
+| **Design System Version** | An integer that increments on each sync. Components belong to a specific version. Iterations record which version they were generated with, ensuring previews render with the correct components even after later syncs. |
+
+#### test-contract.md additions
+
+Add these API endpoints:
+
+| GET | /api/share/:share_code | -- | `200 { id, name, share_code, iteration_id, jsx }` |
+| GET | /api/iterations/:share_code/export-figma | -- | `200 { design_id, name, tree, jsx }` |
+| GET | /api/iterations/:share_code/export-react | -- | `200 application/zip` |
+| GET | /api/designs/:id/export-figma | -- | `200 { design_id, name, tree, jsx, design_system_id }` |
+
+Note: All iteration share_code endpoints are **public (no auth required)**. The design export-figma endpoint uses `find_accessible_design` (public access).
+
+Also add to Behaviors section:
+
+**Figma Export (12-figma-export.feature)**
+- Export to Figma via share code: `[qa="export-btn"]` opens `[qa="export-menu"]`, "Export to Figma" shows share code
+- Public export-figma endpoint: GET /api/iterations/:share_code/export-figma → 200 with enriched tree (no auth)
+- Design export-figma: GET /api/designs/:id/export-figma → 200 with tree + design_system_id
+
+**Image Workflow (11-image-workflow.feature)** — update existing section:
+- Add: `#image` convention detected on import → is_image boolean on component/component_set
+- Add: image components excluded from slot allowed_children
+
+### Specs confirmed unchanged
+
+- 01-authentication, 02-health-check, 06-design-improvement, 09-visual-diff, 10-complex-figma-compatibility — no changes needed.
+
+---
+
 ## 1 2026-03-03T12:00 -- Manager
 
 Re: Major spec update -- aligned all feature specs with designer's 8 design description files

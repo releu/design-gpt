@@ -87,3 +87,25 @@ Feature: Design Generation
     When the AI generation fails
     Then the DESIGN shows an error message
     And the user can retry by sending a new message in the chat
+
+  # --- Validation Warnings ---
+
+  Scenario: Components with validation warnings are excluded from AI schema
+    Given the DESIGN_SYSTEM has components with validation warnings
+    When the AI generates a DESIGN
+    Then components with validation warnings are not included in the AI schema
+    And the AI cannot use warned components in generated designs
+
+  # --- Image Components ---
+
+  Scenario: AI uses IMAGE components in generated designs
+    Given the DESIGN_SYSTEM has IMAGE components tagged with #image
+    When the AI generates a DESIGN
+    Then IMAGE components may appear in the generated JSX
+    And IMAGE components receive search query strings as INSTANCE_SWAP props
+
+  Scenario: PREVIEW renders IMAGE components with background-image
+    Given a DESIGN contains IMAGE components with search query props
+    When the PREVIEW renders
+    Then IMAGE components render as divs with CSS background-image
+    And the background-image URL points to the image render endpoint
