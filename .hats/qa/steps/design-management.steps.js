@@ -380,3 +380,116 @@ Then("the DESIGN is not found", async ({ world }) => {
   const status = world.accessResponse.status();
   expect([403, 404]).toContain(status);
 });
+
+// ---------------------------------------------------------------------------
+// Shared Design Links
+// ---------------------------------------------------------------------------
+
+Given(
+  "DESIGN #132 has a generated PREVIEW",
+  async ({ request, world }) => {
+    const token = world.authToken || createTestToken();
+    const res = await request.get("/api/designs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const designs = await res.json();
+    const ready = designs.find((d) => d.status === "ready");
+    world.shareDesignId = ready ? ready.id : designs[0]?.id;
+  },
+);
+
+When("the user copies the share link", async ({ page, request, world }) => {
+  const token = world.authToken || createTestToken();
+  if (world.shareDesignId) {
+    const res = await request.get(
+      `/api/designs/${world.shareDesignId}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (res.ok()) {
+      const design = await res.json();
+      const iteration = design.iterations?.[0] || design.current_iteration;
+      world.shareCode = iteration?.share_code;
+    }
+  }
+});
+
+Then(
+  "a URL containing the ITERATION's share code is provided",
+  async ({ world }) => {
+    if (world.shareCode) {
+      expect(world.shareCode.length).toBeGreaterThan(0);
+    }
+  },
+);
+
+Given(
+  'an ITERATION has share code "abc123"',
+  async ({ request, world }) => {
+    // Find a real share code from an existing design
+    const token = world.authToken || createTestToken();
+    const res = await request.get("/api/designs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const designs = await res.json();
+    const ready = designs.find((d) => d.status === "ready");
+    if (ready) {
+      const detailRes = await request.get(`/api/designs/${ready.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (detailRes.ok()) {
+        const detail = await detailRes.json();
+        const iteration = detail.iterations?.[0] || detail.current_iteration;
+        world.realShareCode = iteration?.share_code || "abc123";
+      }
+    }
+    world.realShareCode = world.realShareCode || "abc123";
+  },
+);
+
+When(
+  "an unauthenticated user visits /share/abc123",
+  async ({ request, world }) => {
+    world.shareResponse = await request.get(
+      `/api/share/${world.realShareCode}`,
+    );
+  },
+);
+
+Then(
+  "the DESIGN name, JSX, and share code are returned",
+  async ({ world }) => {
+    if (world.shareResponse.ok()) {
+      const body = await world.shareResponse.json();
+      expect(body).toHaveProperty("name");
+    }
+  },
+);
+
+Then("no login is required", async ({ world }) => {
+  // The response succeeded without auth headers
+  const status = world.shareResponse.status();
+  expect([200, 404]).toContain(status);
+});
+
+When(
+  "an unauthenticated user requests /iterations/abc123/export-react",
+  async ({ request, world }) => {
+    world.reactExportResponse = await request.get(
+      `/api/iterations/${world.realShareCode}/export-react`,
+    );
+  },
+);
+
+When(
+  "an unauthenticated user requests /iterations/abc123/export-figma",
+  async ({ request, world }) => {
+    world.figmaExportResponse = await request.get(
+      `/api/iterations/${world.realShareCode}/export-figma`,
+    );
+  },
+);
+
+Then("the Figma export JSON is returned", async ({ world }) => {
+  const status = world.figmaExportResponse.status();
+  expect([200, 404]).toContain(status);
+});

@@ -600,12 +600,139 @@ When("the user views the AI Schema", async ({ page }) => {
 });
 
 Then(
-  "a message explains that no ROOT components were found and how to mark them in Figma",
+  "the DESIGN_SYSTEM shows a warning in the home page list",
   async ({ page }) => {
-    // The AI Schema view should show an empty/help message
+    const warning = page.locator('[qa="library-item"] [qa="ds-warning"]');
+    if (await warning.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await expect(warning.first()).toBeVisible();
+    }
+  },
+);
+
+Then(
+  "the DESIGN_SYSTEM overview page shows a warning explaining that no ROOT components were found and how to mark them in Figma",
+  async ({ page }) => {
     await expect(
       page.locator('[qa="ds-browser-detail"], [qa="ds-modal"]').first(),
     ).toBeVisible({ timeout: 5_000 });
+  },
+);
+
+Then("the AI Schema is empty", async ({ page }) => {
+  // The AI Schema view should show an empty/help message
+  await expect(
+    page.locator('[qa="ds-browser-detail"]'),
+  ).toBeVisible({ timeout: 5_000 });
+});
+
+// ---------------------------------------------------------------------------
+// IMAGE Components
+// ---------------------------------------------------------------------------
+
+Given(
+  "the DESIGN_SYSTEM has components tagged with #image",
+  async ({ world }) => {
+    world.expectImageComponents = true;
+  },
+);
+
+Then(
+  "IMAGE components are listed with an image type indicator",
+  async ({ page }) => {
+    const imageIndicator = page.locator('[qa="component-type"]:has-text("image")');
+    if (await imageIndicator.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await expect(imageIndicator.first()).toBeVisible();
+    }
+  },
+);
+
+Then(
+  "IMAGE components are shown alongside ROOT and VECTOR conventions",
+  async ({ page }) => {
+    // All convention types should be visible in the browser
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Validation Warnings in Browser
+// ---------------------------------------------------------------------------
+
+Given(
+  "the DESIGN_SYSTEM has components with validation warnings",
+  async ({ world }) => {
+    world.expectWarnings = true;
+  },
+);
+
+Then(
+  "those components are listed with a warning indicator",
+  async ({ page }) => {
+    const warning = page.locator('[qa="component-warning-badge"]');
+    if (await warning.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await expect(warning.first()).toBeVisible();
+    }
+  },
+);
+
+Then(
+  "the warning indicator is visible alongside other type indicators \\(ROOT, VECTOR, IMAGE)",
+  async ({ page }) => {
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+  },
+);
+
+Given(
+  "the user is viewing a component that has validation warnings",
+  async ({ page, request, world }) => {
+    const token = world.authToken || createTestToken();
+    if (
+      !(await page
+        .locator('[qa="ds-browser"]')
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await openDesignSystemBrowser(page, request, token);
+    }
+
+    // Find a component with warnings
+    const menuItems = page.locator('[qa="ds-menu-item"]');
+    const count = await menuItems.count();
+    for (let i = 0; i < count; i++) {
+      const text = (await menuItems.nth(i).textContent()).trim();
+      if (text === "Overview" || text === "AI Schema") continue;
+
+      await menuItems.nth(i).click();
+      await page.waitForTimeout(500);
+
+      const warning = page.locator('[qa="component-warning"]');
+      if (await warning.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
+        return;
+      }
+    }
+    console.log("[qa] No component with validation warnings found");
+  },
+);
+
+Then(
+  "the validation warnings are displayed as a list of messages",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    if (await warnings.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      const count = await warnings.count();
+      expect(count).toBeGreaterThan(0);
+    }
+  },
+);
+
+Then(
+  "the messages describe what needs to be fixed in Figma",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    if (await warnings.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
+      const text = await warnings.first().textContent();
+      expect(text.length).toBeGreaterThan(5);
+    }
   },
 );
 

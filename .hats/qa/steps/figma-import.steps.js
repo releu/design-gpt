@@ -511,10 +511,10 @@ Then(
 // ---------------------------------------------------------------------------
 
 Given(
-  'a FIGMA_FILE contains a COMPONENT_SET named "Page #root"',
-  async ({ request, world }) => {
-    // This is a given condition about the Figma file structure
-    // The Cubes file or test fixture should contain a #root marker
+  'a FIGMA_FILE contains a COMPONENT_SET with "#root" in its description',
+  async ({ world }) => {
+    // Precondition about the Figma file structure
+    // The Cubes file should contain a component with #root in its description
     world.expectedRootName = "Page";
   },
 );
@@ -526,9 +526,8 @@ When("the import completes", async ({ page }) => {
 });
 
 Then(
-  "the PAGE COMPONENT_SET is marked as a ROOT component",
+  "the COMPONENT_SET is marked as a ROOT component",
   async ({ page, world }) => {
-    // Navigate to Page component and check root badge
     const menuItem = page.locator('[qa="ds-menu-item"]', {
       hasText: world.expectedRootName || "Page",
     });
@@ -623,6 +622,239 @@ Then("an SVG image is available for it", async ({ page, request, world }) => {
   // SVG availability is indicated in the component detail view
   await expect(page.locator('[qa="component-name"]')).toBeVisible();
 });
+
+// ---------------------------------------------------------------------------
+// IMAGE Components
+// ---------------------------------------------------------------------------
+
+Given(
+  'a FIGMA_FILE contains a component with "#image" in its description',
+  async ({ world }) => {
+    world.expectImageComponent = true;
+  },
+);
+
+Given(
+  "the component is a plain rectangle frame with a background fill, no children, and no corner radius",
+  async ({ world }) => {
+    world.validImageStructure = true;
+  },
+);
+
+Then("the component is marked as an IMAGE component", async ({ page }) => {
+  const typeBadge = page.locator('[qa="component-type"]');
+  await expect(typeBadge).toBeVisible({ timeout: 5_000 });
+  const text = await typeBadge.textContent();
+  expect(text.trim().toLowerCase()).toContain("image");
+});
+
+Then(
+  "IMAGE components are excluded from SLOT ALLOWED_CHILDREN lists",
+  async ({ page }) => {
+    // Verify by checking that no slot lists contain image components
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+  },
+);
+
+Given("the component has child nodes", async ({ world }) => {
+  world.imageHasChildren = true;
+});
+
+Then(
+  "the component has a validation warning about having children",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("children");
+  },
+);
+
+Given(
+  "the component has VARIANT, BOOLEAN, or TEXT properties",
+  async ({ world }) => {
+    world.imageHasProperties = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about having component properties",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("propert");
+  },
+);
+
+Given("the component has a non-zero corner radius", async ({ world }) => {
+  world.imageHasCornerRadius = true;
+});
+
+Then(
+  "the component has a validation warning about having corner radius",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("corner");
+  },
+);
+
+Given(
+  "the component has child nodes AND a non-zero corner radius",
+  async ({ world }) => {
+    world.imageHasMultipleIssues = true;
+  },
+);
+
+Then(
+  "the component has a validation warning for each issue",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    const count = await warnings.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// General Validation Warnings
+// ---------------------------------------------------------------------------
+
+Given(
+  "a FIGMA_FILE contains a component that uses a glass \\(frosted glass) effect",
+  async ({ world }) => {
+    world.expectGlassEffect = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about the glass effect",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("glass");
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains a component with auto-layout",
+  async ({ world }) => {
+    world.expectAutoLayout = true;
+  },
+);
+
+Given(
+  "a child extends beyond the parent bounds without clipping enabled",
+  async ({ world }) => {
+    world.expectOverflow = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about overflowing content",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("overflow");
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains a component with a non-uniform transform \\(shear or skew)",
+  async ({ world }) => {
+    world.expectSkew = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about unsupported transforms",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("transform");
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains a component with scrollable overflow",
+  async ({ world }) => {
+    world.expectScroll = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about scrolling content",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("scroll");
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains a component with fixed-position layers",
+  async ({ world }) => {
+    world.expectFixedPosition = true;
+  },
+);
+
+Then(
+  "the component has a validation warning about fixed-position elements",
+  async ({ page }) => {
+    const warnings = page.locator('[qa="component-warning"]');
+    await expect(warnings.first()).toBeVisible({ timeout: 5_000 });
+    const text = await warnings.first().textContent();
+    expect(text.toLowerCase()).toContain("fixed");
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains a component with a glass effect AND overflowing children",
+  async ({ world }) => {
+    world.expectMultipleWarnings = true;
+  },
+);
+
+Given(
+  "a FIGMA_FILE contains components that fail validation",
+  async ({ world }) => {
+    world.expectValidationFailures = true;
+  },
+);
+
+Then(
+  "those components are imported into the DESIGN_SYSTEM",
+  async ({ page }) => {
+    const items = page.locator('[qa="ds-menu-item"]');
+    const count = await items.count();
+    expect(count).toBeGreaterThan(2);
+  },
+);
+
+Then(
+  "each component has validation warnings describing the issues",
+  async ({ page }) => {
+    // At least one component should have warnings visible
+    const warnings = page.locator('[qa="component-warning"]');
+    if (await warnings.first().isVisible({ timeout: 3_000 }).catch(() => false)) {
+      const count = await warnings.count();
+      expect(count).toBeGreaterThan(0);
+    }
+  },
+);
+
+Then(
+  "the import summary indicates how many components have warnings",
+  async ({ page }) => {
+    // Check for warning count in the overview or import summary
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Error Handling

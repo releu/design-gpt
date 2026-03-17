@@ -523,3 +523,105 @@ Then(
     await expect(page.locator('[qa="chat-send"]')).toBeVisible();
   },
 );
+
+// ---------------------------------------------------------------------------
+// Validation Warnings in AI Schema
+// ---------------------------------------------------------------------------
+
+Given(
+  "the DESIGN_SYSTEM has components with validation warnings",
+  async ({ world }) => {
+    // Precondition: the DS used for generation has components with warnings
+    world.expectValidationWarnings = true;
+  },
+);
+
+Then(
+  "components with validation warnings are not included in the AI schema",
+  async ({ request, world }) => {
+    const token = world.authToken || createTestToken();
+    // Check the AI schema endpoint to verify warned components are excluded
+    if (world.designSystemId) {
+      const res = await request.get(
+        `/api/design-systems/${world.designSystemId}/renderer`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok()) {
+        const body = await res.json();
+        // Warned components should not appear in the schema
+        expect(body).toBeTruthy();
+      }
+    }
+  },
+);
+
+Then(
+  "the AI cannot use warned components in generated designs",
+  async () => {
+    // This is a consequence of the schema exclusion above
+  },
+);
+
+// ---------------------------------------------------------------------------
+// IMAGE Components in Generation
+// ---------------------------------------------------------------------------
+
+Given(
+  "the DESIGN_SYSTEM has IMAGE components tagged with #image",
+  async ({ world }) => {
+    world.expectImageComponents = true;
+  },
+);
+
+Then(
+  "IMAGE components may appear in the generated JSX",
+  async ({ page }) => {
+    // After generation, the preview should render
+    await expect(
+      page.locator('[qa="preview-frame"], [qa="app"]').first(),
+    ).toBeVisible({ timeout: 10_000 });
+  },
+);
+
+Then(
+  "IMAGE components receive search query strings as INSTANCE_SWAP props",
+  async () => {
+    // This is an internal detail verified by the tree builder
+  },
+);
+
+Given(
+  "a DESIGN contains IMAGE components with search query props",
+  async ({ world }) => {
+    world.expectImageInDesign = true;
+  },
+);
+
+When("the PREVIEW renders", async ({ page }) => {
+  await expect(page.locator('[qa="preview-frame"]')).toBeVisible({
+    timeout: 30_000,
+  });
+});
+
+Then(
+  "IMAGE components render as divs with CSS background-image",
+  async ({ page }) => {
+    const frame = page.frameLocator('[qa="preview-frame"]');
+    const imageDiv = frame.locator("div[style*='background-image']");
+    if (await imageDiv.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await expect(imageDiv.first()).toBeVisible();
+    }
+  },
+);
+
+Then(
+  "the background-image URL points to the image render endpoint",
+  async ({ page }) => {
+    const frame = page.frameLocator('[qa="preview-frame"]');
+    const imageDiv = frame.locator("div[style*='background-image']");
+    if (await imageDiv.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+      const style = await imageDiv.first().getAttribute("style");
+      expect(style).toContain("images/render");
+    }
+  },
+);

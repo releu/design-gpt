@@ -8,7 +8,8 @@
     "test:headed": "npx bddgen && playwright test --headed",
     "test:fast": "npx bddgen --config playwright.fast.config.js && playwright test --config playwright.fast.config.js",
     "test:render": "npx bddgen --config playwright.render.config.js && playwright test --config playwright.render.config.js",
-    "test:workflow": "npx bddgen --config playwright.workflow.config.js && playwright test --config playwright.workflow.config.js"
+    "test:workflow": "npx bddgen --config playwright.workflow.config.js && playwright test --config playwright.workflow.config.js",
+    "test:debug": "npx bddgen --config playwright.debug.config.js && playwright test --config playwright.debug.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",

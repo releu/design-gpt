@@ -9,6 +9,8 @@ set -euo pipefail
 #   bash qa/run-tests.sh fast         # Run fast tests only (API, auth, health, UI layout)
 #   bash qa/run-tests.sh render       # Run component rendering validation only
 #   bash qa/run-tests.sh workflow     # Run full design workflow tests only (includes UI layout)
+#   bash qa/run-tests.sh debug         # Run with visible browser + slow motion (all workflow)
+#   FEATURE=03 bash qa/run-tests.sh debug  # Debug a single feature file
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -41,6 +43,13 @@ case "$MODE" in
     echo "[qa] Patching generated specs: removing serial mode..."
     find .features-gen-workflow -name '*.spec.js' -exec sed -i '' 's/"mode":"serial"/"mode":"default"/g' {} +
     npx playwright test --config playwright.workflow.config.js
+    ;;
+  debug)
+    echo "[qa] Running debug mode (headed browser, slow motion)..."
+    echo "[qa] FEATURE=${FEATURE:-all workflow features}"
+    npx bddgen --config playwright.debug.config.js
+    find .features-gen-debug -name '*.spec.js' -exec sed -i '' 's/"mode":"serial"/"mode":"default"/g' {} +
+    npx playwright test --config playwright.debug.config.js
     ;;
   all)
     echo "[qa] Running ALL tests..."

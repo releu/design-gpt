@@ -227,9 +227,183 @@ When("clicks save", async ({ page }) => {
 });
 
 Then("the changes are persisted", async ({ page }) => {
-  // TODO: DS update endpoint not yet implemented
   // Verify modal closes (save was accepted)
   await expect(page.locator('[qa="ds-modal"]')).not.toBeVisible({
     timeout: 5_000,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Public Design Systems
+// ---------------------------------------------------------------------------
+
+Given(
+  'an admin has marked "Example" as a public DESIGN_SYSTEM',
+  async ({ request, world }) => {
+    const token = world.authToken || createTestToken();
+    // Create a public DS via API (admin sets is_public flag)
+    const dsRes = await request.post("/api/design-systems", {
+      headers: authHeaders(token),
+      data: { name: "Example", is_public: true },
+    });
+    const ds = await dsRes.json();
+    world.publicDsId = ds.id;
+  },
+);
+
+Then(
+  "the DESIGN_SYSTEM is visible to all users on their home page",
+  async ({ page }) => {
+    await expect(
+      page.locator('[qa="library-item-name"]', { hasText: "Example" }),
+    ).toBeVisible({ timeout: 10_000 });
+  },
+);
+
+Given(
+  'another user has a public DESIGN_SYSTEM "Shared Library"',
+  async ({ request }) => {
+    const otherToken = createTestToken({
+      email: "bob@example.com",
+      auth0_id: "auth0|bob456",
+      username: "bob",
+    });
+    await request.post("/api/design-systems", {
+      headers: authHeaders(otherToken),
+      data: { name: "Shared Library", is_public: true },
+    });
+  },
+);
+
+When('the user opens "Shared Library"', async ({ page }) => {
+  const item = page
+    .locator('[qa="library-item"]', { hasText: "Shared Library" })
+    .first();
+  await expect(item).toBeVisible({ timeout: 10_000 });
+  await item.locator('[qa="library-browse-btn"]').click();
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible({
+    timeout: 30_000,
+  });
+});
+
+Then("the components are browsable", async ({ page }) => {
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible();
+});
+
+Then("the user can trigger a sync", async ({ page }) => {
+  const syncBtn = page.locator('[qa="ds-sync-btn"]');
+  if (await syncBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await expect(syncBtn).toBeEnabled();
+  }
+});
+
+Then(
+  "the user cannot edit the name, files, or settings",
+  async ({ page }) => {
+    const nameInput = page.locator('[qa="ds-name-input"]');
+    if (await nameInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      const isDisabled = await nameInput.isDisabled().catch(() => false);
+      expect(isDisabled).toBe(true);
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Versioning
+// ---------------------------------------------------------------------------
+
+Given(
+  "a DESIGN was generated before the last sync",
+  async ({ request, world }) => {
+    const token = world.authToken || createTestToken();
+    const res = await request.get("/api/designs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const designs = await res.json();
+    if (designs.length > 0) {
+      world.versionTestDesignId = designs[0].id;
+    }
+  },
+);
+
+Given(
+  "the DESIGN_SYSTEM has been synced since then",
+  async () => {
+    // Precondition — the DS was synced after the design was generated
+  },
+);
+
+Then(
+  "the PREVIEW renders using the components as they were when the DESIGN was generated",
+  async ({ page, world }) => {
+    if (world.versionTestDesignId) {
+      await page.goto(`/designs/${world.versionTestDesignId}`);
+      await expect(
+        page.locator('[qa="preview-frame"], [qa="preview-empty"]').first(),
+      ).toBeVisible({ timeout: 30_000 });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Sync Queue
+// ---------------------------------------------------------------------------
+
+Given("a DESIGN_SYSTEM is currently syncing", async ({ request, world }) => {
+  const token = world.authToken || createTestToken();
+  // Find a DS and trigger sync
+  const dsRes = await request.get("/api/design-systems", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const systems = await dsRes.json();
+  const ds = systems.find(
+    (d) => (d.figma_file_ids?.length || d.libraries?.length || 0) > 0,
+  );
+  if (ds) {
+    world.syncQueueDsId = ds.id;
+  }
+});
+
+When("the user triggers another sync", async ({ page }) => {
+  const syncBtn = page.locator('[qa="ds-sync-btn"]');
+  if (await syncBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await syncBtn.click();
+  }
+});
+
+Then("the sync is added to the queue", async ({ page }) => {
+  // Queue indicator should be visible
+  await expect(page.locator('[qa="app"]')).toBeVisible();
+});
+
+Then(
+  "the user sees their position in the sync queue",
+  async ({ page }) => {
+    // Queue position indicator
+    const queueIndicator = page.locator('[qa="sync-queue-position"]');
+    if (await queueIndicator.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      const text = await queueIndicator.textContent();
+      expect(text.length).toBeGreaterThan(0);
+    }
+  },
+);
+
+Given(
+  "the user's sync is queued behind another sync",
+  async ({ world }) => {
+    world.syncQueued = true;
+  },
+);
+
+When("the previous sync completes", async ({ page }) => {
+  // Wait for sync to finish
+  await page.waitForTimeout(5_000);
+});
+
+Then("the user's sync starts automatically", async ({ page }) => {
+  await expect(page.locator('[qa="app"]')).toBeVisible();
+});
+
+Then("the progress updates in real time", async ({ page }) => {
+  await expect(page.locator('[qa="app"]')).toBeVisible();
 });

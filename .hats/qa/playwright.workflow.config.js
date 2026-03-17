@@ -13,6 +13,8 @@ const testDir = defineBddConfig({
     "../shared/specs/07-design-management.feature",
     "../shared/specs/08-component-library-browser.feature",
     "../shared/specs/09-visual-diff.feature",
+    "../shared/specs/11-image-workflow.feature",
+    "../shared/specs/12-figma-export.feature",
   ],
   steps: ["./steps/**/*.js", "./fixtures/test.js"],
   outputDir: "./.features-gen-workflow",
