@@ -221,10 +221,13 @@ module Figma
             ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(prompt)}`
             : '';
           return (
-            <img
+            <div
               data-component="#{component_name}"
-              src={src}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{
+                width: '100%', height: '100%',
+                backgroundImage: src ? `url(${src})` : 'none',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+              }}
               {...props}
             />
           );
@@ -611,7 +614,7 @@ module Figma
             styles = extract_frame_styles(node, false) rescue {}
             css_rules[class_name] = styles if styles.any?
             wrap_class = styles.any? ? " className=\"#{class_name}\"" : ""
-            "<img#{wrap_class} src={props.#{prop_name} ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(props.#{prop_name})}` : ''} style={{width: '100%', height: '100%', objectFit: 'cover'}} />"
+            "<div#{wrap_class} style={{width: '100%', height: '100%', backgroundImage: props.#{prop_name} ? `url(https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(props.#{prop_name})})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center'}} />"
           elsif slot_instance?(node)
             @has_slot = true
             slot_name = @slot_map[node["id"]] || "children"

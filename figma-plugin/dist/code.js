@@ -29,6 +29,19 @@
   };
 
   // src/tree-renderer.ts
+  function collectImageSwapFills(rootFrame) {
+    if (_pendingImageSwaps.length === 0) return;
+    for (const swap of _pendingImageSwaps) {
+      if ("findAll" in rootFrame) {
+        const matches = rootFrame.findAll((n) => n.name === swap.childName);
+        for (const match of matches) {
+          console.log("[image] Post-render: resolved '" + swap.childName + "' to id=" + match.id);
+          pendingImageFills.push({ nodeId: match.id, nodeName: match.name, prompt: swap.prompt });
+        }
+      }
+    }
+    _pendingImageSwaps.length = 0;
+  }
   function findComponentByKey(key) {
     return __async(this, null, function* () {
       const cached = _componentCache.get(key);
@@ -100,8 +113,42 @@
       if (node.isImage && node.textProperties) {
         const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
         if (prompt) {
-          pendingImageFills.push({ nodeId: instance.id, prompt });
+          pendingImageFills.push({ nodeId: instance.id, nodeName: instance.name, prompt });
         }
+      }
+      if (node.textProperties) {
+        const instanceProps = instance.componentProperties;
+        for (const [figmaKey, propDef] of Object.entries(instanceProps)) {
+          if (propDef.type !== "INSTANCE_SWAP") continue;
+          const baseName = figmaKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
+          for (const [treeName, treeValue] of Object.entries(node.textProperties)) {
+            if (treeName.toLowerCase() !== baseName) continue;
+            if (typeof treeValue !== "string" || treeValue.length === 0) continue;
+            const childInstance = findSwapChildInstance(instance, figmaKey);
+            if (childInstance) {
+              console.log("[image] Found image swap child '" + childInstance.name + "' for prop '" + treeName + "', prompt: " + treeValue);
+              _pendingImageSwaps.push({ childName: childInstance.name, prompt: treeValue });
+            }
+            break;
+          }
+        }
+      }
+      const slotFrames = node._slotFrames || {};
+      const hasSlotFrames = Object.keys(slotFrames).length > 0;
+      if (hasSlotFrames) {
+        const detached = instance.detachInstance();
+        console.log("[slot] Detached instance '" + detached.name + "' to manipulate slot frames");
+        for (const [key, frameName] of Object.entries(slotFrames)) {
+          const value2 = node[key];
+          if (!Array.isArray(value2)) continue;
+          const slotChildren = value2.filter(
+            (item) => item != null && typeof item === "object" && "component" in item
+          );
+          if (slotChildren.length > 0) {
+            yield populateSlotFrame(detached, frameName, slotChildren);
+          }
+        }
+        return detached;
       }
       const overflow = yield renderSlotChildren(instance, node);
       if (overflow.length === 0) return instance;
@@ -240,6 +287,24 @@
         return false;
       }
     });
+  }
+  function findSwapChildInstance(parent, figmaKey) {
+    function walk(node) {
+      if (node.type === "INSTANCE") {
+        const refs = node.componentPropertyReferences;
+        if (refs && refs.mainComponent === figmaKey) {
+          return node;
+        }
+      }
+      if ("children" in node) {
+        for (const child of node.children) {
+          const found = walk(child);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    return walk(parent);
   }
   function findChildByName(node, name) {
     if ("children" in node) {
@@ -384,11 +449,12 @@
     }
     return children;
   }
-  var pendingImageFills, LAYOUT_COMPONENTS, _componentCache;
+  var pendingImageFills, _pendingImageSwaps, LAYOUT_COMPONENTS, _componentCache;
   var init_tree_renderer = __esm({
     "src/tree-renderer.ts"() {
       "use strict";
       pendingImageFills = [];
+      _pendingImageSwaps = [];
       LAYOUT_COMPONENTS = {
         VStack: "VERTICAL",
         HStack: "HORIZONTAL",
@@ -404,7 +470,7 @@
   var require_code = __commonJS({
     "src/code.ts"(exports, module) {
       init_tree_renderer();
-      var PLUGIN_VERSION = "v7";
+      var PLUGIN_VERSION = "v8";
       figma.showUI(__html__, { width: 320, height: 340 });
       globalThis.__handlePluginMessage = (msg) => __async(exports, null, function* () {
         if (msg.type === "render-tree") {
@@ -438,6 +504,8 @@
             rootFrame.y = Math.round(viewport.y - rootFrame.height / 2);
             figma.currentPage.appendChild(rootFrame);
             figma.viewport.scrollAndZoomIntoView([rootFrame]);
+            globalThis.__lastRootFrameId = rootFrame.id;
+            collectImageSwapFills(rootFrame);
             if (pendingImageFills.length > 0) {
               figma.ui.postMessage({ type: "fetch-images", fills: [...pendingImageFills] });
             }
@@ -451,15 +519,34 @@
           }
         } else if (msg.type === "image-data") {
           try {
-            const node = figma.getNodeById(msg.nodeId);
+            console.log("[image-data] Applying fill, nodeId=" + msg.nodeId + " bytes=" + (msg.bytes ? msg.bytes.length : 0));
+            let node = null;
+            try {
+              node = yield figma.getNodeByIdAsync(msg.nodeId);
+            } catch (_) {
+            }
+            if (!node) {
+              const fill = pendingImageFills.find((f) => f.nodeId === msg.nodeId);
+              const searchName = fill == null ? void 0 : fill.nodeName;
+              if (searchName && globalThis.__lastRootFrameId) {
+                const rootFrame = figma.currentPage.findOne((n) => n.id === globalThis.__lastRootFrameId);
+                if (rootFrame && "findOne" in rootFrame) {
+                  node = rootFrame.findOne((n) => n.name === searchName && "fills" in n);
+                }
+                console.log("[image-data] Fallback search for '" + searchName + "': " + (node ? "found id=" + node.id : "not found"));
+              }
+            }
             if (node && "fills" in node) {
               const image = figma.createImage(new Uint8Array(msg.bytes));
               node.fills = [
                 { type: "IMAGE", imageHash: image.hash, scaleMode: "FILL" }
               ];
+              console.log("[image-data] Fill applied to '" + node.name + "' id=" + node.id);
+            } else {
+              console.warn("[image-data] Node not found for id=" + msg.nodeId);
             }
           } catch (err) {
-            console.warn("Failed to apply image fill to " + msg.nodeId, err);
+            console.warn("[image-data] Failed: " + (err.message || String(err)));
           }
         } else if (msg.type === "dev-inspect") {
           try {

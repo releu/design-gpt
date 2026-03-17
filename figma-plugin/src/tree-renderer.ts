@@ -10,10 +10,33 @@ interface TreeNode {
 
 export interface PendingImageFill {
   nodeId: string;
+  nodeName: string;
   prompt: string;
 }
 
 export const pendingImageFills: PendingImageFill[] = [];
+
+interface PendingImageSwap {
+  childName: string;
+  prompt: string;
+}
+const _pendingImageSwaps: PendingImageSwap[] = [];
+
+// Call after render is complete to collect image fills from the final frame.
+// This resolves node IDs after detachInstance() has changed them.
+export function collectImageSwapFills(rootFrame: SceneNode): void {
+  if (_pendingImageSwaps.length === 0) return;
+  for (const swap of _pendingImageSwaps) {
+    if ("findAll" in rootFrame) {
+      const matches = (rootFrame as FrameNode).findAll(n => n.name === swap.childName);
+      for (const match of matches) {
+        console.log("[image] Post-render: resolved '" + swap.childName + "' to id=" + match.id);
+        pendingImageFills.push({ nodeId: match.id, nodeName: match.name, prompt: swap.prompt });
+      }
+    }
+  }
+  _pendingImageSwaps.length = 0;
+}
 
 // Layout containers recognized from the AI tree
 const LAYOUT_COMPONENTS: Record<string, "VERTICAL" | "HORIZONTAL"> = {
@@ -116,7 +139,28 @@ async function renderComponentInstance(
   if (node.isImage && node.textProperties) {
     const prompt = Object.values(node.textProperties).find(v => typeof v === "string" && v.length > 0);
     if (prompt) {
-      pendingImageFills.push({ nodeId: instance.id, prompt: prompt as string });
+      pendingImageFills.push({ nodeId: instance.id, nodeName: instance.name, prompt: prompt as string });
+    }
+  }
+
+  // Track image swap prompts for post-render collection.
+  // We can't collect node IDs here because parent detachInstance() invalidates them.
+  if (node.textProperties) {
+    const instanceProps = instance.componentProperties;
+    for (const [figmaKey, propDef] of Object.entries(instanceProps)) {
+      if (propDef.type !== "INSTANCE_SWAP") continue;
+      const baseName = figmaKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
+      for (const [treeName, treeValue] of Object.entries(node.textProperties)) {
+        if (treeName.toLowerCase() !== baseName) continue;
+        if (typeof treeValue !== "string" || treeValue.length === 0) continue;
+        const childInstance = findSwapChildInstance(instance, figmaKey);
+        if (childInstance) {
+          console.log("[image] Found image swap child '" + childInstance.name + "' for prop '" + treeName + "', prompt: " + treeValue);
+          // Store by child name + prompt for post-render lookup
+          _pendingImageSwaps.push({ childName: childInstance.name, prompt: treeValue });
+        }
+        break;
+      }
     }
   }
 
@@ -313,6 +357,26 @@ async function swapAndApplyProperties(
   } catch {
     return false;
   }
+}
+
+// Find the child INSTANCE node bound to a specific INSTANCE_SWAP property.
+function findSwapChildInstance(parent: InstanceNode, figmaKey: string): InstanceNode | null {
+  function walk(node: SceneNode): InstanceNode | null {
+    if (node.type === "INSTANCE") {
+      const refs = (node as any).componentPropertyReferences;
+      if (refs && refs.mainComponent === figmaKey) {
+        return node as InstanceNode;
+      }
+    }
+    if ("children" in node) {
+      for (const child of (node as FrameNode).children) {
+        const found = walk(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  return walk(parent);
 }
 
 // Find a named node inside an instance by traversing its children recursively.

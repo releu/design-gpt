@@ -7,110 +7,167 @@
   var __commonJS = (cb, mod) => function __require() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value2) => {
+        try {
+          step(generator.next(value2));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value2) => {
+        try {
+          step(generator.throw(value2));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
+  };
 
   // src/tree-renderer.ts
-  async function findComponentByKey(key) {
-    const cached = _componentCache.get(key);
-    if (cached) return cached;
-    try {
-      const imported = await figma.importComponentByKeyAsync(key);
-      console.log("[find] Imported: " + imported.name + " (key=" + key.substring(0, 8) + ")");
-      _componentCache.set(key, imported);
-      return imported;
-    } catch (_) {
-    }
-    const local = figma.currentPage.findOne(
-      (n) => n.type === "COMPONENT" && n.key === key
-    );
-    if (local) {
-      console.log("[find] Found on current page: " + local.name + " (key=" + key.substring(0, 8) + ")");
-      _componentCache.set(key, local);
-      return local;
-    }
-    const MAX_PAGE_SEARCH = 5;
-    let pagesSearched = 0;
-    for (const page of figma.root.children) {
-      if (page === figma.currentPage) continue;
-      if (pagesSearched >= MAX_PAGE_SEARCH) {
-        console.warn("[find] Hit page search limit (" + MAX_PAGE_SEARCH + "), stopping: key=" + key.substring(0, 8));
-        break;
-      }
-      pagesSearched++;
-      try {
-        await page.loadAsync();
-        const found = page.findOne(
-          (n) => n.type === "COMPONENT" && n.key === key
-        );
-        if (found) {
-          console.log("[find] Found on page '" + page.name + "': " + found.name + " (key=" + key.substring(0, 8) + ")");
-          _componentCache.set(key, found);
-          return found;
+  function collectImageSwapFills(rootFrame) {
+    if (_pendingImageSwaps.length === 0) return;
+    for (const swap of _pendingImageSwaps) {
+      if ("findAll" in rootFrame) {
+        const matches = rootFrame.findAll((n) => n.name === swap.childName);
+        for (const match of matches) {
+          console.log("[image] Post-render: resolved '" + swap.childName + "' to id=" + match.id);
+          pendingImageFills.push({ nodeId: match.id, nodeName: match.name, prompt: swap.prompt });
         }
+      }
+    }
+    _pendingImageSwaps.length = 0;
+  }
+  function findComponentByKey(key) {
+    return __async(this, null, function* () {
+      const cached = _componentCache.get(key);
+      if (cached) return cached;
+      try {
+        const imported = yield figma.importComponentByKeyAsync(key);
+        console.log("[find] Imported: " + imported.name + " (key=" + key.substring(0, 8) + ")");
+        _componentCache.set(key, imported);
+        return imported;
       } catch (_) {
       }
-    }
-    console.warn("[find] Not found anywhere: key=" + key.substring(0, 8));
-    throw new Error("Component not found: " + key);
-  }
-  async function renderNode(node) {
-    const componentName = node.component || "";
-    if (node.componentKey) {
-      return await renderComponentInstance(node);
-    }
-    const direction = LAYOUT_COMPONENTS[componentName];
-    if (direction) {
-      return await renderLayoutFrame(node, direction, componentName);
-    }
-    return await renderFallbackFrame(node, componentName);
-  }
-  async function renderComponentInstance(node) {
-    try {
-      var component = await findComponentByKey(node.componentKey);
-    } catch (e) {
-      console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
-      return await renderFallbackFrame(node, node.component || "");
-    }
-    var instance = component.createInstance();
-    applyProperties(instance, node);
-    if (node.isImage && node.textProperties) {
-      const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
-      if (prompt) {
-        pendingImageFills.push({ nodeId: instance.id, prompt });
+      const local = figma.currentPage.findOne(
+        (n) => n.type === "COMPONENT" && n.key === key
+      );
+      if (local) {
+        console.log("[find] Found on current page: " + local.name + " (key=" + key.substring(0, 8) + ")");
+        _componentCache.set(key, local);
+        return local;
       }
-    }
-    const slotFrames = node._slotFrames || {};
-    const hasSlotFrames = Object.keys(slotFrames).length > 0;
-    if (hasSlotFrames) {
-      const detached = instance.detachInstance();
-      console.log("[slot] Detached instance '" + detached.name + "' to manipulate slot frames");
-      for (const [key, frameName] of Object.entries(slotFrames)) {
-        const value2 = node[key];
-        if (!Array.isArray(value2)) continue;
-        const slotChildren = value2.filter(
-          (item) => item != null && typeof item === "object" && "component" in item
-        );
-        if (slotChildren.length > 0) {
-          await populateSlotFrame(detached, frameName, slotChildren);
+      const MAX_PAGE_SEARCH = 5;
+      let pagesSearched = 0;
+      for (const page of figma.root.children) {
+        if (page === figma.currentPage) continue;
+        if (pagesSearched >= MAX_PAGE_SEARCH) {
+          console.warn("[find] Hit page search limit (" + MAX_PAGE_SEARCH + "), stopping: key=" + key.substring(0, 8));
+          break;
+        }
+        pagesSearched++;
+        try {
+          yield page.loadAsync();
+          const found = page.findOne(
+            (n) => n.type === "COMPONENT" && n.key === key
+          );
+          if (found) {
+            console.log("[find] Found on page '" + page.name + "': " + found.name + " (key=" + key.substring(0, 8) + ")");
+            _componentCache.set(key, found);
+            return found;
+          }
+        } catch (_) {
         }
       }
-      return detached;
-    }
-    const overflow = await renderSlotChildren(instance, node);
-    if (overflow.length === 0) return instance;
-    const wrapper = figma.createFrame();
-    wrapper.name = node.component || "Wrapper";
-    wrapper.layoutMode = "VERTICAL";
-    wrapper.primaryAxisSizingMode = "AUTO";
-    wrapper.counterAxisSizingMode = "AUTO";
-    wrapper.itemSpacing = 0;
-    wrapper.fills = [];
-    wrapper.appendChild(instance);
-    for (const child of overflow) {
-      wrapper.appendChild(child);
-    }
-    return wrapper;
+      console.warn("[find] Not found anywhere: key=" + key.substring(0, 8));
+      throw new Error("Component not found: " + key);
+    });
+  }
+  function renderNode(node) {
+    return __async(this, null, function* () {
+      const componentName = node.component || "";
+      if (node.componentKey) {
+        return yield renderComponentInstance(node);
+      }
+      const direction = LAYOUT_COMPONENTS[componentName];
+      if (direction) {
+        return yield renderLayoutFrame(node, direction, componentName);
+      }
+      return yield renderFallbackFrame(node, componentName);
+    });
+  }
+  function renderComponentInstance(node) {
+    return __async(this, null, function* () {
+      try {
+        var component = yield findComponentByKey(node.componentKey);
+      } catch (e) {
+        console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
+        return yield renderFallbackFrame(node, node.component || "");
+      }
+      var instance = component.createInstance();
+      applyProperties(instance, node);
+      if (node.isImage && node.textProperties) {
+        const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
+        if (prompt) {
+          pendingImageFills.push({ nodeId: instance.id, nodeName: instance.name, prompt });
+        }
+      }
+      if (node.textProperties) {
+        const instanceProps = instance.componentProperties;
+        for (const [figmaKey, propDef] of Object.entries(instanceProps)) {
+          if (propDef.type !== "INSTANCE_SWAP") continue;
+          const baseName = figmaKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
+          for (const [treeName, treeValue] of Object.entries(node.textProperties)) {
+            if (treeName.toLowerCase() !== baseName) continue;
+            if (typeof treeValue !== "string" || treeValue.length === 0) continue;
+            const childInstance = findSwapChildInstance(instance, figmaKey);
+            if (childInstance) {
+              console.log("[image] Found image swap child '" + childInstance.name + "' for prop '" + treeName + "', prompt: " + treeValue);
+              _pendingImageSwaps.push({ childName: childInstance.name, prompt: treeValue });
+            }
+            break;
+          }
+        }
+      }
+      const slotFrames = node._slotFrames || {};
+      const hasSlotFrames = Object.keys(slotFrames).length > 0;
+      if (hasSlotFrames) {
+        const detached = instance.detachInstance();
+        console.log("[slot] Detached instance '" + detached.name + "' to manipulate slot frames");
+        for (const [key, frameName] of Object.entries(slotFrames)) {
+          const value2 = node[key];
+          if (!Array.isArray(value2)) continue;
+          const slotChildren = value2.filter(
+            (item) => item != null && typeof item === "object" && "component" in item
+          );
+          if (slotChildren.length > 0) {
+            yield populateSlotFrame(detached, frameName, slotChildren);
+          }
+        }
+        return detached;
+      }
+      const overflow = yield renderSlotChildren(instance, node);
+      if (overflow.length === 0) return instance;
+      const wrapper = figma.createFrame();
+      wrapper.name = node.component || "Wrapper";
+      wrapper.layoutMode = "VERTICAL";
+      wrapper.primaryAxisSizingMode = "AUTO";
+      wrapper.counterAxisSizingMode = "AUTO";
+      wrapper.itemSpacing = 0;
+      wrapper.fills = [];
+      wrapper.appendChild(instance);
+      for (const child of overflow) {
+        wrapper.appendChild(child);
+      }
+      return wrapper;
+    });
   }
   function applyProperties(instance, node) {
+    var _a, _b, _c;
     const instanceProps = instance.componentProperties;
     const toSet = {};
     const keyMap = /* @__PURE__ */ new Map();
@@ -126,7 +183,7 @@
       for (const [name, value2] of Object.entries(node.variantProperties)) {
         const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
         const figmaKey = keyMap.get(normalized);
-        if (figmaKey && instanceProps[figmaKey]?.type === "VARIANT") {
+        if (figmaKey && ((_a = instanceProps[figmaKey]) == null ? void 0 : _a.type) === "VARIANT") {
           toSet[figmaKey] = value2;
         }
       }
@@ -135,7 +192,7 @@
       for (const [name, value2] of Object.entries(node.textProperties)) {
         const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
         const figmaKey = keyMap.get(normalized);
-        if (figmaKey && instanceProps[figmaKey]?.type === "TEXT") {
+        if (figmaKey && ((_b = instanceProps[figmaKey]) == null ? void 0 : _b.type) === "TEXT") {
           toSet[figmaKey] = String(value2);
         }
       }
@@ -144,7 +201,7 @@
       for (const [name, value2] of Object.entries(node.booleanProperties)) {
         const normalized = name.replace(/#[\d:]+$/, "").trim().toLowerCase();
         const figmaKey = keyMap.get(normalized);
-        if (figmaKey && instanceProps[figmaKey]?.type === "BOOLEAN") {
+        if (figmaKey && ((_c = instanceProps[figmaKey]) == null ? void 0 : _c.type) === "BOOLEAN") {
           toSet[figmaKey] = value2;
         }
       }
@@ -156,74 +213,98 @@
       console.log("[props] " + instance.name + " \u2014 nothing to set");
     }
   }
-  async function renderLayoutFrame(node, direction, name) {
-    const frame = figma.createFrame();
-    frame.name = name;
-    frame.layoutMode = direction;
-    frame.primaryAxisSizingMode = "AUTO";
-    frame.counterAxisSizingMode = "AUTO";
-    frame.itemSpacing = 8;
-    frame.fills = [];
-    const children = collectChildNodes(node);
-    for (const child of children) {
-      const childNode = await renderNode(child);
-      frame.appendChild(childNode);
-    }
-    return frame;
+  function renderLayoutFrame(node, direction, name) {
+    return __async(this, null, function* () {
+      const frame = figma.createFrame();
+      frame.name = name;
+      frame.layoutMode = direction;
+      frame.primaryAxisSizingMode = "AUTO";
+      frame.counterAxisSizingMode = "AUTO";
+      frame.itemSpacing = 8;
+      frame.fills = [];
+      const children = collectChildNodes(node);
+      for (const child of children) {
+        const childNode = yield renderNode(child);
+        frame.appendChild(childNode);
+      }
+      return frame;
+    });
   }
-  async function renderFallbackFrame(node, name) {
-    const frame = figma.createFrame();
-    frame.name = name || "Frame";
-    frame.layoutMode = "VERTICAL";
-    frame.primaryAxisSizingMode = "AUTO";
-    frame.counterAxisSizingMode = "AUTO";
-    frame.itemSpacing = 8;
-    frame.fills = [];
-    const children = collectChildNodes(node);
-    for (const child of children) {
-      const childNode = await renderNode(child);
-      frame.appendChild(childNode);
-    }
-    return frame;
+  function renderFallbackFrame(node, name) {
+    return __async(this, null, function* () {
+      const frame = figma.createFrame();
+      frame.name = name || "Frame";
+      frame.layoutMode = "VERTICAL";
+      frame.primaryAxisSizingMode = "AUTO";
+      frame.counterAxisSizingMode = "AUTO";
+      frame.itemSpacing = 8;
+      frame.fills = [];
+      const children = collectChildNodes(node);
+      for (const child of children) {
+        const childNode = yield renderNode(child);
+        frame.appendChild(childNode);
+      }
+      return frame;
+    });
   }
-  async function swapAndApplyProperties(instance, figmaKey, child) {
-    if (!child.componentKey) return false;
-    try {
-      const keysBefore = new Set(Object.keys(instance.componentProperties));
-      const swapComponent = await findComponentByKey(child.componentKey);
-      instance.setProperties({ [figmaKey]: swapComponent.id });
-      const propsAfter = instance.componentProperties;
-      const toSet = {};
-      for (const [propKey, propDef] of Object.entries(propsAfter)) {
-        if (keysBefore.has(propKey)) continue;
-        const baseName = propKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
-        if (propDef.type === "TEXT" && child.textProperties) {
-          for (const [name, value2] of Object.entries(child.textProperties)) {
-            if (name.toLowerCase() === baseName) {
-              toSet[propKey] = String(value2);
+  function swapAndApplyProperties(instance, figmaKey, child) {
+    return __async(this, null, function* () {
+      if (!child.componentKey) return false;
+      try {
+        const keysBefore = new Set(Object.keys(instance.componentProperties));
+        const swapComponent = yield findComponentByKey(child.componentKey);
+        instance.setProperties({ [figmaKey]: swapComponent.id });
+        const propsAfter = instance.componentProperties;
+        const toSet = {};
+        for (const [propKey, propDef] of Object.entries(propsAfter)) {
+          if (keysBefore.has(propKey)) continue;
+          const baseName = propKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
+          if (propDef.type === "TEXT" && child.textProperties) {
+            for (const [name, value2] of Object.entries(child.textProperties)) {
+              if (name.toLowerCase() === baseName) {
+                toSet[propKey] = String(value2);
+              }
             }
-          }
-        } else if (propDef.type === "BOOLEAN" && child.booleanProperties) {
-          for (const [name, value2] of Object.entries(child.booleanProperties)) {
-            if (name.toLowerCase() === baseName) {
-              toSet[propKey] = value2;
+          } else if (propDef.type === "BOOLEAN" && child.booleanProperties) {
+            for (const [name, value2] of Object.entries(child.booleanProperties)) {
+              if (name.toLowerCase() === baseName) {
+                toSet[propKey] = value2;
+              }
             }
-          }
-        } else if (propDef.type === "VARIANT" && child.variantProperties) {
-          for (const [name, value2] of Object.entries(child.variantProperties)) {
-            if (name.toLowerCase() === baseName) {
-              toSet[propKey] = value2;
+          } else if (propDef.type === "VARIANT" && child.variantProperties) {
+            for (const [name, value2] of Object.entries(child.variantProperties)) {
+              if (name.toLowerCase() === baseName) {
+                toSet[propKey] = value2;
+              }
             }
           }
         }
+        if (Object.keys(toSet).length > 0) {
+          instance.setProperties(toSet);
+        }
+        return true;
+      } catch (e) {
+        return false;
       }
-      if (Object.keys(toSet).length > 0) {
-        instance.setProperties(toSet);
+    });
+  }
+  function findSwapChildInstance(parent, figmaKey) {
+    function walk(node) {
+      if (node.type === "INSTANCE") {
+        const refs = node.componentPropertyReferences;
+        if (refs && refs.mainComponent === figmaKey) {
+          return node;
+        }
       }
-      return true;
-    } catch {
-      return false;
+      if ("children" in node) {
+        for (const child of node.children) {
+          const found = walk(child);
+          if (found) return found;
+        }
+      }
+      return null;
     }
+    return walk(parent);
   }
   function findChildByName(node, name) {
     if ("children" in node) {
@@ -239,107 +320,111 @@
     }
     return null;
   }
-  async function populateSlotFrame(instance, frameName, children) {
-    const overflow = [];
-    const slotFrame = findChildByName(instance, frameName);
-    console.log("[slot] Looking for frame '" + frameName + "' in instance '" + instance.name + "', found: " + (slotFrame ? slotFrame.type + " '" + slotFrame.name + "'" : "null"));
-    if (!slotFrame) {
-      if ("children" in instance) {
-        for (const c of instance.children) {
-          console.log("[slot]   child: type=" + c.type + " name='" + c.name + "'");
+  function populateSlotFrame(instance, frameName, children) {
+    return __async(this, null, function* () {
+      const overflow = [];
+      const slotFrame = findChildByName(instance, frameName);
+      console.log("[slot] Looking for frame '" + frameName + "' in instance '" + instance.name + "', found: " + (slotFrame ? slotFrame.type + " '" + slotFrame.name + "'" : "null"));
+      if (!slotFrame) {
+        if ("children" in instance) {
+          for (const c of instance.children) {
+            console.log("[slot]   child: type=" + c.type + " name='" + c.name + "'");
+          }
         }
+        for (const child of children) {
+          overflow.push(yield renderNode(child));
+        }
+        return overflow;
+      }
+      if ("children" in slotFrame) {
+        const defaults = [...slotFrame.children];
+        for (const d of defaults) {
+          try {
+            d.remove();
+          } catch (_) {
+          }
+        }
+        console.log("[slot] Removed " + defaults.length + " default children from '" + frameName + "'");
       }
       for (const child of children) {
-        overflow.push(await renderNode(child));
+        const rendered = yield renderNode(child);
+        try {
+          slotFrame.appendChild(rendered);
+        } catch (e) {
+          console.warn("[slot] appendChild failed for '" + rendered.name + "': " + e.message);
+          overflow.push(rendered);
+        }
       }
       return overflow;
-    }
-    if ("children" in slotFrame) {
-      const defaults = [...slotFrame.children];
-      for (const d of defaults) {
-        try {
-          d.remove();
-        } catch (_) {
+    });
+  }
+  function renderSlotChildren(instance, node) {
+    return __async(this, null, function* () {
+      const overflow = [];
+      const instanceProps = instance.componentProperties;
+      const slotFrames = node._slotFrames || {};
+      const swapMap = /* @__PURE__ */ new Map();
+      for (const [figmaKey, propDef] of Object.entries(instanceProps)) {
+        if (propDef.type === "INSTANCE_SWAP") {
+          const normalized = figmaKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
+          swapMap.set(normalized, { figmaKey, propDef });
         }
       }
-      console.log("[slot] Removed " + defaults.length + " default children from '" + frameName + "'");
-    }
-    for (const child of children) {
-      const rendered = await renderNode(child);
-      try {
-        slotFrame.appendChild(rendered);
-      } catch (e) {
-        console.warn("[slot] appendChild failed for '" + rendered.name + "': " + e.message);
-        overflow.push(rendered);
-      }
-    }
-    return overflow;
-  }
-  async function renderSlotChildren(instance, node) {
-    const overflow = [];
-    const instanceProps = instance.componentProperties;
-    const slotFrames = node._slotFrames || {};
-    const swapMap = /* @__PURE__ */ new Map();
-    for (const [figmaKey, propDef] of Object.entries(instanceProps)) {
-      if (propDef.type === "INSTANCE_SWAP") {
-        const normalized = figmaKey.replace(/#[\d:]+$/, "").trim().toLowerCase();
-        swapMap.set(normalized, { figmaKey, propDef });
-      }
-    }
-    const orderedSlots = Array.from(swapMap.entries()).sort(([a], [b]) => a.localeCompare(b, void 0, { numeric: true })).map(([, v]) => v);
-    const usedSlotKeys = /* @__PURE__ */ new Set();
-    for (const [key, value2] of Object.entries(node)) {
-      if (["component", "componentKey", "isImage", "variantProperties", "textProperties", "booleanProperties", "_slotFrames"].includes(key)) continue;
-      if (!Array.isArray(value2)) continue;
-      const slotChildren = value2.filter(
-        (item) => item != null && typeof item === "object" && "component" in item
-      );
-      if (slotChildren.length === 0) continue;
-      const frameName = slotFrames[key];
-      if (frameName) {
-        const slotOverflow = await populateSlotFrame(instance, frameName, slotChildren);
-        overflow.push(...slotOverflow);
-        continue;
-      }
-      const slotNorm = key.toLowerCase();
-      const directSwap = swapMap.get(slotNorm);
-      if (slotChildren.length === 1 && directSwap) {
-        const child = slotChildren[0];
-        const swapped = await swapAndApplyProperties(instance, directSwap.figmaKey, child);
-        if (swapped) {
-          usedSlotKeys.add(directSwap.figmaKey);
+      const orderedSlots = Array.from(swapMap.entries()).sort(([a], [b]) => a.localeCompare(b, void 0, { numeric: true })).map(([, v]) => v);
+      const usedSlotKeys = /* @__PURE__ */ new Set();
+      for (const [key, value2] of Object.entries(node)) {
+        if (["component", "componentKey", "isImage", "variantProperties", "textProperties", "booleanProperties", "_slotFrames"].includes(key)) continue;
+        if (!Array.isArray(value2)) continue;
+        const slotChildren = value2.filter(
+          (item) => item != null && typeof item === "object" && "component" in item
+        );
+        if (slotChildren.length === 0) continue;
+        const frameName = slotFrames[key];
+        if (frameName) {
+          const slotOverflow = yield populateSlotFrame(instance, frameName, slotChildren);
+          overflow.push(...slotOverflow);
           continue;
         }
-      }
-      if (!directSwap) {
-        let slotIndex = 0;
-        for (const child of slotChildren) {
-          while (slotIndex < orderedSlots.length && usedSlotKeys.has(orderedSlots[slotIndex].figmaKey)) {
-            slotIndex++;
-          }
-          if (slotIndex >= orderedSlots.length) {
-            const rendered = await renderNode(child);
-            overflow.push(rendered);
+        const slotNorm = key.toLowerCase();
+        const directSwap = swapMap.get(slotNorm);
+        if (slotChildren.length === 1 && directSwap) {
+          const child = slotChildren[0];
+          const swapped = yield swapAndApplyProperties(instance, directSwap.figmaKey, child);
+          if (swapped) {
+            usedSlotKeys.add(directSwap.figmaKey);
             continue;
           }
-          const slot = orderedSlots[slotIndex];
-          const swapped = await swapAndApplyProperties(instance, slot.figmaKey, child);
-          if (swapped) {
-            usedSlotKeys.add(slot.figmaKey);
-            slotIndex++;
-          } else {
-            const rendered = await renderNode(child);
-            overflow.push(rendered);
-          }
         }
-        continue;
+        if (!directSwap) {
+          let slotIndex = 0;
+          for (const child of slotChildren) {
+            while (slotIndex < orderedSlots.length && usedSlotKeys.has(orderedSlots[slotIndex].figmaKey)) {
+              slotIndex++;
+            }
+            if (slotIndex >= orderedSlots.length) {
+              const rendered = yield renderNode(child);
+              overflow.push(rendered);
+              continue;
+            }
+            const slot = orderedSlots[slotIndex];
+            const swapped = yield swapAndApplyProperties(instance, slot.figmaKey, child);
+            if (swapped) {
+              usedSlotKeys.add(slot.figmaKey);
+              slotIndex++;
+            } else {
+              const rendered = yield renderNode(child);
+              overflow.push(rendered);
+            }
+          }
+          continue;
+        }
+        for (const child of slotChildren) {
+          const rendered = yield renderNode(child);
+          overflow.push(rendered);
+        }
       }
-      for (const child of slotChildren) {
-        const rendered = await renderNode(child);
-        overflow.push(rendered);
-      }
-    }
-    return overflow;
+      return overflow;
+    });
   }
   function collectChildNodes(node) {
     const children = [];
@@ -364,11 +449,12 @@
     }
     return children;
   }
-  var pendingImageFills, LAYOUT_COMPONENTS, _componentCache;
+  var pendingImageFills, _pendingImageSwaps, LAYOUT_COMPONENTS, _componentCache;
   var init_tree_renderer = __esm({
     "src/tree-renderer.ts"() {
       "use strict";
       pendingImageFills = [];
+      _pendingImageSwaps = [];
       LAYOUT_COMPONENTS = {
         VStack: "VERTICAL",
         HStack: "HORIZONTAL",
@@ -405,7 +491,7 @@
       };
       var _previousHandler = globalThis.__handlePluginMessage;
       try {
-        globalThis.__handlePluginMessage = async (msg) => {
+        globalThis.__handlePluginMessage = (msg) => __async(exports, null, function* () {
           if (msg.type === "render-tree") {
             try {
               globalThis.__devLogs = [];
@@ -429,14 +515,17 @@
               rootFrame.fills = [
                 { type: "SOLID", color: { r: 1, g: 1, b: 1 } }
               ];
-              const rendered = await renderNode(msg.tree);
+              const rendered = yield renderNode(msg.tree);
               rootFrame.appendChild(rendered);
               const viewport = figma.viewport.center;
               rootFrame.x = Math.round(viewport.x - rootFrame.width / 2);
               rootFrame.y = Math.round(viewport.y - rootFrame.height / 2);
               figma.currentPage.appendChild(rootFrame);
               figma.viewport.scrollAndZoomIntoView([rootFrame]);
+              globalThis.__lastRootFrameId = rootFrame.id;
+              collectImageSwapFills(rootFrame);
               if (pendingImageFills.length > 0) {
+                console.log("[image] Posting fetch-images with " + pendingImageFills.length + " fills: " + pendingImageFills.map((f) => f.nodeId + "=" + f.prompt).join(", "));
                 figma.ui.postMessage({ type: "fetch-images", fills: [...pendingImageFills] });
               }
               figma.ui.postMessage({ type: "render-done", name: msg.name, logs: globalThis.__devLogs || [] });
@@ -449,15 +538,34 @@
             }
           } else if (msg.type === "image-data") {
             try {
-              const node = figma.getNodeById(msg.nodeId);
+              console.log("[image-data] Applying fill, nodeId=" + msg.nodeId + " bytes=" + (msg.bytes ? msg.bytes.length : 0));
+              let node = null;
+              try {
+                node = yield figma.getNodeByIdAsync(msg.nodeId);
+              } catch (_) {
+              }
+              if (!node) {
+                const fill = pendingImageFills.find((f) => f.nodeId === msg.nodeId);
+                const searchName = fill == null ? void 0 : fill.nodeName;
+                if (searchName && globalThis.__lastRootFrameId) {
+                  const rootFrame = figma.currentPage.findOne((n) => n.id === globalThis.__lastRootFrameId);
+                  if (rootFrame && "findOne" in rootFrame) {
+                    node = rootFrame.findOne((n) => n.name === searchName && "fills" in n);
+                  }
+                  console.log("[image-data] Fallback search for '" + searchName + "' in rootFrame: " + (node ? "found id=" + node.id : "not found"));
+                }
+              }
               if (node && "fills" in node) {
                 const image = figma.createImage(new Uint8Array(msg.bytes));
                 node.fills = [
                   { type: "IMAGE", imageHash: image.hash, scaleMode: "FILL" }
                 ];
+                console.log("[image-data] Fill applied to '" + node.name + "' id=" + node.id);
+              } else {
+                console.warn("[image-data] Node not found for id=" + msg.nodeId);
               }
             } catch (err) {
-              console.warn("Failed to apply image fill to " + msg.nodeId, err);
+              console.warn("[image-data] Failed: " + (err.message || String(err)));
             }
           } else if (msg.type === "dev-inspect") {
             try {
@@ -468,7 +576,7 @@
               figma.ui.postMessage({ type: "dev-inspect-error", error: e.message || String(e) });
             }
           }
-        };
+        });
       } catch (e) {
         globalThis.__handlePluginMessage = _previousHandler;
         throw e;

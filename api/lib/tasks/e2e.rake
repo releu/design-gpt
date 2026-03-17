@@ -261,7 +261,52 @@ namespace :e2e do
       end
     end
 
+    # Image component set for image workflow tests
+    image_set = ready_lib.component_sets.find_or_create_by!(node_id: "e2e:img100") do |cs|
+      cs.name            = "Photo #image"
+      cs.figma_file_key  = "e2eReadyLib123"
+      cs.figma_file_name = "e2e-ready-lib"
+      cs.is_image        = true
+      cs.prop_definitions = {}
+    end
+    image_set.update!(is_image: true)
+
+    image_set.variants.find_or_create_by!(node_id: "e2e:img101") do |v|
+      v.name        = "Default"
+      v.is_default  = true
+      v.figma_json  = {
+        "id" => "e2e:img101", "type" => "COMPONENT", "name" => "Default",
+        "children" => []
+      }
+      v.react_code  = <<~JSX
+        export function PhotoImage({ prompt, ...props }) {
+          const src = prompt
+            ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(prompt)}`
+            : '';
+          return (
+            <div data-component="PhotoImage"
+              style={{
+                width: '100%', height: '100%',
+                backgroundImage: src ? `url(${src})` : 'none',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+              }}
+              {...props} />
+          );
+        }
+        export default PhotoImage;
+      JSX
+      v.react_code_compiled = "var PhotoImage = function(props){return React.createElement('div',{style:{width:'100%',height:'100%',backgroundSize:'cover'}});};"
+    end
+
+    # Pre-seed an ImageCache record for E2E tests
+    ImageCache.find_or_create_by!(query: "e2e test image") do |ic|
+      ic.url    = "https://avatars.mds.yandex.net/get-images/e2e/test.jpg?n=33&w=1200&h=1200"
+      ic.width  = "1200"
+      ic.height = "800"
+    end
+
     # Store the component id for tests that need it
+    puts "E2E image component set id: #{image_set.id}"
     puts "E2E ready library id: #{ready_lib.id}"
     puts "E2E second library id: #{second_lib.id}"
     puts "E2E ready component id: #{e2e_component.id}"

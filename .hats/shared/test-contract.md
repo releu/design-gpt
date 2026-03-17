@@ -183,3 +183,10 @@ Do NOT check CSS classes for active states. Instead assert the corresponding pan
 - All components render: iterate `[qa="ds-menu-item"]`, check `[qa="component-preview-frame"]` `#root` not empty
 - All props work: `[qa="component-prop-row"]` controls update `[qa="component-preview-frame"]` `#root`
 - Visual diff passes: API GET /api/components/:id/visual_diff returns >= 95%
+
+### Image Workflow (11-image-workflow.feature)
+- Image render endpoint: GET /api/images/render?prompt=X → 200 with proxied image bytes + `Access-Control-Allow-Origin: *`
+- Blank/missing prompt: GET /api/images/render?prompt= → 400
+- Cache consistency: same prompt returns same redirect URL
+- Auth required: GET /api/images?q=X without auth → 401
+- Design preview: image component renders as `div` with `backgroundImage` style, no `<img>` tag
