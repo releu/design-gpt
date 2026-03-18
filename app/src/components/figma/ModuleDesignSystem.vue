@@ -171,10 +171,10 @@ export default {
         this.figmaFiles = (ds.figma_files || []).map((ff) => ({
           id: ff.id,
           name: ff.name || ff.figma_url,
-          status: ds.status || "pending",
+          status: ff.status || ds.status || "pending",
           loading: true,
           error: null,
-          progress: ds.progress || null,
+          progress: ff.progress || ds.progress || null,
         }));
 
         this.pollDesignSystem(ds.id);
@@ -194,10 +194,14 @@ export default {
           });
           const ds = await res.json();
 
-          // Update progress on all files from DS-level progress
-          for (const lib of this.figmaFiles) {
-            lib.status = ds.status;
-            lib.progress = ds.progress || null;
+          // Update per-file progress from DS response
+          for (const ff of ds.figma_files || []) {
+            const lib = this.figmaFiles.find((l) => l.id === ff.id);
+            if (lib) {
+              if (ff.name) lib.name = ff.name;
+              lib.status = ff.status || ds.status;
+              lib.progress = ff.progress || ds.progress || null;
+            }
           }
 
           if (ds.status === "ready") {

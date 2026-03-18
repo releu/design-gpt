@@ -79,7 +79,10 @@ class DesignSystemsController < ApplicationController
       progress: ds.progress,
       is_owner: is_owner,
       figma_file_ids: libs.pluck(:id),
-      figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } },
+      figma_files: libs.map { |ff| {
+        id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url,
+        status: ff.status, progress: ff.progress
+      } },
       created_at: ds.created_at
     }
   end
