@@ -69,7 +69,13 @@ class DesignSystemSyncJob < ApplicationJob
 
     source_files.each do |ff|
       next unless ff.figma_file_key.present?
-      next unless ff.figma_last_modified.present?
+
+      # No stored timestamp = first sync with incremental support, treat as changed
+      unless ff.figma_last_modified.present?
+        changed << ff.figma_file_key
+        puts "[DesignSystemSyncJob] File #{ff.figma_file_key} has no stored lastModified, treating as changed"
+        next
+      end
 
       meta = figma.get("/v1/files/#{ff.figma_file_key}?depth=1")
       if meta["lastModified"] != ff.figma_last_modified
