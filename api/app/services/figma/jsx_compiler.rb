@@ -59,7 +59,6 @@ module Figma
         stdout, stderr, status = Open3.capture3(
           esbuild_path,
           "--outdir=#{output_dir}",
-          "--loader=jsx",
           "--jsx=transform",
           "--target=es2020",
           *Dir[File.join(input_dir, "*.jsx")]
