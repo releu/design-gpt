@@ -95,16 +95,15 @@ class FigmaFilesController < ApplicationController
   end
 
   # POST /api/figma-files/:id/sync
-  # Syncs via design system if linked, otherwise directly
+  # Always sync via design system
   def sync
     cl = find_accessible_library(params[:id])
-    if cl.design_system
-      new_version = cl.design_system.sync_async
-      render json: { id: cl.id, status: cl.design_system.reload.status, progress: cl.design_system.progress }
-    else
-      cl.sync_with_figma
-      render json: { id: cl.id, status: cl.reload.status, progress: cl.progress }
+    unless cl.design_system
+      render json: { error: "Figma file must belong to a design system to sync" }, status: :unprocessable_entity
+      return
     end
+    new_version = cl.design_system.sync_async
+    render json: { id: cl.id, status: cl.design_system.reload.status, progress: cl.design_system.progress }
   end
 
   # GET /api/component-libraries/:id/components

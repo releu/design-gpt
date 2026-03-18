@@ -36,14 +36,32 @@ class DesignSystemsController < ApplicationController
       version: 1,
       status: "ready"
     )
+
+    # Link existing figma files by ID
     Array(dp[:figma_file_ids]).each do |ff_id|
       ff = current_user.figma_files.find(ff_id)
       ff.update!(design_system: ds, version: ds.version)
     end
+
+    # Create and link figma files from URLs
+    Array(dp[:figma_urls]).each do |url|
+      next if url.blank?
+      ff = current_user.figma_files.find_by(figma_url: url) ||
+           current_user.figma_files.create!(figma_url: url)
+      ff.update!(design_system: ds, version: ds.version)
+    end
+
+    # Auto-sync if there are files to sync
+    ds.sync_async if ds.current_figma_files.any?
+
+    ds.reload
     libs = ds.current_figma_files
     render json: {
       id: ds.id,
       name: ds.name,
+      status: ds.status,
+      version: ds.version,
+      progress: ds.progress,
       figma_file_ids: libs.pluck(:id),
       figma_files: libs.map { |ff| { id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url } }
     }, status: :created
@@ -109,9 +127,9 @@ class DesignSystemsController < ApplicationController
 
   def ds_params
     if params[:design_system].present?
-      params.require(:design_system).permit(:name, :is_public, figma_file_ids: [])
+      params.require(:design_system).permit(:name, :is_public, figma_file_ids: [], figma_urls: [])
     else
-      params.permit(:name, :is_public, figma_file_ids: [])
+      params.permit(:name, :is_public, figma_file_ids: [], figma_urls: [])
     end
   end
 end

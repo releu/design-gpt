@@ -87,6 +87,7 @@ export default {
       pollingIntervals: [],
       saving: false,
       designSystemName: "",
+      designSystemId: null,
     };
   },
   computed: {
@@ -112,7 +113,7 @@ export default {
   watch: {
     allImported(val) {
       if (val && this.phase === "importing") {
-        this.saveAndClose();
+        this.$emit("saved", this.designSystemId || null);
       }
     },
   },
@@ -140,90 +141,13 @@ export default {
       this.phase = "importing";
       this.importing = true;
 
-      const urlsToImport = this.urlFields.filter(u => u.trim());
+      const figmaUrls = this.urlFields.filter(u => u.trim());
       this.urlFields = [""];
 
-      for (const url of urlsToImport) {
-        try {
-          const token = await this.getToken();
-
-          const createRes = await fetch("/api/figma-files", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ url }),
-          });
-          if (!createRes.ok) continue;
-          const lib = await createRes.json();
-          if (!lib.id) continue;
-
-          await fetch(`/api/figma-files/${lib.id}/sync`, {
-            method: "POST",
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-
-          this.figmaFiles.push({
-            id: lib.id,
-            name: lib.name || lib.figma_file_name || url,
-            status: lib.status || "pending",
-            loading: true,
-            error: null,
-            progress: null,
-          });
-
-          this.pollLibrary(lib.id);
-        } catch {
-          // continue with other URLs
-        }
-      }
-
-      this.importing = false;
-    },
-    pollLibrary(libraryId) {
-      const interval = setInterval(async () => {
-        try {
-          const token = await this.getToken();
-          const res = await fetch(`/api/figma-files/${libraryId}`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-
-          const lib = this.figmaFiles.find((l) => l.id === libraryId);
-          if (!lib) {
-            clearInterval(interval);
-            return;
-          }
-
-          if (data.name) lib.name = data.name;
-          else if (data.figma_file_name) lib.name = data.figma_file_name;
-          lib.status = data.status;
-          lib.progress = data.progress || null;
-
-          if (data.status === "ready") {
-            clearInterval(interval);
-            lib.loading = false;
-          } else if (data.status === "error") {
-            clearInterval(interval);
-            lib.loading = false;
-            lib.error = data.error_message || "Import failed";
-          }
-        } catch {
-          clearInterval(interval);
-        }
-      }, 2000);
-
-      this.pollingIntervals.push(interval);
-    },
-    async saveAndClose() {
-      if (this.saving) return;
-      this.saving = true;
       try {
         const token = await this.getToken();
+
+        // Create design system with URLs — backend creates files, links them, and starts sync
         const res = await fetch("/api/design-systems", {
           method: "POST",
           credentials: "include",
@@ -234,15 +158,64 @@ export default {
           body: JSON.stringify({
             design_system: {
               name: this.designSystemName || "Untitled",
-              figma_file_ids: this.figmaFiles.map((l) => l.id),
+              figma_urls: figmaUrls,
             },
           }),
         });
-        const data = res.ok ? await res.json() : {};
-        this.$emit("saved", data.id || null);
+
+        if (!res.ok) return;
+        const ds = await res.json();
+        this.designSystemId = ds.id;
+
+        // Track files for progress display
+        this.figmaFiles = (ds.figma_files || []).map((ff) => ({
+          id: ff.id,
+          name: ff.name || ff.figma_url,
+          status: ds.status || "pending",
+          loading: true,
+          error: null,
+          progress: ds.progress || null,
+        }));
+
+        this.pollDesignSystem(ds.id);
+      } catch {
+        // handle error
       } finally {
-        this.saving = false;
+        this.importing = false;
       }
+    },
+    pollDesignSystem(dsId) {
+      const interval = setInterval(async () => {
+        try {
+          const token = await this.getToken();
+          const res = await fetch(`/api/design-systems/${dsId}`, {
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const ds = await res.json();
+
+          // Update progress on all files from DS-level progress
+          for (const lib of this.figmaFiles) {
+            lib.status = ds.status;
+            lib.progress = ds.progress || null;
+          }
+
+          if (ds.status === "ready") {
+            clearInterval(interval);
+            for (const lib of this.figmaFiles) lib.loading = false;
+          } else if (ds.status === "error") {
+            clearInterval(interval);
+            for (const lib of this.figmaFiles) {
+              lib.loading = false;
+              lib.error = ds.progress?.error || "Import failed";
+            }
+          }
+        } catch {
+          clearInterval(interval);
+        }
+      }, 2000);
+
+      this.pollingIntervals.push(interval);
     },
   },
   beforeUnmount() {
