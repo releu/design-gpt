@@ -119,8 +119,27 @@ export default {
       const ds = await res.json();
       this.designSystemName = ds.name;
       this.isOwner = ds.is_owner || false;
-      this.figmaFiles = [];
 
+      // If DS is still syncing, show progress bar and poll
+      if (["pending", "importing", "converting"].includes(ds.status)) {
+        this.figmaFiles = (ds.figma_files || []).map((ff) => ({
+          id: ff.id,
+          name: ff.name,
+          figma_url: ff.figma_url || "",
+          status: ff.status || ds.status,
+          loading: true,
+          error: null,
+          progress: ff.progress || null,
+          components: [],
+        }));
+        this.syncProgress = this.figmaFiles.find((f) => f.progress?.step_number)?.progress || ds.progress || null;
+        this.syncing = true;
+        this.loading = false;
+        this.pollDesignSystem();
+        return;
+      }
+
+      this.figmaFiles = [];
       for (const lib of ds.figma_files || []) {
         this.figmaFiles.push({
           id: lib.id,
@@ -253,7 +272,9 @@ export default {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json();
-          this.syncProgress = data.progress || null;
+          // Use per-file progress if available
+          const activeFile = (data.figma_files || []).find((f) => f.progress?.step_number);
+          this.syncProgress = activeFile?.progress || data.progress || null;
 
           if (data.status === "ready" || data.status === "error") {
             clearInterval(interval);
