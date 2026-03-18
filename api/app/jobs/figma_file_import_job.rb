@@ -39,7 +39,7 @@ class FigmaFileImportJob < ApplicationJob
 
     if siblings.where(status: "error").exists?
       ds.update!(status: "error", progress: ds.progress.merge("error" => "One or more files failed"))
-      HerokuScaler.scale_figma_worker(HerokuScaler::DEFAULT_SIZE)
+      HerokuScaler.scale_down_figma_worker
     end
   end
 end

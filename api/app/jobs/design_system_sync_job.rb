@@ -68,6 +68,6 @@ class DesignSystemSyncJob < ApplicationJob
     dyno_size = HerokuScaler.pick_dyno_size(estimated_mb.to_i)
     puts "[DesignSystemSyncJob] Estimated memory: #{estimated_mb.to_i}MB → dyno size: #{dyno_size}"
 
-    HerokuScaler.scale_figma_worker(dyno_size)
+    HerokuScaler.scale_up_figma_worker(dyno_size)
   end
 end

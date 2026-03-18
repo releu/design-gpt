@@ -8,8 +8,8 @@ class HerokuScaler
 
   DEFAULT_SIZE = "standard-1x"
 
-  def self.scale_figma_worker(size)
-    new.scale_figma_worker(size)
+  def self.scale(process, quantity:, size: nil)
+    new.scale(process, quantity: quantity, size: size)
   end
 
   def self.pick_dyno_size(estimated_mb)
@@ -18,59 +18,45 @@ class HerokuScaler
     DYNO_SIZES.each do |size, mb|
       return size if mb >= needed
     end
-    "performance-m" # largest available
+    "performance-m"
   end
 
-  def scale_figma_worker(size)
+  # Convenience: spin up figma_worker with the right size
+  def self.scale_up_figma_worker(size)
+    scale("figma_worker", quantity: 1, size: size)
+  end
+
+  # Convenience: shut down figma_worker
+  def self.scale_down_figma_worker
+    scale("figma_worker", quantity: 0)
+  end
+
+  def scale(process, quantity:, size: nil)
     return unless api_key.present? && app_name.present?
-    return unless DYNO_SIZES.key?(size)
 
-    current = current_figma_worker_size
-    if current == size
-      log "figma_worker already #{size}, skipping"
-      return
-    end
+    body = { quantity: quantity }
+    body[:size] = size if size && DYNO_SIZES.key?(size)
 
-    log "Scaling figma_worker: #{current} → #{size}"
+    log "Scaling #{process}: quantity=#{quantity}#{size ? " size=#{size}" : ""}"
 
-    # Heroku Platform API: PATCH /apps/{app}/formation/{type}
-    uri = URI("https://api.heroku.com/apps/#{app_name}/formation/figma_worker")
+    uri = URI("https://api.heroku.com/apps/#{app_name}/formation/#{process}")
     req = Net::HTTP::Patch.new(uri)
     req["Authorization"] = "Bearer #{api_key}"
     req["Content-Type"] = "application/json"
     req["Accept"] = "application/vnd.heroku+json; version=3"
-    req.body = { size: size, quantity: 1 }.to_json
+    req.body = body.to_json
 
     http = Net::HTTP.new(uri.hostname, uri.port)
     http.use_ssl = true
     res = http.request(req)
 
     unless res.is_a?(Net::HTTPSuccess)
-      log "Failed to scale: #{res.code} #{res.body}"
+      log "Failed to scale #{process}: #{res.code} #{res.body}"
       return
     end
 
-    log "Scaled figma_worker to #{size}"
-    size
-  end
-
-  def current_figma_worker_size
-    return nil unless api_key.present? && app_name.present?
-
-    uri = URI("https://api.heroku.com/apps/#{app_name}/formation/figma_worker")
-    req = Net::HTTP::Get.new(uri)
-    req["Authorization"] = "Bearer #{api_key}"
-    req["Accept"] = "application/vnd.heroku+json; version=3"
-
-    http = Net::HTTP.new(uri.hostname, uri.port)
-    http.use_ssl = true
-    res = http.request(req)
-
-    return nil unless res.is_a?(Net::HTTPSuccess)
-    JSON.parse(res.body)["size"]
-  rescue => e
-    log "Failed to get current size: #{e.message}"
-    nil
+    log "Scaled #{process} to quantity=#{quantity}#{size ? " size=#{size}" : ""}"
+    true
   end
 
   private
