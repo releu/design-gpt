@@ -208,7 +208,10 @@ module Figma
 
       node_id = node["id"]
 
-      if VECTOR_TYPES.include?(node["type"]) || vector_frame?(node)
+      # Only export composed vector frames (icons, logos) as SVG.
+      # Bare vector nodes (individual paths, shapes) inside regular frames
+      # are single strokes that render fine with CSS fallback.
+      if vector_frame?(node)
         if node_id
           result[file_key] ||= []
           result[file_key] << node_id unless result[file_key].include?(node_id)
