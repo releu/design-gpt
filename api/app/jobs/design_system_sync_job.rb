@@ -47,9 +47,14 @@ class DesignSystemSyncJob < ApplicationJob
       )
     end
 
-    # Enqueue import jobs for each file (serialized by figma_api concurrency limit)
+    # Enqueue import jobs — unchanged files go to default queue (no figma_worker needed),
+    # changed files go to figma queue (needs Figma API access)
     new_files.each do |ff|
-      FigmaFileImportJob.perform_later(ff.id)
+      if changed_file_keys.include?(ff.figma_file_key)
+        FigmaFileImportJob.perform_later(ff.id)
+      else
+        FigmaFileImportJob.set(queue: :default).perform_later(ff.id)
+      end
     end
   rescue => e
     ds.update!(status: "error", progress: ds.progress.merge("error" => e.message))
