@@ -201,6 +201,11 @@ module Figma
     def find_inline_vectors(node, file_key, result)
       return unless node.is_a?(Hash)
 
+      # INSTANCE nodes are rendered as component references by ReactFactory,
+      # not by walking their children — skip to avoid exporting thousands of
+      # redundant sub-node SVGs.
+      return if node["type"] == "INSTANCE"
+
       node_id = node["id"]
 
       if VECTOR_TYPES.include?(node["type"]) || vector_frame?(node)
