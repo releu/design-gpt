@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_16_104123) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -100,6 +100,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_16_104123) do
     t.jsonb "slots", default: []
     t.string "component_key"
     t.boolean "is_image", default: false, null: false
+    t.index ["figma_file_id", "node_id"], name: "index_components_on_figma_file_id_and_node_id", unique: true
   end
 
   create_table "design_systems", force: :cascade do |t|

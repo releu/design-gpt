@@ -284,9 +284,11 @@ module Figma
       existing_ids = component_sets.keys
       @figma_file.component_sets.where.not(node_id: existing_ids).destroy_all
 
-      component_sets.each do |node_id, data|
-        set = @figma_file.component_sets.find_or_initialize_by(node_id: node_id)
-        attrs = {
+      # Bulk upsert component sets
+      set_rows = component_sets.map do |node_id, data|
+        row = {
+          figma_file_id: @figma_file.id,
+          node_id: node_id,
           name: data[:name],
           description: data[:description],
           figma_file_key: @file_key,
@@ -298,40 +300,46 @@ module Figma
           component_key: data[:component_key]
         }
         if data[:invalid]
-          attrs[:status] = "error"
-          attrs[:error_message] = data[:invalid_reason]
+          row[:status] = "error"
+          row[:error_message] = data[:invalid_reason]
         else
-          attrs[:status] = "pending"
-          attrs[:error_message] = nil
+          row[:status] = "pending"
+          row[:error_message] = nil
         end
-        begin
-          set.update!(attrs)
-        rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-          set = @figma_file.component_sets.find_by!(node_id: node_id)
-          set.update!(attrs)
-        end
+        row
+      end
+
+      ComponentSet.upsert_all(set_rows, unique_by: [:figma_file_id, :node_id]) if set_rows.any?
+
+      # Reload sets to get IDs for variant association
+      persisted_sets = @figma_file.component_sets.index_by(&:node_id)
+
+      # Bulk upsert variants per set (need set IDs), and clean up stale ones
+      component_sets.each do |node_id, data|
+        set = persisted_sets[node_id]
+        next unless set
 
         existing_variant_ids = data[:variants].keys
         set.variants.where.not(node_id: existing_variant_ids).destroy_all
+      end
 
-        data[:variants].each do |variant_id, variant_data|
-          variant = set.variants.find_or_initialize_by(node_id: variant_id)
-          variant.update!(
+      variant_rows = component_sets.flat_map do |node_id, data|
+        set = persisted_sets[node_id]
+        next [] unless set
+
+        data[:variants].map do |variant_id, variant_data|
+          {
+            component_set_id: set.id,
+            node_id: variant_id,
             name: variant_data[:name],
             figma_json: variant_data[:figma_json] || {},
             is_default: variant_data[:is_default] || false,
             component_key: variant_data[:component_key]
-          )
-        rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-          variant = set.variants.find_by!(node_id: variant_id)
-          variant.update!(
-            name: variant_data[:name],
-            figma_json: variant_data[:figma_json] || {},
-            is_default: variant_data[:is_default] || false,
-            component_key: variant_data[:component_key]
-          )
+          }
         end
       end
+
+      ComponentVariant.upsert_all(variant_rows, unique_by: [:component_set_id, :node_id]) if variant_rows.any?
     end
 
     def persist_standalone_components(components)
@@ -340,9 +348,10 @@ module Figma
       existing_ids = components.keys
       @figma_file.components.where.not(node_id: existing_ids).destroy_all
 
-      components.each do |node_id, data|
-        component = @figma_file.components.find_or_initialize_by(node_id: node_id)
-        attrs = {
+      rows = components.map do |node_id, data|
+        row = {
+          figma_file_id: @figma_file.id,
+          node_id: node_id,
           name: data[:name],
           description: data[:description],
           prop_definitions: data[:prop_definitions] || {},
@@ -352,17 +361,20 @@ module Figma
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
-          component_key: data[:component_key]
+          component_key: data[:component_key],
+          updated_at: Time.current
         }
         if data[:invalid]
-          attrs[:status] = "error"
-          attrs[:error_message] = data[:invalid_reason]
+          row[:status] = "error"
+          row[:error_message] = data[:invalid_reason]
         else
-          attrs[:status] = "pending"
-          attrs[:error_message] = nil
+          row[:status] = "pending"
+          row[:error_message] = nil
         end
-        component.update!(attrs)
+        row
       end
+
+      Component.upsert_all(rows, unique_by: [:figma_file_id, :node_id]) if rows.any?
     end
   end
 end

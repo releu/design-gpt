@@ -17,9 +17,12 @@ module Figma
       @nested_instance_counters = {}
       @class_index = 0
       @image_refs = nil
+      @pending_compilations = []
+      @batch_mode = false
     end
 
     def generate_all
+      @batch_mode = true
       log "Starting React code generation for ComponentLibrary##{@figma_file.id}"
 
       @figma_file.components.each do |component|
@@ -60,6 +63,8 @@ module Figma
         log "  [#{idx + 1}/#{components.size}] #{component.name}" if (idx + 1) % 10 == 0 || idx == components.size - 1
       end
 
+      batch_compile_and_persist
+
       log "React code generation complete! Generated #{@generated.size} components"
       @generated
     end
@@ -82,9 +87,8 @@ module Figma
 
       if component_set.is_image
         code = generate_image_component_code(component_name)
-        compiled_code = compile_for_browser(code, component_name, "cs_#{component_set.id}")
+        compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
         @generated[component_set.node_id] = { name: component_name, code: code, compiled_code: compiled_code, node_id: component_set.node_id, type: :component_set }
-        default_variant.update!(react_code: code, react_code_compiled: compiled_code)
         return @generated[component_set.node_id]
       end
 
@@ -130,7 +134,7 @@ module Figma
         end
       end
 
-      compiled_code = compile_for_browser(code, component_name, "cs_#{component_set.id}")
+      compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
 
       @generated[component_set.node_id] = {
         name: component_name,
@@ -139,8 +143,6 @@ module Figma
         node_id: component_set.node_id,
         type: :component_set
       }
-
-      default_variant.update!(react_code: code, react_code_compiled: compiled_code)
 
       @generated[component_set.node_id]
     end
@@ -159,9 +161,8 @@ module Figma
 
       if component.is_image
         code = generate_image_component_code(component_name)
-        compiled_code = compile_for_browser(code, component_name, "c_#{component.id}")
+        compiled_code = defer_or_compile(code, component_name, "c_#{component.id}", component)
         @generated[component.node_id] = { name: component_name, code: code, compiled_code: compiled_code, node_id: component.node_id }
-        component.update!(react_code: code, react_code_compiled: compiled_code)
         return @generated[component.node_id]
       end
 
@@ -191,7 +192,7 @@ module Figma
 
       code = build_component_code(component_name, imports, css, jsx, @current_props, has_slot: @has_slot)
 
-      compiled_code = compile_for_browser(code, component_name, "c_#{component.id}")
+      compiled_code = defer_or_compile(code, component_name, "c_#{component.id}", component)
 
       @generated[component.node_id] = {
         name: component_name,
@@ -199,8 +200,6 @@ module Figma
         compiled_code: compiled_code,
         node_id: component.node_id
       }
-
-      component.update!(react_code: code, react_code_compiled: compiled_code)
 
       @generated[component.node_id]
     end
@@ -1290,6 +1289,33 @@ module Figma
     def compile_for_browser(react_code, component_name, component_id)
       return "var #{component_name} = function() { return React.createElement('div', null, 'No code generated'); }" if react_code.blank?
 
+      preprocessed = preprocess_for_browser(react_code, component_name, component_id)
+
+      begin
+        compiled = Figma::JsxCompiler.compile(preprocessed)
+        postprocess_compiled(compiled)
+      rescue Figma::JsxCompiler::CompilationError => e
+        Rails.logger.error("JSX compilation failed for #{component_name}: #{e.message}")
+        "var #{component_name} = function() { return React.createElement('div', {style: {color: 'red'}}, 'Compilation error: #{e.message.gsub("'", "\\\\'")}'); }"
+      end
+    end
+
+    # In batch mode, defer compilation to batch_compile_and_persist; otherwise compile inline.
+    # Saves react_code immediately; compiled code is persisted either inline or in batch.
+    def defer_or_compile(code, component_name, component_id, record)
+      record.update!(react_code: code)
+      if @batch_mode
+        @pending_compilations << { key: component_id, name: component_name, code: code, record: record }
+        nil # compiled_code will be set in batch_compile_and_persist
+      else
+        compiled = compile_for_browser(code, component_name, component_id)
+        record.update!(react_code_compiled: compiled)
+        compiled
+      end
+    end
+
+    # Preprocessing: variable namespacing, import stripping — everything before esbuild
+    def preprocess_for_browser(react_code, component_name, component_id)
       code = react_code.dup
 
       styles_var = "styles_#{component_id}"
@@ -1307,14 +1333,56 @@ module Figma
       code = code.gsub(/^export default [^\n]+\n?/, "")
       code = code.gsub(/^export /, "")
 
-      begin
-        compiled = Figma::JsxCompiler.compile(code)
-        compiled = compiled.gsub(/^function (\w+)\(/, 'var \1 = function(')
-        compiled.strip
-      rescue Figma::JsxCompiler::CompilationError => e
-        Rails.logger.error("JSX compilation failed for #{component_name}: #{e.message}")
-        "var #{component_name} = function() { return React.createElement('div', {style: {color: 'red'}}, 'Compilation error: #{e.message.gsub("'", "\\\\'")}'); }"
+      code
+    end
+
+    # Post-processing: convert function declarations to var assignments
+    def postprocess_compiled(compiled)
+      compiled = compiled.gsub(/^function (\w+)\(/, 'var \1 = function(')
+      compiled.strip
+    end
+
+    # Batch-compile all pending snippets in a single esbuild invocation, then persist
+    def batch_compile_and_persist
+      return if @pending_compilations.empty?
+
+      log "Batch-compiling #{@pending_compilations.size} components..."
+
+      # Preprocess all snippets
+      snippets = @pending_compilations.map do |entry|
+        if entry[:code].blank?
+          entry[:compiled] = "var #{entry[:name]} = function() { return React.createElement('div', null, 'No code generated'); }"
+          nil
+        else
+          preprocessed = preprocess_for_browser(entry[:code], entry[:name], entry[:key])
+          { key: entry[:key], code: preprocessed }
+        end
+      end.compact
+
+      # Single esbuild invocation
+      compiled_map = Figma::JsxCompiler.compile_batch(snippets)
+
+      # Post-process and persist
+      @pending_compilations.each do |entry|
+        compiled = entry[:compiled] # pre-set for blank code entries
+        unless compiled
+          raw = compiled_map[entry[:key]]
+          compiled = if raw
+            postprocess_compiled(raw)
+          else
+            Rails.logger.error("Batch compilation missing output for #{entry[:name]}")
+            "var #{entry[:name]} = function() { return React.createElement('div', {style: {color: 'red'}}, 'Compilation error'); }"
+          end
+        end
+
+        entry[:record].update!(react_code_compiled: compiled)
+
+        # Update @generated with compiled_code
+        gen = @generated.values.find { |g| g[:name] == entry[:name] }
+        gen[:compiled_code] = compiled if gen
       end
+
+      log "Batch compilation complete"
     end
 
     def generate_multi_variant_code(component_set, component_name, all_variants, variant_prop_names, prop_definitions)

@@ -19,25 +19,22 @@ class DesignSystemSyncJob < ApplicationJob
     ds.figma_files.where(version: new_version).destroy_all
 
     new_files = source_files.map do |ff|
-      new_ff = ds.figma_files.create!(
+      ds.figma_files.create!(
         user: ds.user,
         name: ff.name,
         figma_url: ff.figma_url,
         figma_file_key: ff.figma_file_key,
         figma_file_name: ff.figma_file_name,
-
         version: new_version,
         status: "pending",
         progress: { "started_at" => Time.current.iso8601 }
       )
-      new_ff.sync_with_figma
-      new_ff
     end
 
-    ds.update!(
-      status: "ready",
-      progress: ds.progress.merge("completed_at" => Time.current.iso8601)
-    )
+    # Enqueue import jobs for each file (serialized by figma_api concurrency limit)
+    new_files.each do |ff|
+      FigmaFileImportJob.perform_later(ff.id)
+    end
   rescue => e
     ds.update!(status: "error", progress: ds.progress.merge("error" => e.message))
     raise
