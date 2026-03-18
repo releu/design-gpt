@@ -24,6 +24,11 @@ module Figma
       JSON.parse(res.body)
     end
 
+    # Lightweight metadata call — returns component/variant counts without the full document tree
+    def file_meta(file_key)
+      get("/v1/files/#{file_key}?depth=1")
+    end
+
     def component(key)
       get("/v1/components/#{key}")
     end

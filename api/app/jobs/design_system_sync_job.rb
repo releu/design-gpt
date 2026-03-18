@@ -2,6 +2,10 @@ class DesignSystemSyncJob < ApplicationJob
   queue_as :default
   limits_concurrency key: ->(design_system_id, _new_version) { "ds_sync_#{design_system_id}" }, to: 1
 
+  # Estimated MB per component (JSON tree in memory + processing overhead)
+  MB_PER_COMPONENT = 0.3
+  BASE_MEMORY_MB = 300
+
   def perform(design_system_id, new_version)
     ds = DesignSystem.find(design_system_id)
     ds.update!(status: "importing", progress: ds.progress.merge("step" => "importing"))
@@ -14,6 +18,9 @@ class DesignSystemSyncJob < ApplicationJob
       ds.update!(status: "error", progress: ds.progress.merge("error" => "No figma files to sync"))
       return
     end
+
+    # Probe files to estimate memory needs and pick dyno size
+    scale_figma_worker_for(source_files)
 
     # Clean up leftover files from a previous failed sync at this version
     ds.figma_files.where(version: new_version).destroy_all
@@ -38,5 +45,30 @@ class DesignSystemSyncJob < ApplicationJob
   rescue => e
     ds.update!(status: "error", progress: ds.progress.merge("error" => e.message))
     raise
+  end
+
+  private
+
+  def scale_figma_worker_for(source_files)
+    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    max_components = 0
+
+    source_files.each do |ff|
+      next unless ff.figma_file_key.present?
+      meta = figma.file_meta(ff.figma_file_key)
+      components = (meta["components"] || {}).size
+      component_sets = (meta["componentSets"] || {}).size
+      total = components + component_sets
+      max_components = total if total > max_components
+      puts "[DesignSystemSyncJob] File #{ff.figma_file_key}: #{components} components, #{component_sets} sets"
+    rescue => e
+      puts "[DesignSystemSyncJob] Failed to probe #{ff.figma_file_key}: #{e.message}"
+    end
+
+    estimated_mb = BASE_MEMORY_MB + (max_components * MB_PER_COMPONENT)
+    dyno_size = HerokuScaler.pick_dyno_size(estimated_mb.to_i)
+    puts "[DesignSystemSyncJob] Estimated memory: #{estimated_mb.to_i}MB → dyno size: #{dyno_size}"
+
+    HerokuScaler.scale_figma_worker(dyno_size)
   end
 end

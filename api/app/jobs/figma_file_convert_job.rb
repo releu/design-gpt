@@ -40,5 +40,8 @@ class FigmaFileConvertJob < ApplicationJob
     else
       ds.update!(status: "ready", progress: ds.progress.merge("completed_at" => Time.current.iso8601))
     end
+
+    # Scale figma_worker back to cheapest size
+    HerokuScaler.scale_figma_worker(HerokuScaler::DEFAULT_SIZE)
   end
 end
