@@ -6,10 +6,11 @@ class DesignSystemSyncJob < ApplicationJob
     ds = DesignSystem.find(design_system_id)
     ds.update!(status: "importing", progress: ds.progress.merge("step" => "importing"))
 
-    # For each unique figma_file_key in the current version, create a new FigmaFile and sync it
-    current_files = ds.current_figma_files.to_a
+    # Source files are at the previous version (version was already bumped to new_version by sync_async)
+    previous_version = new_version - 1
+    source_files = ds.figma_files_for_version(previous_version).to_a
 
-    if current_files.empty?
+    if source_files.empty?
       ds.update!(status: "error", progress: ds.progress.merge("error" => "No figma files to sync"))
       return
     end
@@ -17,7 +18,7 @@ class DesignSystemSyncJob < ApplicationJob
     # Clean up leftover files from a previous failed sync at this version
     ds.figma_files.where(version: new_version).destroy_all
 
-    new_files = current_files.map do |ff|
+    new_files = source_files.map do |ff|
       new_ff = ds.figma_files.create!(
         user: ds.user,
         name: ff.name,
@@ -34,7 +35,6 @@ class DesignSystemSyncJob < ApplicationJob
     end
 
     ds.update!(
-      version: new_version,
       status: "ready",
       progress: ds.progress.merge("completed_at" => Time.current.iso8601)
     )

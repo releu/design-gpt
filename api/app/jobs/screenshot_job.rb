@@ -4,7 +4,7 @@ class ScreenshotJob < ApplicationJob
   def perform(iteration_id)
     iteration = Iteration.find(iteration_id)
 
-    return unless iteration.design.component_libraries.any?
+    return unless iteration.design.figma_files.any?
 
     width = 393
     height = 800
