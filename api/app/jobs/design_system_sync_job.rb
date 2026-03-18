@@ -20,8 +20,16 @@ class DesignSystemSyncJob < ApplicationJob
       return
     end
 
-    # Probe files to estimate memory needs and pick dyno size
-    scale_figma_worker_for(source_files)
+    # Check which files have changed via lightweight Figma API call
+    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    changed_file_keys = detect_changed_files(figma, source_files)
+
+    # Only scale figma_worker if at least one file changed
+    if changed_file_keys.any?
+      scale_figma_worker_for(figma, source_files, changed_file_keys)
+    else
+      puts "[DesignSystemSyncJob] All #{source_files.size} files unchanged, skipping worker scale"
+    end
 
     # Clean up leftover files from a previous failed sync at this version
     ds.figma_files.where(version: new_version).destroy_all
@@ -50,12 +58,38 @@ class DesignSystemSyncJob < ApplicationJob
 
   private
 
-  def scale_figma_worker_for(source_files)
-    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+  # Check Figma's lastModified for each file and return the set of keys that changed.
+  def detect_changed_files(figma, source_files)
+    changed = Set.new
+
+    source_files.each do |ff|
+      next unless ff.figma_file_key.present?
+      next unless ff.figma_last_modified.present?
+
+      meta = figma.get("/v1/files/#{ff.figma_file_key}?depth=1")
+      if meta["lastModified"] != ff.figma_last_modified
+        changed << ff.figma_file_key
+        puts "[DesignSystemSyncJob] File #{ff.figma_file_key} changed (#{ff.figma_last_modified} → #{meta["lastModified"]})"
+      else
+        puts "[DesignSystemSyncJob] File #{ff.figma_file_key} unchanged"
+      end
+    rescue => e
+      # If we can't check, assume changed to be safe
+      changed << ff.figma_file_key
+      puts "[DesignSystemSyncJob] Failed to check #{ff.figma_file_key}: #{e.message}, assuming changed"
+    end
+
+    changed
+  end
+
+  # Only probe and scale for files that actually changed.
+  def scale_figma_worker_for(figma, source_files, changed_file_keys)
     max_components = 0
 
     source_files.each do |ff|
       next unless ff.figma_file_key.present?
+      next unless changed_file_keys.include?(ff.figma_file_key)
+
       counts = figma.file_component_counts(ff.figma_file_key)
       total = counts[:components] + counts[:component_sets]
       max_components = total if total > max_components

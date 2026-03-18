@@ -21,8 +21,8 @@ module Figma
 
       log "File: #{@file_name}"
 
-      # Update design system with the file name
-      @figma_file.update!(figma_file_name: @file_name)
+      # Update design system with the file name and Figma's lastModified timestamp
+      @figma_file.update!(figma_file_name: @file_name, figma_last_modified: file["lastModified"])
 
       # 2. Collect component metadata from file
       component_sets_data, standalone_data = collect_components(file)
@@ -297,7 +297,8 @@ module Figma
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
-          component_key: data[:component_key]
+          component_key: data[:component_key],
+          content_hash: compute_component_set_hash(data)
         }
         if data[:invalid]
           row[:status] = "error"
@@ -334,7 +335,8 @@ module Figma
             name: variant_data[:name],
             figma_json: variant_data[:figma_json] || {},
             is_default: variant_data[:is_default] || false,
-            component_key: variant_data[:component_key]
+            component_key: variant_data[:component_key],
+            content_hash: compute_variant_hash(variant_data)
           }
         end
       end
@@ -362,6 +364,7 @@ module Figma
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
           component_key: data[:component_key],
+          content_hash: compute_component_hash(data),
           updated_at: Time.current
         }
         if data[:invalid]
@@ -375,6 +378,38 @@ module Figma
       end
 
       Component.upsert_all(rows, unique_by: [:figma_file_id, :node_id]) if rows.any?
+    end
+
+    # Content hash for a component set: combines prop_definitions, slots, flags, and all variant figma_jsons.
+    # A 16-char hex prefix is plenty for change detection (not security).
+    def compute_component_set_hash(data)
+      digest = Digest::SHA256.new
+      digest.update((data[:prop_definitions] || {}).to_json)
+      digest.update((data[:slots] || []).to_json)
+      digest.update((data[:is_root] || false).to_s)
+      digest.update((data[:is_image] || false).to_s)
+      data[:variants].each do |_, vd|
+        digest.update(vd[:figma_json].to_json) if vd[:figma_json]
+      end
+      digest.hexdigest[0..15]
+    end
+
+    # Content hash for a standalone component.
+    def compute_component_hash(data)
+      digest = Digest::SHA256.new
+      digest.update((data[:prop_definitions] || {}).to_json)
+      digest.update((data[:slots] || []).to_json)
+      digest.update((data[:is_root] || false).to_s)
+      digest.update((data[:is_image] || false).to_s)
+      digest.update(data[:figma_json].to_json) if data[:figma_json]
+      digest.hexdigest[0..15]
+    end
+
+    # Content hash for a single variant.
+    def compute_variant_hash(variant_data)
+      digest = Digest::SHA256.new
+      digest.update(variant_data[:figma_json].to_json) if variant_data[:figma_json]
+      digest.hexdigest[0..15]
     end
   end
 end

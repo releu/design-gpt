@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_18_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -43,6 +43,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.jsonb "slots", default: []
     t.string "component_key"
     t.boolean "is_image", default: false, null: false
+    t.string "content_hash"
     t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
     t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -63,6 +64,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.string "figma_screenshot_path"
     t.string "react_screenshot_path"
     t.string "component_key"
+    t.string "content_hash"
     t.index ["component_set_id", "node_id"], name: "index_component_variants_on_component_set_id_and_node_id", unique: true
     t.index ["component_set_id"], name: "index_component_variants_on_component_set_id"
     t.index ["node_id"], name: "index_component_variants_on_node_id"
@@ -100,6 +102,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.jsonb "slots", default: []
     t.string "component_key"
     t.boolean "is_image", default: false, null: false
+    t.string "content_hash"
     t.index ["figma_file_id", "node_id"], name: "index_components_on_figma_file_id_and_node_id", unique: true
   end
 
@@ -163,6 +166,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_18_000001) do
     t.jsonb "progress", default: {}
     t.integer "version", default: 1, null: false
     t.bigint "design_system_id"
+    t.string "figma_last_modified"
     t.index ["design_system_id"], name: "index_figma_files_on_design_system_id"
     t.index ["user_id", "figma_file_key"], name: "index_figma_files_on_user_id_and_figma_file_key"
     t.index ["user_id"], name: "index_figma_files_on_user_id"
