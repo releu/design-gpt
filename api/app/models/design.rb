@@ -44,7 +44,7 @@ class Design < ApplicationRecord
 
     ordered = iterations.order(:id).to_a
     chat_context = ordered.each_with_index.map { |iter, idx|
-      "[Iteration #{idx + 1}, #{iter.created_at.strftime('%H:%M')}] #{iter.comment}"
+      "[Iteration #{idx + 1}] #{iter.comment}"
     }.join("\n")
 
     previous_jsx = ordered[0...-1].reverse.find { |iter| iter.jsx.present? }&.jsx

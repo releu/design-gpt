@@ -10,7 +10,8 @@ class IterationsController < ApplicationController
     else
       libraries = iteration.design.figma_files
     end
-    html = render_figma_files(libraries)
+    used = extract_component_names(iteration.jsx) if iteration.jsx.present?
+    html = render_figma_files(libraries, only: used)
     render html: html.html_safe, layout: false
   end
 

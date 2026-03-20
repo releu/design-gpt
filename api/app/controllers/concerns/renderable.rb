@@ -4,7 +4,12 @@ module Renderable
 
   private
 
-  def render_figma_files(libraries)
+  # Extract PascalCase component names from JSX (e.g. <Page>, <SiteSelector>)
+  def extract_component_names(jsx)
+    jsx.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
+  end
+
+  def render_figma_files(libraries, only: nil)
     browser_code_parts = []
     css_parts = []
     loaded_react_names = Set.new
@@ -16,6 +21,7 @@ module Renderable
       cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
         react_name = to_component_name(comp.name)
         next if loaded_react_names.include?(react_name)
+        next if only && !only.include?(react_name)
         browser_code_parts << comp.react_code_compiled
         loaded_react_names << react_name
         container_names << react_name if comp.slots.present? && comp.slots.any?
@@ -28,6 +34,7 @@ module Renderable
         next unless variant&.react_code_compiled.present?
         react_name = to_component_name(cs.name)
         next if loaded_react_names.include?(react_name)
+        next if only && !only.include?(react_name)
         browser_code_parts << variant.react_code_compiled
         loaded_react_names << react_name
         container_names << react_name if cs.slots.present? && cs.slots.any?
@@ -36,12 +43,14 @@ module Renderable
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
         react_name = to_component_name(comp.name)
         next if loaded_react_names.include?(react_name)
+        next if only && !only.include?(react_name)
         browser_code_parts << comp.react_code_compiled
         loaded_react_names << react_name
         container_names << react_name if comp.slots.present? && comp.slots.any?
       end
 
       cl.components.where.not(css_code: [nil, ""]).each do |comp|
+        next if only && !only.include?(to_component_name(comp.name))
         css_parts << comp.css_code
       end
     end
