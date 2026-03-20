@@ -17,8 +17,6 @@ class JsonToJsx
       next if k == "component"
       if v.is_a?(Array) && v.any? { |x| x.is_a?(Hash) && x["component"] }
         slot_props[k] = v
-      elsif k == "children"
-        slot_props["children"] = v
       else
         regular_props[k] = v
       end
@@ -27,18 +25,14 @@ class JsonToJsx
     indent = "  " * depth
     open   = "<#{element}#{props_str(element, regular_props)}"
 
-    # Render all slot content (children first, then named slots)
+    # Render all slot content wrapped in <Slot name="...">
     inner_parts = []
     slot_props.each do |slot_name, slot_content|
-      rendered = render_children(slot_content, slot_name == "children" ? depth + 1 : depth + 2)
+      rendered = render_children(slot_content, depth + 2)
       next if rendered.empty?
 
-      if slot_name == "children"
-        inner_parts << rendered
-      else
-        slot_indent = "  " * (depth + 1)
-        inner_parts << "#{slot_indent}<Slot name=\"#{slot_name}\">\n#{rendered}#{slot_indent}</Slot>\n"
-      end
+      slot_indent = "  " * (depth + 1)
+      inner_parts << "#{slot_indent}<Slot name=\"#{slot_name}\">\n#{rendered}#{slot_indent}</Slot>\n"
     end
     inner = inner_parts.join
 

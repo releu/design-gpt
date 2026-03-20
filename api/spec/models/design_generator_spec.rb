@@ -31,8 +31,8 @@ RSpec.describe DesignGenerator, type: :model do
       task = gen.generate_task("Build a landing page")
 
       system_text = task.payload["input"][0]["content"][0]["text"]
-      # to_component_name("VStack") → "Vstack", "Button" → "Button"
-      expect(system_text).to include("Vstack")
+      # to_component_name("VStack") → "VStack" (preserved PascalCase)
+      expect(system_text).to include("VStack")
       expect(system_text).to include("Button")
       expect(system_text).to include("Badge")
       # Icons should not appear
@@ -57,7 +57,7 @@ RSpec.describe DesignGenerator, type: :model do
 
       defs = task.payload["text"]["format"]["schema"]["$defs"]
       all_components = defs["AllComponents"]
-      expect(all_components["anyOf"]).to eq([{ "$ref" => "#/$defs/Vstack" }])
+      expect(all_components["anyOf"]).to eq([{ "$ref" => "#/$defs/VStack" }])
     end
 
     it "builds correct component def with const discriminator" do
@@ -105,7 +105,7 @@ RSpec.describe DesignGenerator, type: :model do
       task = gen.generate_task("Build a page")
 
       defs = task.payload["text"]["format"]["schema"]["$defs"]
-      vstack_def = defs["Vstack"]
+      vstack_def = defs["VStack"]
 
       # VStack has slots: [{name: "children", allowed_children: ["Button", "Badge"]}]
       children = vstack_def["properties"]["children"]

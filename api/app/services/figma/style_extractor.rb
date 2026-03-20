@@ -662,6 +662,10 @@ module Figma
 
     def to_component_name(name)
       base_name = name.to_s.split(",").first&.split("=")&.last || name.to_s
+      base_name = base_name.strip
+
+      # Already valid PascalCase: starts with uppercase, only alphanumeric
+      return base_name if base_name.match?(/\A[A-Z][a-zA-Z0-9]*\z/)
 
       result = base_name
         .gsub(/[^a-zA-Z0-9\s_-]/, "")

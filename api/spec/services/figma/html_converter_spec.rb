@@ -34,7 +34,7 @@ RSpec.describe Figma::HtmlConverter do
       expect(result).to have_key(:css)
       expect(result).to have_key(:full_html)
       expect(result).to have_key(:component_name)
-      expect(result[:component_name]).to eq("Testframe")
+      expect(result[:component_name]).to eq("TestFrame")
     end
 
     it "scopes CSS class names with component name" do

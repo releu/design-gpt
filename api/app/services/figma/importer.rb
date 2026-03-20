@@ -236,9 +236,6 @@ module Figma
         slots << { "name" => slot_name, "allowed_children" => children }
       end
 
-      # If exactly one slot, use "children" as the name for backward compatibility
-      slots.first["name"] = "children" if slots.length == 1
-
       slots
     end
 

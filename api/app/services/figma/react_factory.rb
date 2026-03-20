@@ -326,6 +326,9 @@ module Figma
     def to_prop_name(name)
       clean_name = name.to_s.gsub(/[^\w\s-]/i, "").strip
 
+      # Already valid camelCase: starts with lowercase, only alphanumeric
+      return clean_name if clean_name.match?(/\A[a-z][a-zA-Z0-9]*\z/)
+
       words = clean_name.split(/[\s_-]+/)
       return "prop" if words.empty? || words.all?(&:empty?)
 
@@ -404,6 +407,9 @@ module Figma
         if n["type"] == "SLOT"
           ref = n.dig("componentPropertyReferences", "slotContentId")
           entries << { ref: ref, node_id: n["id"] } if ref
+          # Don't recurse into SLOT children — they are default content
+          # belonging to nested components, not slots of this component.
+          next
         elsif n["type"] == "INSTANCE"
           ref = n.dig("componentPropertyReferences", "mainComponent")
           if ref
@@ -416,6 +422,9 @@ module Figma
               end
             end
           end
+          # Don't recurse into INSTANCE children — their slots belong
+          # to the nested component, not to this one.
+          next
         end
         (n["children"] || []).each { |c| walk.call(c) }
       end
@@ -425,13 +434,9 @@ module Figma
       unique_refs = entries.map { |e| strip_ref_suffix(e[:ref]) }.uniq
 
       map = {}
-      if unique_refs.size <= 1
-        entries.each { |e| map[e[:node_id]] = "children" }
-      else
-        entries.each do |e|
-          name = to_prop_name(strip_ref_suffix(e[:ref]))
-          map[e[:node_id]] = name
-        end
+      entries.each do |e|
+        name = to_prop_name(strip_ref_suffix(e[:ref]))
+        map[e[:node_id]] = name
       end
       map
     end

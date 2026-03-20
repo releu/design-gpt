@@ -316,7 +316,7 @@ RSpec.describe Figma::Importer do
 
         page_set = ds.component_sets.find_by(name: "Page")
         expect(page_set).to be_present
-        expect(page_set.slots).to eq([{ "name" => "children", "allowed_children" => ["Title", "Button"] }])
+        expect(page_set.slots).to eq([{ "name" => "Content", "allowed_children" => ["Title", "Button"] }])
       end
     end
 

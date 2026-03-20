@@ -176,7 +176,7 @@ RSpec.describe Figma::ReactFactory, "slot convention" do
       result = factory.generate_component_set(suffixed_slot_set)
       code = result[:code]
 
-      expect(code).to include("{props.children}")
+      expect(code).to include("{props.content}")
     end
   end
 
@@ -236,11 +236,11 @@ RSpec.describe Figma::ReactFactory, "slot convention" do
       cs
     end
 
-    it "places {props.children} at the INSTANCE_SWAP position" do
+    it "places {props.content} at the INSTANCE_SWAP position" do
       result = factory.generate_component_set(swap_slot_component_set)
       code = result[:code]
 
-      expect(code).to include("{props.children}")
+      expect(code).to include("{props.content}")
     end
 
     it "does not generate an import for the slot placeholder component" do
@@ -319,11 +319,11 @@ RSpec.describe Figma::ReactFactory, "slot convention" do
       cs
     end
 
-    it "emits exactly one {props.children} for the first slot instance" do
+    it "emits exactly one {props.item} for the first slot instance" do
       result = factory.generate_component_set(list_component_set)
       code = result[:code]
 
-      expect(code.scan("{props.children}").size).to eq(1)
+      expect(code.scan("{props.item}").size).to eq(1)
     end
 
     it "does not import the repeated slot placeholder" do
