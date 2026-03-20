@@ -211,10 +211,21 @@ export default {
       const urlsToImport = newUrls.filter((u) => !existingUrls.includes(u));
 
       // Remove figma files whose URLs were deleted
+      const filesToRemove = this.figmaFiles.filter((l) => !newUrls.includes(l.figma_url));
       this.figmaFiles = this.figmaFiles.filter((l) => newUrls.includes(l.figma_url));
 
-      // Import new URLs as figma files linked to this design system
       const token = await this.getToken();
+      for (const file of filesToRemove) {
+        try {
+          await fetch(`/api/design-systems/${this.id}/figma-files/${file.id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch { /* continue */ }
+      }
+
+      // Import new URLs as figma files linked to this design system
       for (const url of urlsToImport) {
         try {
           const createRes = await fetch("/api/figma-files", {

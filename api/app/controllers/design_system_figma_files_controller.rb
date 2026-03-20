@@ -14,7 +14,8 @@ class DesignSystemFigmaFilesController < ApplicationController
   def destroy
     ds = current_user.design_systems.find(params[:design_system_id])
     ff = ds.figma_files.find(params[:id])
-    ff.update!(design_system_id: nil)
+    # Unlink all versions of this file so it doesn't resurface on next sync
+    ds.figma_files.where(figma_file_key: ff.figma_file_key).update_all(design_system_id: nil)
     head :no_content
   end
 end
