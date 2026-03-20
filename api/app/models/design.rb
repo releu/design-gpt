@@ -42,7 +42,15 @@ class Design < ApplicationRecord
   def design_last_iteration
     i = iterations.last
 
-    chat_context = iterations.order(:id).map(&:comment).join("\n\n")
+    ordered = iterations.order(:id).to_a
+    chat_context = ordered.each_with_index.map { |iter, idx|
+      "[Iteration #{idx + 1}, #{iter.created_at.strftime('%H:%M')}] #{iter.comment}"
+    }.join("\n")
+
+    previous_jsx = ordered[0...-1].reverse.find { |iter| iter.jsx.present? }&.jsx
+    if previous_jsx
+      chat_context += "\n\n[Current JSX]\n#{previous_jsx}"
+    end
 
     gen = DesignGenerator.new(self)
     task = gen.generate_task(chat_context)
