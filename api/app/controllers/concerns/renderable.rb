@@ -36,28 +36,33 @@ module Renderable
   # Returns true if per-variant code was available and loaded, false to fall back to full blob.
   def try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
     all_variants = cs.variants.to_a
-    # Check if per-variant compiled code is available (non-default variants have it)
     non_default_with_code = all_variants.select { |v| !v.is_default && v.react_code_compiled.present? }
     return false if non_default_with_code.empty?
 
     component_id = "cs_#{cs.id}"
-
-    # Find which variants match the JSX prop values
-    matched = Set.new
     default_variant = all_variants.find(&:is_default) || all_variants.first
-    matched << default_variant # always include default as fallback
 
-    usages.each do |usage_props|
-      all_variants.each do |v|
-        vprops = v.variant_properties # {"size"=>"m", "state"=>"default"}
-        match = variant_prop_names.all? do |prop_key|
-          clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
-          camel_name = to_prop_name(clean_key)
-          usage_val = usage_props[camel_name]
-          next true unless usage_val # prop not specified in JSX, any value matches
-          vprops[clean_key.downcase]&.downcase == usage_val.downcase
+    # If no usage info (DS preview), load all variants
+    if usages.nil? || usages.empty?
+      matched = Set.new(all_variants.select { |v| v.react_code_compiled.present? })
+    else
+      # Find which variants match the JSX prop values
+      matched = Set.new
+      matched << default_variant if default_variant.react_code_compiled.present?
+
+      usages.each do |usage_props|
+        all_variants.each do |v|
+          next unless v.react_code_compiled.present?
+          vprops = v.variant_properties
+          match = variant_prop_names.all? do |prop_key|
+            clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+            camel_name = to_prop_name(clean_key)
+            usage_val = usage_props[camel_name]
+            next true unless usage_val
+            vprops[clean_key.downcase]&.downcase == usage_val.downcase
+          end
+          matched << v if match
         end
-        matched << v if match
       end
     end
 
@@ -115,10 +120,13 @@ module Renderable
 
       container_names << react_name if cs.slots.present? && cs.slots.any?
 
-      # Try per-variant loading when we have usage info
-      if component_usages && component_usages[react_name]
-        variant_prop_names = (cs.prop_definitions || {}).select { |_, d| d["type"] == "VARIANT" }.keys
-        if variant_prop_names.any? && try_load_per_variant(cs, react_name, variant_prop_names, component_usages[react_name], browser_code_parts)
+      # Check if per-variant compiled code exists
+      variant_prop_names = (cs.prop_definitions || {}).select { |_, d| d["type"] == "VARIANT" }.keys
+      has_per_variant = variant_prop_names.any? && cs.variants.where(is_default: false).where.not(react_code_compiled: [nil, ""]).exists?
+
+      if has_per_variant
+        usages = component_usages&.dig(react_name)
+        if try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
           loaded_react_names << react_name
           return
         end

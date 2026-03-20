@@ -283,23 +283,24 @@ RSpec.describe Figma::ReactFactory, "multi-variant dispatch" do
     end
 
     it "namespaces internal variant functions with component_id" do
-      result = factory.generate_component_set(multi_variant_set)
-      compiled = result[:compiled_code]
+      factory.generate_component_set(multi_variant_set)
+      variants = multi_variant_set.variants.where.not(react_code_compiled: nil)
 
-      # Internal functions should be namespaced
-      expect(compiled).to include("Chip_cs_#{multi_variant_set.id}__v0")
-      expect(compiled).to include("Chip_cs_#{multi_variant_set.id}__v1")
+      all_compiled = variants.map(&:react_code_compiled).join("\n")
+      expect(all_compiled).to include("Chip_cs_#{multi_variant_set.id}__v0")
+      expect(all_compiled).to include("Chip_cs_#{multi_variant_set.id}__v1")
 
       # Original un-namespaced names should NOT appear
-      expect(compiled).not_to match(/\bChip__v0\b/)
-      expect(compiled).not_to match(/\bChip__v1\b/)
+      expect(all_compiled).not_to match(/\bChip__v0\b/)
+      expect(all_compiled).not_to match(/\bChip__v1\b/)
     end
 
     it "namespaces the styles variable" do
-      result = factory.generate_component_set(multi_variant_set)
-      compiled = result[:compiled_code]
+      factory.generate_component_set(multi_variant_set)
+      variants = multi_variant_set.variants.where.not(react_code_compiled: nil)
 
-      expect(compiled).to include("styles_cs_#{multi_variant_set.id}")
+      all_compiled = variants.map(&:react_code_compiled).join("\n")
+      expect(all_compiled).to include("styles_cs_#{multi_variant_set.id}")
     end
   end
 

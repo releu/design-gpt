@@ -112,7 +112,9 @@ module Figma
           .sort_by { |v| [v.is_default ? 0 : 1, v.id] }
 
         if variant_prop_names.any? && all_variants.size > 1
+          # Multi-variant: per-variant compilation handled inside, no full blob
           code = generate_multi_variant_code(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
+          compiled_code = nil # per-variant code stored on each variant record
         else
           @class_index = 0
           @has_slot = false
@@ -138,10 +140,9 @@ module Figma
 
           all_props = @current_props.merge(@nested_instance_props)
           code = build_component_code(component_name, imports, css, jsx, all_props, has_slot: @has_slot)
+          compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
         end
       end
-
-      compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
 
       @generated[component_set.node_id] = {
         name: component_name,
@@ -1386,7 +1387,19 @@ module Figma
       # Single esbuild invocation for all
       compiled_map = Figma::JsxCompiler.compile_batch(snippets + variant_snippets)
 
-      # Post-process and persist component compilations
+      # Post-process and persist per-variant compilations FIRST
+      @pending_variant_compilations.each do |entry|
+        raw = compiled_map[entry[:key]]
+        if raw
+          compiled = postprocess_compiled(raw)
+          entry[:record].update!(react_code_compiled: compiled)
+        else
+          Rails.logger.error("Batch variant compilation missing output for #{entry[:name]}")
+        end
+      end
+
+      # Post-process and persist full-blob component compilations SECOND
+      # (overwrites default variant's react_code_compiled with the full blob)
       @pending_compilations.each do |entry|
         compiled = entry[:compiled] # pre-set for blank code entries
         unless compiled
@@ -1404,17 +1417,6 @@ module Figma
         # Update @generated with compiled_code
         gen = @generated.values.find { |g| g[:name] == entry[:name] }
         gen[:compiled_code] = compiled if gen
-      end
-
-      # Post-process and persist per-variant compilations
-      @pending_variant_compilations.each do |entry|
-        raw = compiled_map[entry[:key]]
-        if raw
-          compiled = postprocess_compiled(raw)
-          entry[:record].update!(react_code_compiled: compiled)
-        else
-          Rails.logger.error("Batch variant compilation missing output for #{entry[:name]}")
-        end
       end
 
       log "Batch compilation complete"
@@ -1491,7 +1493,9 @@ module Figma
         }
       end
 
-      # Build per-variant self-contained snippets for selective loading
+      # Build per-variant self-contained snippets for selective loading.
+      # For the default variant, store in react_code (source) since
+      # react_code_compiled will hold the full blob from defer_or_compile.
       component_id = "cs_#{component_set.id}"
       variant_entries.each do |entry|
         imports_section = entry[:imports].present? ? "#{entry[:imports]}\n" : ""
@@ -1511,7 +1515,6 @@ module Figma
             );
           }
         CODE
-        entry[:variant_record].update!(react_code: per_variant_code)
 
         if @batch_mode
           @pending_variant_compilations << {
@@ -1524,8 +1527,6 @@ module Figma
           }
         else
           compiled = compile_for_browser(per_variant_code, component_name, component_id)
-          # Rename the exported function to the variant function name
-          compiled = compiled.gsub(/^var #{Regexp.escape(component_name)} = /, "var #{entry[:func_name].gsub("__", "_#{component_id}__")} = ")
           entry[:variant_record].update!(react_code_compiled: compiled)
         end
       end
