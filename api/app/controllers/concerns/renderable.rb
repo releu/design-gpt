@@ -9,43 +9,146 @@ module Renderable
     code.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
   end
 
+  # Extract prop values per component from JSX for variant matching
+  # Returns { "Select" => [{"size"=>"M","state"=>"Default"}, {"size"=>"L","state"=>"Hover"}] }
+  def extract_component_usages(jsx)
+    usages = {}
+    jsx.scan(/<([A-Z][a-zA-Z0-9]*)\s+([^>]*?)\/?>/).each do |name, attrs|
+      props = {}
+      attrs.scan(/(\w+)="([^"]*)"/).each { |k, v| props[k] = v }
+      usages[name] ||= []
+      usages[name] << props unless props.empty?
+    end
+    usages
+  end
+
   # Pre-compile JSX to React.createElement calls using esbuild
   def precompile_jsx(jsx)
     return nil if jsx.blank?
     compiled = Figma::JsxCompiler.compile(jsx)
-    # esbuild wraps in module scope; strip trailing semicolons for eval
     compiled.strip.gsub(/;\s*\z/, "")
   rescue => e
     Rails.logger.warn("[renderer] JSX precompile failed: #{e.message}")
     nil
   end
 
-  def render_figma_files(libraries, only: nil, precompiled_jsx: nil)
+  # Try to load only the needed variants for a component set.
+  # Returns true if per-variant code was available and loaded, false to fall back to full blob.
+  def try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
+    all_variants = cs.variants.to_a
+    # Check if per-variant compiled code is available (non-default variants have it)
+    non_default_with_code = all_variants.select { |v| !v.is_default && v.react_code_compiled.present? }
+    return false if non_default_with_code.empty?
+
+    component_id = "cs_#{cs.id}"
+
+    # Find which variants match the JSX prop values
+    matched = Set.new
+    default_variant = all_variants.find(&:is_default) || all_variants.first
+    matched << default_variant # always include default as fallback
+
+    usages.each do |usage_props|
+      all_variants.each do |v|
+        vprops = v.variant_properties # {"size"=>"m", "state"=>"default"}
+        match = variant_prop_names.all? do |prop_key|
+          clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+          camel_name = to_prop_name(clean_key)
+          usage_val = usage_props[camel_name]
+          next true unless usage_val # prop not specified in JSX, any value matches
+          vprops[clean_key.downcase]&.downcase == usage_val.downcase
+        end
+        matched << v if match
+      end
+    end
+
+    # Load per-variant compiled code
+    sorted_variants = all_variants.sort_by { |v| [v.is_default ? 0 : 1, v.id] }
+    variant_index = sorted_variants.each_with_index.to_h { |v, i| [v.id, i] }
+
+    matched.each do |v|
+      next unless v.react_code_compiled.present?
+      browser_code_parts << v.react_code_compiled
+    end
+
+    # Generate a minimal dispatcher function
+    dispatcher_props = variant_prop_names.map do |prop_key|
+      clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+      prop_name = to_prop_name(clean_key)
+      default_val = (cs.prop_definitions || {})[prop_key]&.dig("defaultValue") ||
+                    default_variant.variant_properties[clean_key.downcase]
+      "#{prop_name} = \"#{default_val}\""
+    end
+
+    dispatch_lines = matched.sort_by { |v| [v.is_default ? 1 : 0, v.id] }.map do |v|
+      idx = variant_index[v.id]
+      func_name = "#{react_name}_#{component_id}__v#{idx}"
+      conditions = variant_prop_names.map do |prop_key|
+        clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+        prop_name = to_prop_name(clean_key)
+        value = v.variant_properties[clean_key.downcase]
+        next nil unless value
+        "#{prop_name} === \"#{value}\""
+      end.compact
+      next nil if conditions.empty?
+      "  if (#{conditions.join(' && ')}) return #{func_name}(props);"
+    end.compact
+
+    default_idx = variant_index[default_variant.id]
+    default_func = "#{react_name}_#{component_id}__v#{default_idx}"
+    dispatch_lines << "  return #{default_func}(props);"
+
+    dispatcher = "var #{react_name} = function({ #{dispatcher_props.join(', ')}, ...props }) {\n#{dispatch_lines.join("\n")}\n};"
+    browser_code_parts << dispatcher
+    true
+  end
+
+  def render_figma_files(libraries, only: nil, precompiled_jsx: nil, component_usages: nil)
     browser_code_parts = []
     css_parts = []
     loaded_react_names = Set.new
     container_names = Set.new
 
-    # First pass: load components (filtered if only is set)
-    load_component = ->(react_name, code, slots) {
+    # Load a component set using per-variant code if available, otherwise full blob
+    load_component_set = ->(cs, react_name) {
       return if loaded_react_names.include?(react_name)
       return if only && !only.include?(react_name)
-      browser_code_parts << code
+
+      container_names << react_name if cs.slots.present? && cs.slots.any?
+
+      # Try per-variant loading when we have usage info
+      if component_usages && component_usages[react_name]
+        variant_prop_names = (cs.prop_definitions || {}).select { |_, d| d["type"] == "VARIANT" }.keys
+        if variant_prop_names.any? && try_load_per_variant(cs, react_name, variant_prop_names, component_usages[react_name], browser_code_parts)
+          loaded_react_names << react_name
+          return
+        end
+      end
+
+      # Fallback: load full blob from default variant
+      variant = cs.default_variant
+      return unless variant&.react_code_compiled.present?
+      browser_code_parts << variant.react_code_compiled
       loaded_react_names << react_name
-      container_names << react_name if slots.present? && slots.any?
+    }
+
+    load_component = ->(comp, react_name) {
+      return if loaded_react_names.include?(react_name)
+      return if only && !only.include?(react_name)
+      return unless comp.react_code_compiled.present?
+      browser_code_parts << comp.react_code_compiled
+      loaded_react_names << react_name
+      container_names << react_name if comp.slots.present? && comp.slots.any?
     }
 
     libraries.each do |cl|
       cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
-        load_component.(to_component_name(comp.name), comp.react_code_compiled, comp.slots)
+        load_component.(comp, to_component_name(comp.name))
       end
       cl.component_sets.includes(:variants).each do |cs|
-        variant = cs.default_variant
-        next unless variant&.react_code_compiled.present?
-        load_component.(to_component_name(cs.name), variant.react_code_compiled, cs.slots)
+        load_component_set.(cs, to_component_name(cs.name))
       end
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
-        load_component.(to_component_name(comp.name), comp.react_code_compiled, comp.slots)
+        load_component.(comp, to_component_name(comp.name))
       end
       cl.components.where.not(css_code: [nil, ""]).each do |comp|
         react_name = to_component_name(comp.name)
@@ -65,25 +168,14 @@ module Renderable
         end
         break if new_refs.empty?
         resolved.merge(new_refs)
-        # Load newly discovered deps
         libraries.each do |cl|
           cl.component_sets.includes(:variants).each do |cs|
-            variant = cs.default_variant
-            next unless variant&.react_code_compiled.present?
             react_name = to_component_name(cs.name)
             next unless new_refs.include?(react_name)
-            next if loaded_react_names.include?(react_name)
-            browser_code_parts << variant.react_code_compiled
-            loaded_react_names << react_name
-            container_names << react_name if cs.slots.present? && cs.slots.any?
+            load_component_set.(cs, react_name)
           end
           cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
-            react_name = to_component_name(comp.name)
-            next unless new_refs.include?(react_name)
-            next if loaded_react_names.include?(react_name)
-            browser_code_parts << comp.react_code_compiled
-            loaded_react_names << react_name
-            container_names << react_name if comp.slots.present? && comp.slots.any?
+            load_component.(comp, to_component_name(comp.name)) if new_refs.include?(to_component_name(comp.name))
           end
         end
       end

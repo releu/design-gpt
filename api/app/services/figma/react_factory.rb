@@ -18,6 +18,7 @@ module Figma
       @class_index = 0
       @image_refs = nil
       @pending_compilations = []
+      @pending_variant_compilations = []
       @batch_mode = false
     end
 
@@ -1361,11 +1362,11 @@ module Figma
 
     # Batch-compile all pending snippets in a single esbuild invocation, then persist
     def batch_compile_and_persist
-      return if @pending_compilations.empty?
+      return if @pending_compilations.empty? && @pending_variant_compilations.empty?
 
-      log "Batch-compiling #{@pending_compilations.size} components..."
+      log "Batch-compiling #{@pending_compilations.size} components + #{@pending_variant_compilations.size} variants..."
 
-      # Preprocess all snippets
+      # Preprocess all component snippets
       snippets = @pending_compilations.map do |entry|
         if entry[:code].blank?
           entry[:compiled] = "var #{entry[:name]} = function() { return React.createElement('div', null, 'No code generated'); }"
@@ -1376,10 +1377,16 @@ module Figma
         end
       end.compact
 
-      # Single esbuild invocation
-      compiled_map = Figma::JsxCompiler.compile_batch(snippets)
+      # Preprocess per-variant snippets
+      variant_snippets = @pending_variant_compilations.map do |entry|
+        preprocessed = preprocess_for_browser(entry[:code], entry[:component_name], entry[:component_id])
+        { key: entry[:key], code: preprocessed }
+      end
 
-      # Post-process and persist
+      # Single esbuild invocation for all
+      compiled_map = Figma::JsxCompiler.compile_batch(snippets + variant_snippets)
+
+      # Post-process and persist component compilations
       @pending_compilations.each do |entry|
         compiled = entry[:compiled] # pre-set for blank code entries
         unless compiled
@@ -1397,6 +1404,17 @@ module Figma
         # Update @generated with compiled_code
         gen = @generated.values.find { |g| g[:name] == entry[:name] }
         gen[:compiled_code] = compiled if gen
+      end
+
+      # Post-process and persist per-variant compilations
+      @pending_variant_compilations.each do |entry|
+        raw = compiled_map[entry[:key]]
+        if raw
+          compiled = postprocess_compiled(raw)
+          entry[:record].update!(react_code_compiled: compiled)
+        else
+          Rails.logger.error("Batch variant compilation missing output for #{entry[:name]}")
+        end
       end
 
       log "Batch compilation complete"
@@ -1467,8 +1485,49 @@ module Figma
           variant_properties: variant.variant_properties,
           props: non_variant_props,
           has_slot: @has_slot,
-          is_default: variant.is_default
+          is_default: variant.is_default,
+          variant_record: variant,
+          imports: imports
         }
+      end
+
+      # Build per-variant self-contained snippets for selective loading
+      component_id = "cs_#{component_set.id}"
+      variant_entries.each do |entry|
+        imports_section = entry[:imports].present? ? "#{entry[:imports]}\n" : ""
+        per_variant_code = <<~CODE
+          import React from 'react';
+          #{imports_section}
+          const styles = `
+          #{entry[:css]}
+          `;
+
+          export function #{entry[:func_name]}(#{generate_props_destructuring(entry[:props])}) {
+            return (
+              <>
+                <style>{styles}</style>
+                #{entry[:jsx]}
+              </>
+            );
+          }
+        CODE
+        entry[:variant_record].update!(react_code: per_variant_code)
+
+        if @batch_mode
+          @pending_variant_compilations << {
+            key: "#{component_id}_v#{entry[:index]}",
+            name: entry[:func_name],
+            code: per_variant_code,
+            record: entry[:variant_record],
+            component_name: component_name,
+            component_id: component_id
+          }
+        else
+          compiled = compile_for_browser(per_variant_code, component_name, component_id)
+          # Rename the exported function to the variant function name
+          compiled = compiled.gsub(/^var #{Regexp.escape(component_name)} = /, "var #{entry[:func_name].gsub("__", "_#{component_id}__")} = ")
+          entry[:variant_record].update!(react_code_compiled: compiled)
+        end
       end
 
       build_variant_component_code(component_name, all_imports, variant_entries, variant_prop_names, prop_definitions)

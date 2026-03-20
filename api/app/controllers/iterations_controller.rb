@@ -11,8 +11,9 @@ class IterationsController < ApplicationController
       libraries = iteration.design.figma_files
     end
     used = extract_component_names(iteration.jsx) if iteration.jsx.present?
+    usages = extract_component_usages(iteration.jsx) if iteration.jsx.present?
     precompiled = precompile_jsx(iteration.jsx) if iteration.jsx.present?
-    html = render_figma_files(libraries, only: used, precompiled_jsx: precompiled)
+    html = render_figma_files(libraries, only: used, precompiled_jsx: precompiled, component_usages: usages)
     render html: html.html_safe, layout: false
   end
 
