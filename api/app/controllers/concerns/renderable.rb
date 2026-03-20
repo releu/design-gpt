@@ -4,9 +4,9 @@ module Renderable
 
   private
 
-  # Extract PascalCase component names from JSX (e.g. <Page>, <SiteSelector>)
-  def extract_component_names(jsx)
-    jsx.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
+  # Extract PascalCase component names referenced in code
+  def extract_component_names(code)
+    code.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
   end
 
   def render_figma_files(libraries, only: nil)
@@ -15,44 +15,57 @@ module Renderable
     loaded_react_names = Set.new
     container_names = Set.new
 
-    # Load custom (upload) components first so they are defined early,
-    # before potentially large Figma-generated code blocks.
+    # Build index of all available components for dependency resolution
+    all_components = {}
     libraries.each do |cl|
       cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
         react_name = to_component_name(comp.name)
-        next if loaded_react_names.include?(react_name)
-        next if only && !only.include?(react_name)
-        browser_code_parts << comp.react_code_compiled
-        loaded_react_names << react_name
-        container_names << react_name if comp.slots.present? && comp.slots.any?
+        all_components[react_name] ||= { code: comp.react_code_compiled, slots: comp.slots, css: nil }
       end
-    end
-
-    libraries.each do |cl|
       cl.component_sets.includes(:variants).each do |cs|
         variant = cs.default_variant
         next unless variant&.react_code_compiled.present?
         react_name = to_component_name(cs.name)
-        next if loaded_react_names.include?(react_name)
-        next if only && !only.include?(react_name)
-        browser_code_parts << variant.react_code_compiled
-        loaded_react_names << react_name
-        container_names << react_name if cs.slots.present? && cs.slots.any?
+        all_components[react_name] ||= { code: variant.react_code_compiled, slots: cs.slots, css: nil }
       end
-
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
         react_name = to_component_name(comp.name)
-        next if loaded_react_names.include?(react_name)
-        next if only && !only.include?(react_name)
-        browser_code_parts << comp.react_code_compiled
-        loaded_react_names << react_name
-        container_names << react_name if comp.slots.present? && comp.slots.any?
+        all_components[react_name] ||= { code: comp.react_code_compiled, slots: comp.slots, css: nil }
       end
-
       cl.components.where.not(css_code: [nil, ""]).each do |comp|
-        next if only && !only.include?(to_component_name(comp.name))
-        css_parts << comp.css_code
+        react_name = to_component_name(comp.name)
+        all_components[react_name] ||= { code: nil, slots: comp.slots, css: nil }
+        all_components[react_name][:css] = comp.css_code
       end
+    end
+
+    # Resolve transitive dependencies if filtering
+    if only
+      needed = only.dup
+      queue = needed.to_a
+      while (name = queue.shift)
+        entry = all_components[name]
+        next unless entry
+        # Scan compiled code for references to other components
+        refs = entry[:code].scan(/React\.createElement\(([A-Z][a-zA-Z0-9]*)/).flatten
+        refs.each do |ref|
+          unless needed.include?(ref)
+            needed << ref
+            queue << ref
+          end
+        end
+      end
+      only = needed
+    end
+
+    # Load components (filtered if only is set)
+    all_components.each do |react_name, entry|
+      next if only && !only.include?(react_name)
+      next if loaded_react_names.include?(react_name)
+      browser_code_parts << entry[:code] if entry[:code]
+      loaded_react_names << react_name
+      container_names << react_name if entry[:slots].present? && entry[:slots].any?
+      css_parts << entry[:css] if entry[:css]
     end
 
     all_css = css_parts.join("\n")
