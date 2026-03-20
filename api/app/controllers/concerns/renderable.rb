@@ -9,7 +9,18 @@ module Renderable
     code.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
   end
 
-  def render_figma_files(libraries, only: nil)
+  # Pre-compile JSX to React.createElement calls using esbuild
+  def precompile_jsx(jsx)
+    return nil if jsx.blank?
+    compiled = Figma::JsxCompiler.compile(jsx)
+    # esbuild wraps in module scope; strip trailing semicolons for eval
+    compiled.strip.gsub(/;\s*\z/, "")
+  rescue => e
+    Rails.logger.warn("[renderer] JSX precompile failed: #{e.message}")
+    nil
+  end
+
+  def render_figma_files(libraries, only: nil, precompiled_jsx: nil)
     browser_code_parts = []
     css_parts = []
     loaded_react_names = Set.new
@@ -78,15 +89,16 @@ module Renderable
       "<script>#{safe_code}</script>"
     }.join("\n")
 
+    precompiled_safe = precompiled_jsx&.gsub("</script>", '<\\/script>') || ""
+
     <<~HTML
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-        <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
         <style>body{margin:0;scrollbar-width:none}body::-webkit-scrollbar{display:none}#root>*{margin:0 auto}#{all_css}</style>
       </head>
       <body>
@@ -136,25 +148,49 @@ module Renderable
         <script>
           var root = ReactDOM.createRoot(document.getElementById('root'));
 
-          window.addEventListener('message', function(e) {
-            if (!e.data || e.data.type !== 'render') return;
+          function renderJsx(compiled) {
             try {
-              var compiled = Babel.transform(e.data.jsx, { presets: ['react'] }).code.replace(/;\\s*$/, '');
               var element = new Function('React', 'return (' + compiled + ')')(React);
               root.render(element);
               requestAnimationFrame(function() {
                 setTimeout(function() {
-                  var root = document.getElementById('root');
-                  var h = root.scrollHeight;
-                  var w = root.scrollWidth;
-                  window.parent.postMessage({ type: 'resize', height: h, width: w }, '*');
+                  var el = document.getElementById('root');
+                  window.parent.postMessage({ type: 'resize', height: el.scrollHeight, width: el.scrollWidth }, '*');
                 }, 50);
               });
             } catch (err) {
               console.warn('[renderer] Render error:', String(err));
               root.render(React.createElement('pre', {style: {color: 'red'}, className: 'render-error', 'data-error': 'true'}, String(err)));
             }
+          }
+
+          // Pre-compiled initial render (no Babel needed)
+          var _precompiled = #{precompiled_safe.present? ? precompiled_safe.to_json : "null"};
+          if (_precompiled) renderJsx(_precompiled);
+
+          // Handle live JSX updates via postMessage (uses Babel, loaded async)
+          window.addEventListener('message', function(e) {
+            if (!e.data || e.data.type !== 'render') return;
+            if (typeof Babel !== 'undefined') {
+              var compiled = Babel.transform(e.data.jsx, { presets: ['react'] }).code.replace(/;\\s*$/, '');
+              renderJsx(compiled);
+            } else {
+              // Queue until Babel loads
+              window._pendingJsx = e.data.jsx;
+            }
           });
+
+          // Load Babel async for live editing
+          var s = document.createElement('script');
+          s.src = 'https://unpkg.com/@babel/standalone/babel.min.js';
+          s.onload = function() {
+            if (window._pendingJsx) {
+              var compiled = Babel.transform(window._pendingJsx, { presets: ['react'] }).code.replace(/;\\s*$/, '');
+              renderJsx(compiled);
+              delete window._pendingJsx;
+            }
+          };
+          document.head.appendChild(s);
 
           // Debug: log loaded component names
           var _loaded = #{loaded_react_names.to_a.to_json};
