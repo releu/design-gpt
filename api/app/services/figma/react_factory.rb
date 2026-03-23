@@ -23,6 +23,8 @@ module Figma
       @batch_mode = false
       @unresolved_instances = Hash.new { |h, k| h[k] = Set.new }  # owner_node_id -> Set of instance names
       @current_owner_node_id = nil  # tracks which component set/component we're generating for
+      @component_key_by_node_id = {}
+      @variants_by_component_key = {}
     end
 
     def generate_all
@@ -321,6 +323,14 @@ module Figma
             default_value = ""
           elsif default_value.present?
             component_set = find_component_set_by_any_node_id(default_value)
+            unless component_set
+              # Cross-file resolution via component_key
+              comp_key = @component_key_by_node_id[default_value]
+              if comp_key
+                variant = @variants_by_component_key[comp_key]
+                component_set = variant&.component_set
+              end
+            end
             default_value = component_set ? to_component_name(component_set.name) : nil
           end
         end
@@ -380,6 +390,25 @@ module Figma
 
       defn = find_prop_definition(ref)
       defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+    end
+
+    # Returns the prop name (e.g. "StartIconComponent") if this INSTANCE node
+    # is bound to an INSTANCE_SWAP prop without preferredValues (not a slot/image).
+    # Returns nil if not bound to an INSTANCE_SWAP or if it has preferredValues.
+    def instance_swap_prop_name(node)
+      ref = node["componentPropertyReferences"]&.dig("mainComponent")
+      return nil unless ref
+
+      defn = find_prop_definition(ref)
+      return nil unless defn&.dig("type") == "INSTANCE_SWAP"
+
+      # If it has preferredValues, it's a slot (handled by slot_instance?)
+      preferred = defn["preferredValues"] || []
+      return nil if preferred.any?
+
+      # Build prop name: strip #N suffix, convert to PascalCase + "Component"
+      clean_key = ref.gsub(/#[\d:]+$/, "").strip.gsub(/^[\s↳]+/, "").strip
+      to_prop_name(clean_key).sub(/^(\w)/) { $1.upcase } + "Component"
     end
 
     # Returns true if this INSTANCE node is bound to an INSTANCE_SWAP prop
@@ -648,6 +677,9 @@ module Figma
             @has_slot = true
             slot_name = @slot_map[node["id"]] || "children"
             "{props.#{slot_name}}"
+          elsif (swap_prop = instance_swap_prop_name(node))
+            # INSTANCE_SWAP without preferredValues — render as dynamic component prop
+            "{#{swap_prop} && <#{swap_prop} />}"
           else
             generate_instance(node, root_name, class_name, css_rules, depth)
           end
@@ -1265,17 +1297,51 @@ module Figma
         when "BOOLEAN"
           props_parts << "#{prop_name}={#{value}}"
         when "INSTANCE_SWAP"
-          next unless root_name && css_rules
-          # Find the child node that corresponds to this INSTANCE_SWAP prop
-          child_node = children_by_swap_ref[key]
-          next unless child_node
-          child_jsx = render_instance_swap_child(child_node, root_name, css_rules, depth)
-          next if child_jsx.blank?
-          props_parts << "#{prop_name}={#{child_jsx}}"
+          # Check if this INSTANCE_SWAP has preferredValues (slot) or not (icon swap)
+          preferred = definition&.dig("preferredValues") || []
+          if preferred.empty?
+            # No preferredValues — pass component reference (not rendered element)
+            child_node = children_by_swap_ref[key]
+            next unless child_node
+            comp_name = resolve_instance_component_name(child_node)
+            next unless comp_name
+            component_prop_name = prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
+            props_parts << "#{component_prop_name}={#{comp_name}}"
+          else
+            next unless root_name && css_rules
+            child_node = children_by_swap_ref[key]
+            next unless child_node
+            child_jsx = render_instance_swap_child(child_node, root_name, css_rules, depth)
+            next if child_jsx.blank?
+            props_parts << "#{prop_name}={#{child_jsx}}"
+          end
         end
       end
 
       props_parts.empty? ? "" : " " + props_parts.join(" ")
+    end
+
+    # Resolve an INSTANCE node to its component name (for passing as component reference prop).
+    def resolve_instance_component_name(node)
+      component_id = node["componentId"]
+      return nil unless component_id
+
+      ref = @components_by_node_id[component_id]
+      return to_component_name(ref.name) if ref
+
+      ref_set = @component_sets_by_node_id[component_id]
+      return to_component_name(ref_set.name) if ref_set
+
+      variant = @variants_by_node_id[component_id]
+      return to_component_name(variant.component_set.name) if variant
+
+      comp_key = @component_key_by_node_id[component_id]
+      if comp_key
+        variant = @variants_by_component_key[comp_key]
+        return to_component_name(variant.component_set.name) if variant
+      end
+
+      nil
     end
 
     # Render an INSTANCE_SWAP child node as inline JSX.
