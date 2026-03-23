@@ -12,7 +12,7 @@ export default defineConfig(() => {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
     server: {
-      host: "127.0.0.1",
+      host: "0.0.0.0",
       port: 5173,
       allowedHosts: [
         "design-gpt.localtest.me",

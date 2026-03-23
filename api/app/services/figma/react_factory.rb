@@ -12,6 +12,7 @@ module Figma
       @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
       @svg_assets_by_name = {}
       @inline_svgs_by_node_id = {}
+      @inline_pngs_by_node_id = {}
       @current_props = {}
       @nested_instance_props = {}
       @nested_instance_counters = {}
@@ -664,6 +665,9 @@ module Figma
       css_rules[class_name] = styles
 
       node_id = node["id"]
+      if !is_root && @inline_pngs_by_node_id[node_id]
+        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@inline_pngs_by_node_id[node_id]}\"} />"
+      end
       if !is_root && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
         svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
         clean_svg = svg_content
@@ -726,6 +730,10 @@ module Figma
       styles = extract_shape_styles(node)
 
       node_id = node["id"]
+      if @inline_pngs_by_node_id[node_id]
+        css_rules[class_name] = styles
+        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@inline_pngs_by_node_id[node_id]}\"} />"
+      end
       if @inline_svgs_by_node_id[node_id]
         svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
         clean_svg = svg_content
@@ -1076,14 +1084,18 @@ module Figma
       component_ids = @figma_file.components.pluck(:id)
       component_set_ids = @figma_file.component_sets.pluck(:id)
 
-      FigmaAsset.where(asset_type: "svg")
+      FigmaAsset.where(asset_type: %w[svg png])
         .where("node_id IS NOT NULL")
         .where(
           "component_id IN (?) OR component_set_id IN (?) OR (component_id IS NULL AND component_set_id IS NULL)",
           component_ids, component_set_ids
         )
         .find_each do |asset|
-          @inline_svgs_by_node_id[asset.node_id] = asset.content
+          if asset.asset_type == "png"
+            @inline_pngs_by_node_id[asset.node_id] = asset.content
+          else
+            @inline_svgs_by_node_id[asset.node_id] = asset.content
+          end
         end
     end
 
@@ -1157,6 +1169,11 @@ module Figma
       end
 
       node_id = node["id"]
+      if !bound_to_swap && @inline_pngs_by_node_id[node_id]
+        styles = extract_frame_styles(node, false)
+        css_rules[class_name] = styles
+        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@inline_pngs_by_node_id[node_id]}\"} />"
+      end
       if !bound_to_swap && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
         svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
         clean_svg = svg_content

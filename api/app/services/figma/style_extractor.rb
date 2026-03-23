@@ -681,14 +681,25 @@ module Figma
     # Vector Detection
     # ============================================
 
+    COMPLEX_VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION STAR POLYGON].freeze
+
     def vector_frame?(node)
       return false unless node.is_a?(Hash)
       return false unless CONTAINER_TYPES.include?(node["type"])
 
       children = node["children"] || []
       return false if children.empty?
+      return false unless children.all? { |child| vector_only?(child) }
 
-      children.all? { |child| vector_only?(child) }
+      # Skip trivial shapes (single rectangle, ellipse, line) — CSS handles these.
+      has_complex_vector?(node)
+    end
+
+    def has_complex_vector?(node)
+      return false unless node.is_a?(Hash)
+      return true if COMPLEX_VECTOR_TYPES.include?(node["type"])
+
+      (node["children"] || []).any? { |child| has_complex_vector?(child) }
     end
 
     def vector_only?(node)

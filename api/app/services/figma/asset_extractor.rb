@@ -60,6 +60,10 @@ module Figma
       puts "[AssetExtractor] Scanning for inline vector frames..."
 
       inline_vectors_by_file = {}
+      @inline_images_by_file = {}  # nodes with IMAGE fills → export as PNG
+      # Track componentId -> [node_ids] for INSTANCE deduplication
+      @instance_component_groups = {}
+      @image_instance_component_groups = {}
 
       @figma_file.component_sets.includes(:variants).each do |cs|
         cs.variants.each do |variant|
@@ -74,16 +78,80 @@ module Figma
       end
 
       total_count = inline_vectors_by_file.values.sum(&:size)
-      puts "[AssetExtractor] Found #{total_count} inline vector frames"
+
+      # Deduplicate: for INSTANCE nodes sharing a componentId, export only one
+      representatives = {}  # node_id (to export) -> [all node_ids sharing same componentId]
+      instance_node_ids = @instance_component_groups.values.flatten.to_set
+
+      inline_vectors_by_file.each do |file_key, node_ids|
+        deduped = []
+        node_ids.each do |nid|
+          if instance_node_ids.include?(nid)
+            # Find which componentId group this belongs to
+            group = @instance_component_groups.find { |_, ids| ids.include?(nid) }
+            next unless group
+            comp_id, all_ids = group
+            representative = all_ids.first
+            unless representatives.key?(representative)
+              representatives[representative] = all_ids
+              deduped << representative
+            end
+          else
+            deduped << nid
+          end
+        end
+        inline_vectors_by_file[file_key] = deduped
+      end
+
+      deduped_count = inline_vectors_by_file.values.sum(&:size)
+      puts "[AssetExtractor] Found #{total_count} inline vector frames (#{deduped_count} unique after dedup)"
 
       saved_count = 0
       inline_vectors_by_file.each do |file_key, node_ids|
         puts "[AssetExtractor]   Processing #{node_ids.size} inline vectors from file #{file_key}"
-        saved_count += fetch_and_save_inline_svgs(file_key, node_ids)
+        saved_count += fetch_and_save_inline_svgs(file_key, node_ids, representatives)
       end
 
       puts "[AssetExtractor] Saved #{saved_count} inline SVGs"
-      total_count
+
+      # Export raster nodes as PNG
+      image_total = @inline_images_by_file.values.sum(&:size)
+      if image_total > 0
+        # Deduplicate by componentId
+        image_representatives = {}
+        image_instance_ids = @image_instance_component_groups.values.flatten.to_set
+
+        @inline_images_by_file.each do |file_key, node_ids|
+          deduped = []
+          node_ids.each do |nid|
+            if image_instance_ids.include?(nid)
+              group = @image_instance_component_groups.find { |_, ids| ids.include?(nid) }
+              next unless group
+              _comp_id, all_ids = group
+              representative = all_ids.first
+              unless image_representatives.key?(representative)
+                image_representatives[representative] = all_ids
+                deduped << representative
+              end
+            else
+              deduped << nid
+            end
+          end
+          @inline_images_by_file[file_key] = deduped
+        end
+
+        deduped_image_count = @inline_images_by_file.values.sum(&:size)
+        puts "[AssetExtractor] Found #{image_total} inline images (#{deduped_image_count} unique after dedup)"
+
+        image_saved = 0
+        @inline_images_by_file.each do |file_key, node_ids|
+          puts "[AssetExtractor]   Processing #{node_ids.size} inline images from file #{file_key}"
+          image_saved += fetch_and_save_inline_pngs(file_key, node_ids, image_representatives)
+        end
+        puts "[AssetExtractor] Saved #{image_saved} inline PNGs"
+      end
+
+      total_count + image_total
     end
 
     private
@@ -206,16 +274,40 @@ module Figma
       # external library) fall back to inline rendering — if they look like
       # vector frames, export them as SVGs so the factory can inline them.
       if node["type"] == "INSTANCE"
-        if vector_frame?(node)
-          if node["id"]
+        if node["id"]
+          if has_image_fill?(node)
+            # Raster content — export as PNG, not SVG
+            @inline_images_by_file[file_key] ||= []
+            @inline_images_by_file[file_key] << node["id"] unless @inline_images_by_file[file_key].include?(node["id"])
+            comp_id = node["componentId"]
+            if comp_id
+              @image_instance_component_groups[comp_id] ||= []
+              @image_instance_component_groups[comp_id] << node["id"] unless @image_instance_component_groups[comp_id].include?(node["id"])
+            end
+          elsif vector_frame?(node)
             result[file_key] ||= []
             result[file_key] << node["id"] unless result[file_key].include?(node["id"])
+            # Group by componentId for deduplication
+            comp_id = node["componentId"]
+            if comp_id && @instance_component_groups
+              @instance_component_groups[comp_id] ||= []
+              @instance_component_groups[comp_id] << node["id"] unless @instance_component_groups[comp_id].include?(node["id"])
+            end
           end
         end
         return # never recurse into instance children
       end
 
       node_id = node["id"]
+
+      # Raster content — export as PNG
+      if has_image_fill?(node)
+        if node_id
+          @inline_images_by_file[file_key] ||= []
+          @inline_images_by_file[file_key] << node_id unless @inline_images_by_file[file_key].include?(node_id)
+        end
+        return
+      end
 
       # Only export composed vector frames (icons, logos) as SVG.
       # Bare vector nodes (individual paths, shapes) inside regular frames
@@ -233,14 +325,27 @@ module Figma
       end
     end
 
+    COMPLEX_VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION STAR POLYGON].freeze
+    TRIVIAL_VECTOR_TYPES = %w[RECTANGLE ELLIPSE LINE].freeze
+
     def vector_frame?(node)
       return false unless node.is_a?(Hash)
       return false unless CONTAINER_TYPES.include?(node["type"])
 
       children = node["children"] || []
       return false if children.empty?
+      return false unless children.all? { |child| vector_only?(child) }
 
-      children.all? { |child| vector_only?(child) }
+      # Skip trivial shapes (single rectangle, ellipse, line) — CSS handles these fine.
+      # Only export frames that contain complex paths (VECTOR, BOOLEAN_OPERATION, STAR, POLYGON).
+      has_complex_vector?(node)
+    end
+
+    def has_complex_vector?(node)
+      return false unless node.is_a?(Hash)
+      return true if COMPLEX_VECTOR_TYPES.include?(node["type"])
+
+      (node["children"] || []).any? { |child| has_complex_vector?(child) }
     end
 
     def vector_only?(node)
@@ -256,7 +361,7 @@ module Figma
       false
     end
 
-    def fetch_and_save_inline_svgs(file_key, node_ids)
+    def fetch_and_save_inline_svgs(file_key, node_ids, representatives = {})
       return 0 if node_ids.empty?
 
       saved_count = 0
@@ -280,8 +385,17 @@ module Figma
               begin
                 svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
                 mutex.synchronize do
+                  # Save for the representative node
                   save_inline_svg(nid, svg_content)
                   saved_count += 1
+                  # Save for all duplicate node_ids sharing the same componentId
+                  if representatives[nid]
+                    representatives[nid].each do |dup_nid|
+                      next if dup_nid == nid
+                      save_inline_svg(dup_nid, svg_content)
+                      saved_count += 1
+                    end
+                  end
                 end
               rescue => e
                 puts "[AssetExtractor] Failed to fetch inline SVG for #{nid}: #{e.message}"
@@ -302,6 +416,74 @@ module Figma
       end
 
       saved_count
+    end
+
+    def has_image_fill?(node)
+      return false unless node.is_a?(Hash)
+      fills = node["fills"] || node["background"] || []
+      fills.any? { |f| f["type"] == "IMAGE" }
+    end
+
+    def fetch_and_save_inline_pngs(file_key, node_ids, representatives = {})
+      return 0 if node_ids.empty?
+
+      saved_count = 0
+      total_batches = (node_ids.size / 100.0).ceil
+      mutex = Mutex.new
+
+      node_ids.each_slice(100).with_index do |batch, batch_idx|
+        puts "[AssetExtractor]     PNG Batch #{batch_idx + 1}/#{total_batches} (#{saved_count} saved so far)"
+
+        begin
+          response = @figma.export_png(file_key, batch, scale: 2)
+          images = response["images"] || {}
+
+          threads = []
+          batch.each do |node_id|
+            png_url = images[node_id]
+            next if png_url.blank?
+
+            threads << Thread.new(node_id, png_url) do |nid, url|
+              begin
+                png_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_binary_content(url)
+                mutex.synchronize do
+                  save_inline_png(nid, png_content)
+                  saved_count += 1
+                  if representatives[nid]
+                    representatives[nid].each do |dup_nid|
+                      next if dup_nid == nid
+                      save_inline_png(dup_nid, png_content)
+                      saved_count += 1
+                    end
+                  end
+                end
+              rescue => e
+                puts "[AssetExtractor] Failed to fetch inline PNG for #{nid}: #{e.message}"
+              end
+            end
+
+            if threads.size >= 10
+              threads.each(&:join)
+              threads.clear
+            end
+          end
+
+          threads.each(&:join)
+        rescue => e
+          puts "[AssetExtractor] PNG batch request failed: #{e.message}"
+        end
+      end
+
+      saved_count
+    end
+
+    def save_inline_png(node_id, png_content)
+      asset = FigmaAsset.find_or_initialize_by(node_id: node_id, component_id: nil, component_set_id: nil)
+      asset.update!(
+        name: "inline_#{node_id}",
+        asset_type: "png",
+        content: Base64.strict_encode64(png_content)
+      )
     end
 
     def save_inline_svg(node_id, svg_content)

@@ -3,7 +3,8 @@
 # Start all development servers (Rails API + Vite frontend + Caddy proxy)
 dev:
 	@trap 'kill -- -$$; sleep 1; kill -9 -- -$$ 2>/dev/null; psql postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname LIKE '"'"'jan_designer_api_%'"'"' AND pid <> pg_backend_pid()" > /dev/null 2>&1; exit' INT TERM; \
-	cd api && bin/rails server -p 3000 -b 127.0.0.1 & \
+	cd api && bin/rails server -p 3000 -b 0.0.0.0 & \
+	cd api && bin/jobs & \
 	cd app && npm run dev & \
 	cd caddy && caddy run --config Caddyfile & \
 	wait

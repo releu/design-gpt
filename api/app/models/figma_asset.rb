@@ -2,7 +2,7 @@ class FigmaAsset < ApplicationRecord
   belongs_to :component, optional: true
   belongs_to :component_set, optional: true
 
-  TYPES = %w[svg image vector].freeze
+  TYPES = %w[svg png image vector].freeze
 
   validates :node_id, presence: true
   validates :asset_type, presence: true, inclusion: { in: TYPES }
