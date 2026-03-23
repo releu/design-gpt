@@ -219,10 +219,27 @@ module Renderable
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-        <style>body{margin:0;scrollbar-width:none}body::-webkit-scrollbar{display:none}#root>*{margin:0 auto}#{all_css}</style>
+        <style>
+          body{margin:0;scrollbar-width:none}body::-webkit-scrollbar{display:none}#root>*{margin:0 auto}#{all_css}
+        </style>
       </head>
       <body>
         <div id="root"></div>
+        <script>
+          // Load YS Text font via fetch + blob URL (avoids variable font @font-face issues)
+          (async function() {
+            try {
+              var resp = await fetch("/fonts/ys-text.woff2");
+              if (resp.ok) {
+                var blob = await resp.blob();
+                var url = URL.createObjectURL(blob);
+                var face = new FontFace("YS Text", "url(" + url + ")");
+                await face.load();
+                document.fonts.add(face);
+              }
+            } catch(e) {}
+          })();
+        </script>
         #{component_scripts}
         <script>
           // Slot component: groups children under a name for multi-slot components

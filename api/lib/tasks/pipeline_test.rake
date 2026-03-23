@@ -501,6 +501,8 @@ namespace :pipeline do
         const page = await browser.newPage({ viewport: { width: 1200, height: 800 }, ignoreHTTPSErrors: true });
         await page.goto('https://design-gpt.localtest.me/api/design-systems/#{ds.id}/renderer', { waitUntil: 'networkidle' });
         await page.waitForTimeout(3000);
+        // Wait for font to load
+        await page.evaluate(() => document.fonts.ready);
 
         const items = #{items_json};
         const results = {};
