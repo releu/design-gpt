@@ -523,12 +523,12 @@ namespace :pipeline do
           await page.evaluate(() => document.fonts.ready);
 
           try {
-            // Try data-component first, then any visible non-style child of root
+            // Try multiple selectors: data-component, then any div/span in root
             let el = page.locator('[data-component]').first();
             let found = false;
             try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
             if (!found) {
-              el = page.locator('#root > div, #root > span, #root > img').first();
+              el = page.locator('#root div, #root span').first();
               try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
             }
             if (!found) { results[safe_name] = { error: 'no_element' }; continue; }
