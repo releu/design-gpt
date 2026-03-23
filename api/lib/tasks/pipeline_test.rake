@@ -523,21 +523,37 @@ namespace :pipeline do
           await page.evaluate(() => document.fonts.ready);
 
           try {
-            // Try multiple selectors: data-component, then any div/span in root
+            // Try data-component first for tight crop, then any visible element
             let el = page.locator('[data-component]').first();
             let found = false;
             try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
             if (!found) {
-              el = page.locator('#root div, #root span').first();
+              el = page.locator('#root div').first();
               try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
             }
-            if (!found) { results[safe_name] = { error: 'no_element' }; continue; }
-            const box = await el.boundingBox();
-            if (box && box.width > 0 && box.height > 0) {
-              await el.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
-              results[safe_name] = { w: Math.round(box.width), h: Math.round(box.height) };
+            if (found) {
+              const box = await el.boundingBox();
+              if (box && box.width > 0 && box.height > 0) {
+                await el.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
+                results[safe_name] = { w: Math.round(box.width), h: Math.round(box.height) };
+              } else {
+                results[safe_name] = { error: 'zero_size' };
+              }
             } else {
-              results[safe_name] = { error: 'zero_size' };
+              // Fallback: check if root has any content at all
+              const rootHTML = await page.evaluate(() => document.getElementById('root').innerHTML.trim());
+              if (rootHTML.length > 0) {
+                // Has content but no visible element — take root screenshot
+                const rootBox = await page.locator('#root').boundingBox();
+                if (rootBox && rootBox.height > 0) {
+                  await page.locator('#root').screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
+                  results[safe_name] = { w: Math.round(rootBox.width), h: Math.round(rootBox.height), fallback: true };
+                } else {
+                  results[safe_name] = { error: 'empty_render' };
+                }
+              } else {
+                results[safe_name] = { error: 'no_element' };
+              }
             }
           } catch(e) {
             results[safe_name] = { error: e.message.substring(0, 100) };
