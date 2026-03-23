@@ -1,0 +1,288 @@
+{
+  "file_key": "oL5zKzFeTuZRd2rFMbUJWa",
+  "component_sets": 109,
+  "components": 47,
+  "variants": 2572,
+  "component_key_map_size": 2829,
+  "expected": {
+    "🚧 Button (Unstable)": {
+      "node_id": "54887:112483",
+      "prop_definitions_keys": [
+        "State",
+        "View"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 126,
+      "default_variant_name": "View=Normal, State=Default",
+      "has_react_code": true
+    },
+    "🚧 PasswordInput (unstable)": {
+      "node_id": "54887:82375",
+      "prop_definitions_keys": [
+        "Show password"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "default_variant_name": "Show password=False",
+      "has_react_code": true
+    },
+    "🚧 Slider (in progress)": {
+      "node_id": "54440:417378",
+      "prop_definitions_keys": [
+        "Filled",
+        "Size",
+        "State"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "default_variant_name": "Size=S, State=Default",
+      "has_react_code": true
+    },
+    "🚧 Slider+Tooltip (in progress)": {
+      "node_id": "54440:417521",
+      "prop_definitions_keys": [
+        "Size"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "Size=M",
+      "has_react_code": true
+    },
+    "🚧 SliderTextInput (in progress)": {
+      "node_id": "54440:417593",
+      "prop_definitions_keys": [
+        "Size",
+        "View"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 8,
+      "default_variant_name": "Size=M, View=Vertical",
+      "has_react_code": true
+    },
+    "🚧 Stories (unstable)": {
+      "node_id": "54602:2393606",
+      "prop_definitions_keys": [
+        "Arrows",
+        "Buttons",
+        "Description text",
+        "Groups",
+        "Paddings",
+        "Picture",
+        "Scroll",
+        "Steps",
+        "Text background",
+        "Title text",
+        "↳ 2nd button",
+        "↳ End arrow",
+        "↳ Start arrow",
+        "↳ Steps text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "default_variant_name": "Picture=In frame",
+      "has_react_code": true
+    },
+    "🚧 TextArea (unstable)": {
+      "node_id": "54887:82364",
+      "prop_definitions_keys": [
+        "Height"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "default_variant_name": "Height=Fixed",
+      "has_react_code": true
+    },
+    ".animation": {
+      "node_id": "53458:11067",
+      "prop_definitions_keys": [
+        "Step"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "Step=1",
+      "has_react_code": true
+    },
+    ".AsideHeader-bottom-item-collapse": {
+      "node_id": "54125:35655",
+      "prop_definitions_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-bottom-item-expand": {
+      "node_id": "54125:35668",
+      "prop_definitions_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-bottom-user-collapse": {
+      "node_id": "53793:32347",
+      "prop_definitions_keys": [
+        "State"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-bottom-user-expand": {
+      "node_id": "53793:32281",
+      "prop_definitions_keys": [
+        "State"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-middle-item-collapse": {
+      "node_id": "54125:35529",
+      "prop_definitions_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-middle-item-expand": {
+      "node_id": "54125:35542",
+      "prop_definitions_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-top-item-collapse": {
+      "node_id": "53793:32251",
+      "prop_definitions_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".AsideHeader-top-item-expand": {
+      "node_id": "53793:32294",
+      "prop_definitions_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "default_variant_name": "State=Default",
+      "has_react_code": true
+    },
+    ".Attach-file icons": {
+      "node_id": "53365:3637",
+      "prop_definitions_keys": [
+        "Type"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 9,
+      "default_variant_name": "Type=Excel",
+      "has_react_code": true
+    },
+    ".Bottom pannel": {
+      "node_id": "53389:11396",
+      "prop_definitions_keys": [
+        "Second button"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "default_variant_name": "Second button=On",
+      "has_react_code": true
+    },
+    ".Breadcrumbs-1st-page-icons": {
+      "node_id": "53593:3518",
+      "prop_definitions_keys": [
+        "First",
+        "Icons",
+        "Second",
+        "Third"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "default_variant_name": "Icons=1",
+      "has_react_code": true
+    },
+    ".Breadcrumbs-item": {
+      "node_id": "53593:3535",
+      "prop_definitions_keys": [
+        "Expand",
+        "Page text"
+      ],
+      "slots": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "default_variant_name": "Expand=Off",
+      "has_react_code": true
+    }
+  }
+}

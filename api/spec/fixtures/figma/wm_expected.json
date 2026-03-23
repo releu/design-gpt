@@ -1,0 +1,2289 @@
+{
+  "file_key": "oL5zKzFeTuZRd2rFMbUJWa",
+  "totals": {
+    "component_sets": 109,
+    "components": 47,
+    "variants": 2572
+  },
+  "component_sets": {
+    "54887:112483": {
+      "name": "🚧 Button (Unstable)",
+      "prop_keys": [
+        "State",
+        "View"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 126,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82375": {
+      "name": "🚧 PasswordInput (unstable)",
+      "prop_keys": [
+        "Show password"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54440:417378": {
+      "name": "🚧 Slider (in progress)",
+      "prop_keys": [
+        "Filled",
+        "Size",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54440:417521": {
+      "name": "🚧 Slider+Tooltip (in progress)",
+      "prop_keys": [
+        "Size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54440:417593": {
+      "name": "🚧 SliderTextInput (in progress)",
+      "prop_keys": [
+        "Size",
+        "View"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 8,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54602:2393606": {
+      "name": "🚧 Stories (unstable)",
+      "prop_keys": [
+        "Arrows",
+        "Buttons",
+        "Description text",
+        "Groups",
+        "Paddings",
+        "Picture",
+        "Scroll",
+        "Steps",
+        "Text background",
+        "Title text",
+        "↳ 2nd button",
+        "↳ End arrow",
+        "↳ Start arrow",
+        "↳ Steps text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82364": {
+      "name": "🚧 TextArea (unstable)",
+      "prop_keys": [
+        "Height"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53458:11067": {
+      "name": ".animation",
+      "prop_keys": [
+        "Step"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54125:35655": {
+      "name": ".AsideHeader-bottom-item-collapse",
+      "prop_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54125:35668": {
+      "name": ".AsideHeader-bottom-item-expand",
+      "prop_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32347": {
+      "name": ".AsideHeader-bottom-user-collapse",
+      "prop_keys": [
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32281": {
+      "name": ".AsideHeader-bottom-user-expand",
+      "prop_keys": [
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54125:35529": {
+      "name": ".AsideHeader-middle-item-collapse",
+      "prop_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54125:35542": {
+      "name": ".AsideHeader-middle-item-expand",
+      "prop_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32251": {
+      "name": ".AsideHeader-top-item-collapse",
+      "prop_keys": [
+        "Icon",
+        "State",
+        "Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32294": {
+      "name": ".AsideHeader-top-item-expand",
+      "prop_keys": [
+        "Icon",
+        "Item text",
+        "Label",
+        "State",
+        "↳ Label text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53365:3637": {
+      "name": ".Attach-file icons",
+      "prop_keys": [
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 9,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11396": {
+      "name": ".Bottom pannel",
+      "prop_keys": [
+        "Second button"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:3518": {
+      "name": ".Breadcrumbs-1st-page-icons",
+      "prop_keys": [
+        "First",
+        "Icons",
+        "Second",
+        "Third"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:3535": {
+      "name": ".Breadcrumbs-item",
+      "prop_keys": [
+        "Expand",
+        "Page text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:112741": {
+      "name": ".ButtonItem",
+      "prop_keys": [
+        "Content",
+        "End icon",
+        "Icon only",
+        "Size",
+        "Start icon",
+        "↳ End icon",
+        "↳ Start icon"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 10,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53634:108318": {
+      "name": ".Buttons",
+      "prop_keys": [
+        "Button 1",
+        "Button 2",
+        "Layout"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53634:108307": {
+      "name": ".Buttons",
+      "prop_keys": [
+        "Button 1",
+        "Button 2",
+        "Layout"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53634:108329": {
+      "name": ".Buttons",
+      "prop_keys": [
+        "Button 1",
+        "Button 2",
+        "Layout"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11428": {
+      "name": ".Check icon",
+      "prop_keys": [
+        "Icon"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53621:120273": {
+      "name": ".Collapse",
+      "prop_keys": [
+        "Size",
+        "State",
+        "↳ Counter"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53351:624682": {
+      "name": ".Content",
+      "prop_keys": [
+        "End Icon",
+        "Label 2",
+        "Label 3",
+        "Label 4",
+        "Label 5",
+        "Start icon",
+        "Type",
+        "Value",
+        "↳ End icon",
+        "↳ Start icon"
+      ],
+      "slot_names": [
+        "↳ End icon",
+        "↳ Start icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53623:196705": {
+      "name": ".Content",
+      "prop_keys": [
+        "Button 2",
+        "Button 3",
+        "Content text",
+        "Layout",
+        "Show buttons",
+        "Title",
+        "↳ Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11408": {
+      "name": ".Content",
+      "prop_keys": [
+        "Content",
+        "↳ Content text",
+        "↳ Description text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "50378:695": {
+      "name": ".Custom border",
+      "prop_keys": [
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 7,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32491": {
+      "name": ".Day L",
+      "prop_keys": [
+        "Other month",
+        "Selection",
+        "State",
+        "Text",
+        "Today",
+        "Weekend"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 48,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32346": {
+      "name": ".Day M",
+      "prop_keys": [
+        "Other month",
+        "Selection",
+        "State",
+        "Text",
+        "Today",
+        "Weekend"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 48,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32201": {
+      "name": ".Day S",
+      "prop_keys": [
+        "Other month",
+        "Selection",
+        "State",
+        "Text",
+        "Today",
+        "Weekend"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 48,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11453": {
+      "name": ".Divider",
+      "prop_keys": [
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11437": {
+      "name": ".Icons_block",
+      "prop_keys": [
+        "First",
+        "Icons",
+        "Second",
+        "Third"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53639:309930": {
+      "name": ".InlineButton",
+      "prop_keys": [
+        "Instance icon",
+        "Size",
+        "State"
+      ],
+      "slot_names": [
+        "Instance icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53639:309959": {
+      "name": ".llist of onbording",
+      "prop_keys": [
+        "List",
+        "Show divider"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "44799:511318": {
+      "name": ".Loader base l",
+      "prop_keys": [
+        "Step"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "44799:511253": {
+      "name": ".Loader base m",
+      "prop_keys": [
+        "Step"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "44799:511335": {
+      "name": ".Loader base s",
+      "prop_keys": [
+        "Step"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54412:83697": {
+      "name": ".Logo",
+      "prop_keys": [
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53551:18696": {
+      "name": ".Mac",
+      "prop_keys": [
+        "Symbol"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82575": {
+      "name": ".NumberInput Chevron",
+      "prop_keys": [
+        "Size",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53551:18733": {
+      "name": ".PC",
+      "prop_keys": [
+        "Symbol"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32143": {
+      "name": ".Period L",
+      "prop_keys": [
+        "Selection",
+        "State",
+        "Text",
+        "Today"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32106": {
+      "name": ".Period M",
+      "prop_keys": [
+        "Selection",
+        "State",
+        "Text",
+        "Today"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32066": {
+      "name": ".Period S",
+      "prop_keys": [
+        "Selection",
+        "State",
+        "Text",
+        "Today"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53501:12049": {
+      "name": ".Progress item multivalue",
+      "prop_keys": [
+        "Content",
+        "Items",
+        "↳ Text 1",
+        "↳ Text 2",
+        "↳ Text 3",
+        "↳ Text 4",
+        "↳ Text 5"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53501:11873": {
+      "name": ".Progress item single",
+      "prop_keys": [
+        "Content",
+        "Value",
+        "↳ Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 11,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11421": {
+      "name": ".Secondary block",
+      "prop_keys": [
+        "Content",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53445:1444863": {
+      "name": ".SegmentedRadioGroupItem",
+      "prop_keys": [
+        "Counter",
+        "Icon",
+        "Icon only",
+        "Selected",
+        "State",
+        "↳ Icon",
+        "↳ Number",
+        "↳ Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 10,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82382": {
+      "name": ".Size & Layout",
+      "prop_keys": [
+        "Clear Button",
+        "Content",
+        "End Area",
+        "Layout Type",
+        "Scroll Bar",
+        "Size",
+        "Start Area"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 8,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82463": {
+      "name": ".State & Extra",
+      "prop_keys": [
+        "Additional",
+        "Clear View",
+        "State",
+        "↳ Additional Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 14,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53639:309980": {
+      "name": ".Status",
+      "prop_keys": [
+        "Status"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "55034:77498": {
+      "name": ".step-L",
+      "prop_keys": [
+        "Completion",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 11,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "55034:77491": {
+      "name": ".step-M",
+      "prop_keys": [
+        "Completion",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 11,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "55034:77138": {
+      "name": ".step-S",
+      "prop_keys": [
+        "Completion",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 11,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53648:357501": {
+      "name": ".Stories-group",
+      "prop_keys": [
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53648:357465": {
+      "name": ".Stories-number-of-groups",
+      "prop_keys": [
+        "Group 10",
+        "Group 11",
+        "Group 12",
+        "Group 3",
+        "Group 4",
+        "Group 5",
+        "Group 6",
+        "Group 7",
+        "Group 8",
+        "Group 9",
+        "More than 12"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53648:357417": {
+      "name": ".Stories-text-area",
+      "prop_keys": [
+        "Custom action button",
+        "Description text",
+        "Show More",
+        "Slide",
+        "Steps text",
+        "Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53621:120183": {
+      "name": ".Tab",
+      "prop_keys": [
+        "Counter",
+        "Label",
+        "Size",
+        "Start icon",
+        "State",
+        "↳ Icon",
+        "↳ Text",
+        "↳ Сounter"
+      ],
+      "slot_names": [
+        "↳ Icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54529:651485": {
+      "name": ".Title-cell",
+      "prop_keys": [
+        "Align",
+        "Column sort",
+        "Column title"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53624:369881": {
+      "name": ".Toc item",
+      "prop_keys": [
+        "Nested",
+        "State",
+        "Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11382": {
+      "name": ".Top panel",
+      "prop_keys": [
+        "Button",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53632:3476": {
+      "name": "ActionTooltip",
+      "prop_keys": [
+        "Description",
+        "Shortcut",
+        "State",
+        "Title",
+        "↳ Description text",
+        "↳ Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53623:196774": {
+      "name": "Alert",
+      "prop_keys": [
+        "Close button",
+        "Corners",
+        "Icon (optional)",
+        "Theme",
+        "View"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 24,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53978:12837": {
+      "name": "AsideHeader",
+      "prop_keys": [
+        "Add button",
+        "Additional middle parts",
+        "Decoration",
+        "Expand",
+        "↳  Additional part 1",
+        "↳  Additional part 2"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53348:563633": {
+      "name": "Avatar",
+      "prop_keys": [
+        "Custom border",
+        "Icon",
+        "Size",
+        "Theme",
+        "Type",
+        "View",
+        "↳ Content text"
+      ],
+      "slot_names": [
+        "Icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 84,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53348:564209": {
+      "name": "AvatarStack",
+      "prop_keys": [
+        "2 item",
+        "3 item",
+        "4 item",
+        "5 item",
+        "Counter",
+        "Size",
+        "↳ Content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 5,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53098:497062": {
+      "name": "Button",
+      "prop_keys": [
+        "Content",
+        "End icon",
+        "Icon only",
+        "Size",
+        "Start icon",
+        "State",
+        "View",
+        "↳ End icon",
+        "↳ Start icon"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 1050,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:31716": {
+      "name": "Calendar",
+      "prop_keys": [
+        "Size",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 9,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53349:612719": {
+      "name": "Cards",
+      "prop_keys": [
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 7
+    },
+    "53103:9376": {
+      "name": "Checkbox",
+      "prop_keys": [
+        "Checked",
+        "Content",
+        "Indeterminate",
+        "Size",
+        "State",
+        "↳ Content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 27,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "45230:513458": {
+      "name": "Cursor, pointer",
+      "prop_keys": [
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 17,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:32710": {
+      "name": "DatePicker",
+      "prop_keys": [
+        "Calendar",
+        "Clear button",
+        "Content",
+        "Delimeter",
+        "Error icon",
+        "Error text",
+        "Label",
+        "Size",
+        "State",
+        "Time",
+        "View",
+        "↳ AM/PM",
+        "↳ Content text",
+        "↳ Label text",
+        "↳ Seconds"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 112,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53351:624752": {
+      "name": "DefinitionList",
+      "prop_keys": [
+        "Dots",
+        "Help icon",
+        "Layout",
+        "Size",
+        "Title"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53634:54650": {
+      "name": "Dialog",
+      "prop_keys": [
+        "Additional button",
+        "Background",
+        "Description",
+        "Divider bottom",
+        "Divider top",
+        "Main button",
+        "Scrollbar",
+        "Second button",
+        "Size",
+        "Swap-area",
+        "↳ Swap-area"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 7,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "55024:15093": {
+      "name": "Drawer",
+      "prop_keys": [
+        "Direction",
+        "Resizable",
+        "Scroll",
+        "Swap"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53431:562412": {
+      "name": "DropdownMenu",
+      "prop_keys": [
+        "Scroll",
+        "Size",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 12,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53380:191734": {
+      "name": "FilePreview",
+      "prop_keys": [
+        "Button",
+        "Button 2",
+        "Description",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54412:83607": {
+      "name": "Footer",
+      "prop_keys": [
+        "Divider",
+        "Item 1",
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "More",
+        "Show Logo",
+        "View"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53551:18667": {
+      "name": "Hotkey",
+      "prop_keys": [
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Platform"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53380:170630": {
+      "name": "Label",
+      "prop_keys": [
+        "End icon",
+        "End icon hover",
+        "Hovered",
+        "Icon",
+        "Icon only",
+        "Key text",
+        "Size",
+        "Theme",
+        "Value",
+        "↳ End icon",
+        "↳ Icon",
+        "↳ Value text"
+      ],
+      "slot_names": [
+        "↳ End icon",
+        "↳ Icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 96,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:12527": {
+      "name": "List",
+      "prop_keys": [
+        "Bottom pannel",
+        "Item 1",
+        "Item 10",
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Item 6",
+        "Item 7",
+        "Item 8",
+        "Item 9",
+        "Scroll",
+        "Top panel",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 7,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53389:11501": {
+      "name": "List-item",
+      "prop_keys": [
+        "Checked",
+        "Counter",
+        "End icon",
+        "Expanded",
+        "Nested",
+        "Secondary content",
+        "Size",
+        "Sortable",
+        "Start icon",
+        "State",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 65,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "41187:433363": {
+      "name": "Loader",
+      "prop_keys": [
+        "Size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "35381:149367": {
+      "name": "Notes",
+      "prop_keys": [
+        "Line"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 5,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53639:309868": {
+      "name": "OnboardingMenu",
+      "prop_keys": [
+        "List 1",
+        "List 2",
+        "List 3",
+        "List 4",
+        "List 5",
+        "State"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 2,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53623:259383": {
+      "name": "Overlay",
+      "prop_keys": [
+        "Background",
+        "Loader",
+        "Text",
+        "Text align",
+        "↳ Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53623:336970": {
+      "name": "pagination",
+      "prop_keys": [
+        "Grouping",
+        "Input page number",
+        "Page number",
+        "Page numbers",
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 9,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53431:1326961": {
+      "name": "PlaceholderContainer",
+      "prop_keys": [
+        "Button 2",
+        "Button 3",
+        "Buttons",
+        "Description",
+        "Direction",
+        "Illustration L",
+        "Illustration M",
+        "Illustration S",
+        "Links",
+        "Size",
+        "Title",
+        "↳ Description text",
+        "↳ Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 1
+    },
+    "53634:107901": {
+      "name": "Popover",
+      "prop_keys": [
+        "Arrow",
+        "Buttons",
+        "Close button",
+        "Link",
+        "Size",
+        "Theme",
+        "Title",
+        "↳ Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 30,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53635:157588": {
+      "name": "Popup",
+      "prop_keys": [
+        "Pin"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 5,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53501:11697": {
+      "name": "Progress",
+      "prop_keys": [
+        "Size",
+        "Stack"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 7
+    },
+    "53131:43373": {
+      "name": "Radio",
+      "prop_keys": [
+        "Checked",
+        "Content",
+        "Size",
+        "State",
+        "↳ Content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 18,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53131:51193": {
+      "name": "RadioGroup",
+      "prop_keys": [
+        "Direction",
+        "Item 10",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Item 6",
+        "Item 7",
+        "Item 8",
+        "Item 9",
+        "Size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53705:34229": {
+      "name": "RelativeRangeDatePicker",
+      "prop_keys": [
+        "Clear button",
+        "Content",
+        "Delimeter",
+        "Error icon",
+        "Error text",
+        "Label",
+        "Panel",
+        "Size",
+        "State",
+        "Time",
+        "View",
+        "↳ AM/PM",
+        "↳ Apply button",
+        "↳ Content text",
+        "↳ Help button",
+        "↳ Label text",
+        "↳ Seconds",
+        "↳ Time presets",
+        "↳ Time zones"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 112,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53445:1468500": {
+      "name": "SegmentedRadioGroup",
+      "prop_keys": [
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Item 6",
+        "Item 7",
+        "Item 8",
+        "Item 9",
+        "Size",
+        "Width"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 8,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53168:66962": {
+      "name": "Select",
+      "prop_keys": [
+        "Clear icon",
+        "Content",
+        "Counter",
+        "Error text",
+        "Label",
+        "Size",
+        "State",
+        "View",
+        "↳ Content text",
+        "↳ Counter value",
+        "↳ Label text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 8,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53458:11045": {
+      "name": "Skeleton",
+      "prop_keys": [
+        "Type"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 4,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "43625:494110": {
+      "name": "spin",
+      "prop_keys": [
+        "size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 5,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "55032:26305": {
+      "name": "Stepper",
+      "prop_keys": [
+        "Size",
+        "Step 3",
+        "Step 4",
+        "Step 5"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53131:64366": {
+      "name": "Switch",
+      "prop_keys": [
+        "Content",
+        "Content text",
+        "Disabled",
+        "Hovered",
+        "Selected",
+        "Size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 10,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53621:120305": {
+      "name": "Tabs",
+      "prop_keys": [
+        "Collapse tab",
+        "Item 10",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Item 6",
+        "Item 7",
+        "Item 8",
+        "Item 9",
+        "Size"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 3,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53172:41697": {
+      "name": "TextArea",
+      "prop_keys": [
+        "Additional",
+        "Clear button",
+        "Content",
+        "Error icon",
+        "Error text",
+        "Size",
+        "State",
+        "View",
+        "↳ Additional text",
+        "↳ Content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 56,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53175:148339": {
+      "name": "TextInput",
+      "prop_keys": [
+        "Additional",
+        "Button 1",
+        "Button 2",
+        "Clear button",
+        "Content",
+        "Error icon",
+        "Error text",
+        "Label",
+        "Right side",
+        "Size",
+        "Start icon",
+        "State",
+        "View",
+        "↳ Additional text",
+        "↳ Content text",
+        "↳ Label text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 56,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53623:302211": {
+      "name": "Toaster",
+      "prop_keys": [
+        "Button 1",
+        "Button 2",
+        "Buttons",
+        "Close button",
+        "Description",
+        "Icon",
+        "Theme",
+        "Title",
+        "↳ Description text",
+        "↳ Icon",
+        "↳ Title text"
+      ],
+      "slot_names": [
+        "↳ Icon"
+      ],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 6,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53348:564308": {
+      "name": "User ",
+      "prop_keys": [
+        "Secondary content",
+        "Size",
+        "↳ Content text",
+        "↳ Secondary content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 7,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53452:744016": {
+      "name": "UserLabel",
+      "prop_keys": [
+        "Closable",
+        "Secondary content",
+        "Size",
+        "Theme",
+        "Type",
+        "↳ Content text",
+        "↳ Secondarty content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "is_image": false,
+      "variant_count": 56,
+      "has_code": true,
+      "warnings_count": 0
+    }
+  },
+  "components": {
+    "54887:82369": {
+      "name": "🚧 DatePicker (unstable)",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82373": {
+      "name": "🚧 NumberInput (unstable)",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82371": {
+      "name": "🚧 RelativeRangeDatePicker (unstable)",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82362": {
+      "name": "🚧 Select (unstable)",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82360": {
+      "name": "🚧 TextInput (unstable)",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32240": {
+      "name": ".AsideHeader-bottom-part-collapse",
+      "prop_keys": [
+        "Account",
+        "Help center",
+        "Notifications",
+        "Settings"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32270": {
+      "name": ".AsideHeader-bottom-part-expand",
+      "prop_keys": [
+        "Account",
+        "Help center",
+        "Notifications",
+        "Settings"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53946:421620": {
+      "name": ".AsideHeader-button-collapse",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53946:424773": {
+      "name": ".AsideHeader-button-expand",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32214": {
+      "name": ".AsideHeader-logo-collapse",
+      "prop_keys": [
+        "Logo"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32227": {
+      "name": ".AsideHeader-logo-expand",
+      "prop_keys": [
+        "Logo",
+        "Service name text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32325": {
+      "name": ".AsideHeader-middle-part-collapse",
+      "prop_keys": [
+        "10th item",
+        "1st item",
+        "2nd item",
+        "3rd item",
+        "4th item",
+        "5th item",
+        "6th item",
+        "7th item",
+        "8th item",
+        "9th item"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32336": {
+      "name": ".AsideHeader-middle-part-expand",
+      "prop_keys": [
+        "10th item",
+        "1st item",
+        "2nd item",
+        "3rd item",
+        "4th item",
+        "5th item",
+        "6th item",
+        "7th item",
+        "8th item",
+        "9th item"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32204": {
+      "name": ".AsideHeader-top-part-collapse",
+      "prop_keys": [
+        "All services",
+        "Search"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53793:32220": {
+      "name": ".AsideHeader-top-part-expand",
+      "prop_keys": [
+        "All services",
+        "Search"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53620:42976": {
+      "name": ".Breadcrumbs-1st-page",
+      "prop_keys": [
+        "Icons",
+        "Page text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53635:202905": {
+      "name": ".ChangelogDialogItem",
+      "prop_keys": [
+        "Date text",
+        "Description text",
+        "Label",
+        "Picture",
+        "Story button",
+        "Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82557": {
+      "name": ".Content",
+      "prop_keys": [
+        "↳ Content Text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82559": {
+      "name": ".End Area",
+      "prop_keys": [
+        "Button",
+        "Counter",
+        "Label",
+        "Swap Area",
+        "↳ Counter Value"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82566": {
+      "name": ".End Service",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82572": {
+      "name": ".NumberInput Arrows",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53811:170899": {
+      "name": ".nv-logo",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82582": {
+      "name": ".Scrollbar",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54887:82552": {
+      "name": ".Start Area",
+      "prop_keys": [
+        "Icon",
+        "Label",
+        "Swap Area",
+        "↳ Label Text",
+        "↳ Select Icon"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 5
+    },
+    "53634:54786": {
+      "name": ".swap-area",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54902:59714": {
+      "name": ".swap-area-inline",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:3585": {
+      "name": ".swap-item",
+      "prop_keys": [
+        "Item 1",
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "↳ Item 1",
+        "↳ Item 2",
+        "↳ Item 3",
+        "↳ Item 4",
+        "↳ Item 5"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54542:2320127": {
+      "name": ".table-swap-item",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "44389:475156": {
+      "name": ".theme_",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:6742": {
+      "name": "ActionBar",
+      "prop_keys": [
+        "Center",
+        "End",
+        "Start"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53348:547352": {
+      "name": "ActionsPanel",
+      "prop_keys": [
+        "Button 1",
+        "Button 2",
+        "Button 3",
+        "Button 4",
+        "Close button",
+        "More button",
+        "Title",
+        "Title text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:3494": {
+      "name": "Breadcrumbs",
+      "prop_keys": [
+        "Nesting page 1",
+        "Nesting page 2",
+        "Nesting page 3",
+        "Nesting page 4",
+        "Nesting page 5"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53635:202886": {
+      "name": "ChangelogDialog",
+      "prop_keys": [
+        "Item 1",
+        "Item 2",
+        "Item 3",
+        "Item 4",
+        "Item 5"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 5
+    },
+    "19369:16707": {
+      "name": "header",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "51108:11396": {
+      "name": "Page",
+      "prop_keys": [
+        "sideColumnItems"
+      ],
+      "slot_names": [
+        "sideColumnItems"
+      ],
+      "is_root": true,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "51109:17858": {
+      "name": "SiteSelector",
+      "prop_keys": [
+        "website"
+      ],
+      "slot_names": [
+        "website"
+      ],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53938:38750": {
+      "name": "Table",
+      "prop_keys": [
+        "Actions",
+        "Column 1",
+        "Column 10",
+        "Column 2",
+        "Column 3",
+        "Column 4",
+        "Column 5",
+        "Column 6",
+        "Column 7",
+        "Column 8",
+        "Column 9",
+        "Dividers",
+        "Сheckboxes",
+        "↳ Cell Buttons",
+        "↳ Column 1 type",
+        "↳ Column 10 type",
+        "↳ Column 2 type",
+        "↳ Column 3 type",
+        "↳ Column 4 type",
+        "↳ Column 5 type",
+        "↳ Column 6 type",
+        "↳ Column 7 type",
+        "↳ Column 8 type",
+        "↳ Column 9 type",
+        "↳ Table Settings"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 13
+    },
+    "53731:19764": {
+      "name": "TableDate",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53729:30547": {
+      "name": "TableLabel",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53731:19425": {
+      "name": "TableNumeric",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53731:19811": {
+      "name": "TableProgress",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "54542:2320130": {
+      "name": "TableSwappable",
+      "prop_keys": [
+        "Instance"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53729:30533": {
+      "name": "TableText",
+      "prop_keys": [
+        "Button"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53729:30711": {
+      "name": "TableUser",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53624:369932": {
+      "name": "Toc",
+      "prop_keys": [
+        "Item 10",
+        "Item 11",
+        "Item 12",
+        "Item 13",
+        "Item 14",
+        "Item 15",
+        "Item 3",
+        "Item 4",
+        "Item 5",
+        "Item 6",
+        "Item 7",
+        "Item 8",
+        "Item 9",
+        "Scroll bar"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53635:172934": {
+      "name": "Tooltip",
+      "prop_keys": [
+        "Content text"
+      ],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    },
+    "53593:6746": {
+      "name": "vertical_divider",
+      "prop_keys": [],
+      "slot_names": [],
+      "is_root": false,
+      "has_code": true,
+      "warnings_count": 0
+    }
+  }
+}
