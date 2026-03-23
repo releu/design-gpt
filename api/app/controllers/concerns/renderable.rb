@@ -220,26 +220,25 @@ module Renderable
         <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
         <style>
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Thin.ttf"); font-weight: 100; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Thin Italic.ttf"); font-weight: 100; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Light.ttf"); font-weight: 300; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Light Italic.ttf"); font-weight: 300; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Regular.ttf"); font-weight: 400; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Regular Italic.ttf"); font-weight: 400; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Medium.ttf"); font-weight: 500; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Medium Italic.ttf"); font-weight: 500; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Bold.ttf"); font-weight: 700; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Bold Italic.ttf"); font-weight: 700; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Heavy.ttf"); font-weight: 800; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Heavy Italic.ttf"); font-weight: 800; font-style: italic; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Black.ttf"); font-weight: 900; font-style: normal; }
+          @font-face { font-family: "YS Text"; src: url("/fonts/YS%20Text-Black Italic.ttf"); font-weight: 900; font-style: italic; }
           body{margin:0;scrollbar-width:none}body::-webkit-scrollbar{display:none}#root>*{margin:0 auto}#{all_css}
         </style>
       </head>
       <body>
         <div id="root"></div>
-        <script>
-          // Load YS Text font via fetch + blob URL (avoids variable font @font-face issues)
-          (async function() {
-            try {
-              var resp = await fetch("/fonts/ys-text.woff2");
-              if (resp.ok) {
-                var blob = await resp.blob();
-                var url = URL.createObjectURL(blob);
-                var face = new FontFace("YS Text", "url(" + url + ")");
-                await face.load();
-                document.fonts.add(face);
-              }
-            } catch(e) {}
-          })();
-        </script>
         #{component_scripts}
         <script>
           // Slot component: groups children under a name for multi-slot components

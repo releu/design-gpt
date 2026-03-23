@@ -520,6 +520,7 @@ namespace :pipeline do
             } catch(e) {}
           }, react_name);
           await page.waitForTimeout(200);
+          await page.evaluate(() => document.fonts.ready);
 
           try {
             // Try data-component first, then any visible non-style child of root
