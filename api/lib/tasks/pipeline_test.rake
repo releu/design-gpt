@@ -599,22 +599,31 @@ namespace :pipeline do
     diff_pixels = 0
     threshold = 30
 
+    # Compositing helper: blend with white background (Figma exports with transparency)
+    white_blend = ->(c) {
+      a = ChunkyPNG::Color.a(c)
+      return [255, 255, 255] if a == 0
+      return [ChunkyPNG::Color.r(c), ChunkyPNG::Color.g(c), ChunkyPNG::Color.b(c)] if a == 255
+      af = a / 255.0
+      r = (ChunkyPNG::Color.r(c) * af + 255 * (1 - af)).round
+      g = (ChunkyPNG::Color.g(c) * af + 255 * (1 - af)).round
+      b = (ChunkyPNG::Color.b(c) * af + 255 * (1 - af)).round
+      [r, g, b]
+    }
+
     h.times do |y|
       w.times do |x|
-        c1 = img1[x, y]
-        c2 = img2[x, y]
-        dr = (ChunkyPNG::Color.r(c1) - ChunkyPNG::Color.r(c2)).abs
-        dg = (ChunkyPNG::Color.g(c1) - ChunkyPNG::Color.g(c2)).abs
-        db = (ChunkyPNG::Color.b(c1) - ChunkyPNG::Color.b(c2)).abs
+        r1, g1, b1 = white_blend.call(img1[x, y])
+        r2, g2, b2 = white_blend.call(img2[x, y])
+        dr = (r1 - r2).abs
+        dg = (g1 - g2).abs
+        db = (b1 - b2).abs
 
         if dr > threshold || dg > threshold || db > threshold
           diff_pixels += 1
           diff_image[x, y] = ChunkyPNG::Color.rgba(255, 0, 0, 180)
         else
-          r = (ChunkyPNG::Color.r(c1) * 0.3).to_i
-          g = (ChunkyPNG::Color.g(c1) * 0.3).to_i
-          b = (ChunkyPNG::Color.b(c1) * 0.3).to_i
-          diff_image[x, y] = ChunkyPNG::Color.rgba(r, g, b, 255)
+          diff_image[x, y] = ChunkyPNG::Color.rgba((r1 * 0.3).to_i, (g1 * 0.3).to_i, (b1 * 0.3).to_i, 255)
         end
       end
     end
