@@ -1307,10 +1307,10 @@ module Figma
       @image_refs = {}
     end
 
-    def compile_for_browser(react_code, component_name, component_id)
+    def compile_for_browser(react_code, component_name, component_id, scope_id: nil)
       return "var #{component_name} = function() { return React.createElement('div', null, 'No code generated'); }" if react_code.blank?
 
-      preprocessed = preprocess_for_browser(react_code, component_name, component_id)
+      preprocessed = preprocess_for_browser(react_code, component_name, component_id, scope_id: scope_id)
 
       begin
         compiled = Figma::JsxCompiler.compile(preprocessed)
@@ -1336,14 +1336,17 @@ module Figma
     end
 
     # Preprocessing: variable namespacing, import stripping — everything before esbuild
-    def preprocess_for_browser(react_code, component_name, component_id)
+    # scope_id: unique per snippet (for variable names like styles_X, svg_X)
+    # component_id: shared across variants (for function names like Button_cs_42__v0)
+    def preprocess_for_browser(react_code, component_name, component_id, scope_id: nil)
+      scope_id ||= component_id
       code = react_code.dup
 
-      styles_var = "styles_#{component_id}"
+      styles_var = "styles_#{scope_id}"
       code = code.gsub(/const styles = /, "const #{styles_var} = ")
       code = code.gsub(/\{styles\}/, "{#{styles_var}}")
 
-      svg_var = "svg_#{component_id}"
+      svg_var = "svg_#{scope_id}"
       code = code.gsub(/const svg = /, "const #{svg_var} = ")
       code = code.gsub(/\{__html: svg\}/, "{__html: #{svg_var}}")
 
@@ -1380,10 +1383,10 @@ module Figma
         end
       end.compact
 
-      # Preprocess per-variant snippets (use unique key, not shared component_id,
-      # so styles/svg variables don't collide across variants in browser scope)
+      # Preprocess per-variant snippets (use unique key for variable scope,
+      # but shared component_id for function names to match dispatcher)
       variant_snippets = @pending_variant_compilations.map do |entry|
-        preprocessed = preprocess_for_browser(entry[:code], entry[:component_name], entry[:key])
+        preprocessed = preprocess_for_browser(entry[:code], entry[:component_name], entry[:component_id], scope_id: entry[:key])
         { key: entry[:key], code: preprocessed }
       end
 
@@ -1529,7 +1532,7 @@ module Figma
             component_id: component_id
           }
         else
-          compiled = compile_for_browser(per_variant_code, component_name, "#{component_id}_v#{entry[:index]}")
+          compiled = compile_for_browser(per_variant_code, component_name, component_id, scope_id: "#{component_id}_v#{entry[:index]}")
           entry[:variant_record].update!(react_code_compiled: compiled)
         end
       end
