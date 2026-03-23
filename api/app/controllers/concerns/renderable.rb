@@ -170,7 +170,16 @@ module Renderable
       loop do
         new_refs = Set.new
         browser_code_parts.each do |code|
+          # Match React.createElement(ComponentName) calls
           code.scan(/React\.createElement\(([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
+            new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
+          end
+          # Match bare component references in prop values (e.g. StartIconComponent: Plus)
+          code.scan(/Component:\s*([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
+            new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
+          end
+          # Match component default values in destructuring (e.g. StartIconComponent = Plus)
+          code.scan(/Component\s*=\s*([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
             new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
           end
         end
