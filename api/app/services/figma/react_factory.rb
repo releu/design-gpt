@@ -270,6 +270,15 @@ module Figma
         .gsub(/xmlns="[^"]*"/, "")
         .strip
 
+      # Extract intrinsic size from SVG attributes
+      w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
+      h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
+      style_obj = if w && h
+        "{ width: '#{w}px', height: '#{h}px', flexShrink: 0 }"
+      else
+        "{ flexShrink: 0 }"
+      end
+
       <<~CODE
         import React from 'react';
 
@@ -277,7 +286,7 @@ module Figma
 
         export function #{component_name}(props) {
           return (
-            <div data-component="#{component_name}" dangerouslySetInnerHTML={{__html: svg}} {...props} />
+            <div data-component="#{component_name}" style={#{style_obj}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
           );
         }
 
