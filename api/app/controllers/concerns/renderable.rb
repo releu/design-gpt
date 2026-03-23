@@ -176,6 +176,7 @@ module Renderable
         end
         break if new_refs.empty?
         resolved.merge(new_refs)
+        only.merge(new_refs)
         libraries.each do |cl|
           cl.component_sets.includes(:variants).each do |cs|
             react_name = to_component_name(cs.name)
