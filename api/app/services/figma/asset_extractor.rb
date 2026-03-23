@@ -6,7 +6,7 @@ module Figma
     end
 
     VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION ELLIPSE RECTANGLE LINE STAR POLYGON].freeze
-    CONTAINER_TYPES = %w[FRAME GROUP].freeze
+    CONTAINER_TYPES = %w[FRAME GROUP INSTANCE].freeze
 
     def extract_all
       puts "[AssetExtractor] Starting asset extraction"
@@ -201,10 +201,19 @@ module Figma
     def find_inline_vectors(node, file_key, result)
       return unless node.is_a?(Hash)
 
-      # INSTANCE nodes are rendered as component references by ReactFactory,
-      # not by walking their children — skip to avoid exporting thousands of
-      # redundant sub-node SVGs.
-      return if node["type"] == "INSTANCE"
+      # INSTANCE nodes are normally rendered as component references by
+      # ReactFactory.  However, unresolved instances (e.g. icons from an
+      # external library) fall back to inline rendering — if they look like
+      # vector frames, export them as SVGs so the factory can inline them.
+      if node["type"] == "INSTANCE"
+        if vector_frame?(node)
+          if node["id"]
+            result[file_key] ||= []
+            result[file_key] << node["id"] unless result[file_key].include?(node["id"])
+          end
+        end
+        return # never recurse into instance children
+      end
 
       node_id = node["id"]
 

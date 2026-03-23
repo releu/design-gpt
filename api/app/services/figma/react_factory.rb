@@ -1158,6 +1158,20 @@ module Figma
         return "<#{component_name}#{props_string} />"
       end
 
+      # Unresolved instance — check if it's a vector frame with an inline SVG
+      node_id = node["id"]
+      if vector_frame?(node) && @inline_svgs_by_node_id[node_id]
+        svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+        clean_svg = svg_content
+          .gsub(/<\?xml[^>]*\?>/, "")
+          .gsub(/xmlns="[^"]*"/, "")
+          .strip
+        styles = extract_frame_styles(node, false)
+        styles.delete("background")
+        css_rules[class_name] = styles
+        return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
+      end
+
       styles = extract_frame_styles(node, false)
       css_rules[class_name] = styles
 
