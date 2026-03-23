@@ -21,6 +21,8 @@ module Figma
       @pending_compilations = []
       @pending_variant_compilations = []
       @batch_mode = false
+      @unresolved_instances = Hash.new { |h, k| h[k] = Set.new }  # owner_node_id -> Set of instance names
+      @current_owner_node_id = nil  # tracks which component set/component we're generating for
     end
 
     def generate_all
@@ -54,6 +56,7 @@ module Figma
       component_sets = @figma_file.component_sets.to_a
       log "Generating React code for #{component_sets.size} component sets..."
       component_sets.each_with_index do |component_set, idx|
+        @current_owner_node_id = component_set.node_id
         generate_component_set(component_set)
         log "  [#{idx + 1}/#{component_sets.size}] #{component_set.name}" if (idx + 1) % 10 == 0 || idx == component_sets.size - 1
       end
@@ -61,11 +64,13 @@ module Figma
       components = @figma_file.components.to_a
       log "Generating React code for #{components.size} standalone components..."
       components.each_with_index do |component, idx|
+        @current_owner_node_id = component.node_id
         generate_component(component)
         log "  [#{idx + 1}/#{components.size}] #{component.name}" if (idx + 1) % 10 == 0 || idx == components.size - 1
       end
 
       batch_compile_and_persist
+      save_unresolved_warnings
 
       log "React code generation complete! Generated #{@generated.size} components"
       @generated
@@ -1135,6 +1140,31 @@ module Figma
         end
     end
 
+    def save_unresolved_warnings
+      return if @unresolved_instances.empty?
+
+      @unresolved_instances.each do |owner_node_id, instance_names|
+        names = instance_names.to_a.sort
+        warning = "Unresolved external components: #{names.join(', ')}. Add their source Figma file to the design system."
+
+        cs = @figma_file.component_sets.find_by(node_id: owner_node_id)
+        if cs
+          cs.update!(validation_warnings: (cs.validation_warnings || []) + [warning])
+          next
+        end
+
+        comp = @figma_file.components.find_by(node_id: owner_node_id)
+        comp&.update!(validation_warnings: (comp.validation_warnings || []) + [warning])
+      end
+
+      log "Added unresolved instance warnings to #{@unresolved_instances.size} components"
+    end
+
+    def track_unresolved_instance(component_id, instance_name)
+      return unless @current_owner_node_id
+      @unresolved_instances[@current_owner_node_id] << instance_name
+    end
+
     def generate_instance(node, root_name, class_name, css_rules, depth)
       component_id = node["componentId"]
 
@@ -1158,48 +1188,19 @@ module Figma
         return "<#{component_name}#{props_string} />"
       end
 
-      # Unresolved instance — check if it's a vector frame with an inline SVG.
-      # But skip if this instance is bound to an INSTANCE_SWAP prop — the SVG
-      # would be the component default, not the intended icon for this context.
-      bound_to_swap = false
-      swap_ref = node.dig("componentPropertyReferences", "mainComponent")
-      if swap_ref
-        defn = find_prop_definition(swap_ref)
-        bound_to_swap = defn&.dig("type") == "INSTANCE_SWAP"
-      end
-
-      node_id = node["id"]
-      if !bound_to_swap && @inline_pngs_by_node_id[node_id]
-        styles = extract_frame_styles(node, false)
-        css_rules[class_name] = styles
-        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@inline_pngs_by_node_id[node_id]}\"} />"
-      end
-      if !bound_to_swap && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
-        svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-        clean_svg = svg_content
-          .gsub(/<\?xml[^>]*\?>/, "")
-          .gsub(/xmlns="[^"]*"/, "")
-          .strip
-        styles = extract_frame_styles(node, false)
-        styles.delete("background")
-        css_rules[class_name] = styles
-        return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
-      end
+      # Unresolved instance — render a pink placeholder and track the warning
+      instance_name = node["name"] || "unknown"
+      track_unresolved_instance(component_id, instance_name)
 
       styles = extract_frame_styles(node, false)
+      bbox = node["absoluteBoundingBox"] || {}
+      w = bbox["width"]&.round
+      h = bbox["height"]&.round
+      styles["background"] = "#FF69B4"
+      styles["width"] = "#{w}px" if w
+      styles["height"] = "#{h}px" if h
       css_rules[class_name] = styles
-
-      children_jsx = (node["children"] || []).map do |child|
-        generate_node(child, root_name, css_rules, depth + 1)
-      end.join("\n")
-
-      if children_jsx.strip.empty?
-        "<div className=\"#{class_name}\" />"
-      else
-        indent = "  " * (depth + 2)
-        children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
-        "<div className=\"#{class_name}\">\n#{children_indented}\n#{"  " * (depth + 1)}</div>"
-      end
+      "<div className=\"#{class_name}\" title=\"Missing: #{escape_jsx(instance_name)}\" />"
     end
 
     def extract_instance_override_props(node, component_set, root_name = nil, css_rules = nil, depth = 0)
