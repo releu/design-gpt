@@ -510,6 +510,8 @@ namespace :pipeline do
         for (const { react_name, safe_name } of items) {
           await page.evaluate((rn) => {
             const root = document.getElementById('root');
+            // Unmount previous component cleanly to avoid removeChild errors
+            try { ReactDOM.unmountComponentAtNode(root); } catch(e) {}
             root.innerHTML = '';
             root.style.padding = '0';
             root.style.background = 'white';
