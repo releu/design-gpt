@@ -29,21 +29,37 @@ module Figma
       @batch_mode = true
       log "Starting React code generation for ComponentLibrary##{@figma_file.id}"
 
-      @figma_file.components.each do |component|
-        @components_by_node_id[component.node_id] = component
+      # Index current file + sibling files in the same design system
+      sibling_files = if @figma_file.design_system
+        @figma_file.design_system.current_figma_files
+      else
+        [@figma_file]
       end
 
-      @figma_file.component_sets.includes(:variants).each do |component_set|
-        @component_sets_by_node_id[component_set.node_id] = component_set
-        component_set.variants.each do |variant|
-          @variants_by_node_id[variant.node_id] = variant
-          if variant.figma_json.present?
-            collect_all_node_ids(variant.figma_json).each do |node_id|
-              @node_id_to_component_set[node_id] = component_set
+      @variants_by_component_key = {}
+
+      sibling_files.each do |ff|
+        ff.components.each do |component|
+          @components_by_node_id[component.node_id] = component
+        end
+
+        ff.component_sets.includes(:variants).each do |component_set|
+          @component_sets_by_node_id[component_set.node_id] = component_set
+          component_set.variants.each do |variant|
+            @variants_by_node_id[variant.node_id] = variant
+            @variants_by_component_key[variant.component_key] = variant if variant.component_key.present?
+            if variant.figma_json.present?
+              collect_all_node_ids(variant.figma_json).each do |node_id|
+                @node_id_to_component_set[node_id] = component_set
+              end
             end
           end
         end
       end
+
+      # Use stored component_key map for cross-file resolution
+      @component_key_by_node_id = @figma_file.component_key_map || {}
+      log "Loaded #{@component_key_by_node_id.size} component keys for cross-file resolution" if @component_key_by_node_id.any?
 
       log "Built lookup tables: #{@components_by_node_id.size} components, #{@component_sets_by_node_id.size} component sets, #{@variants_by_node_id.size} variants, #{@node_id_to_component_set.size} node mappings"
 
@@ -104,6 +120,7 @@ module Figma
 
       if svg_content
         code = generate_svg_component_code(component_name, svg_content)
+        compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
       else
         prop_definitions = component_set.prop_definitions || {}
         variant_prop_names = prop_definitions.select { |_, d| d["type"] == "VARIANT" }.keys
@@ -1186,6 +1203,17 @@ module Figma
         component_name = to_component_name(variant.component_set.name)
         props_string = extract_instance_override_props(node, variant.component_set, root_name, css_rules, depth)
         return "<#{component_name}#{props_string} />"
+      end
+
+      # Cross-file resolution: look up by component_key
+      comp_key = @component_key_by_node_id[component_id]
+      if comp_key
+        variant = @variants_by_component_key[comp_key]
+        if variant
+          component_name = to_component_name(variant.component_set.name)
+          props_string = extract_instance_override_props(node, variant.component_set, root_name, css_rules, depth)
+          return "<#{component_name}#{props_string} />"
+        end
       end
 
       # Unresolved instance — render a pink placeholder and track the warning

@@ -22,7 +22,10 @@ module Figma
       log "File: #{@file_name}"
 
       # Update design system with the file name and Figma's lastModified timestamp
-      @figma_file.update!(figma_file_name: @file_name, figma_last_modified: file["lastModified"])
+      # Store node_id -> component_key map for all components (enables cross-file resolution)
+      component_key_map = {}
+      (file["components"] || {}).each { |node_id, meta| component_key_map[node_id] = meta["key"] if meta["key"] }
+      @figma_file.update!(figma_file_name: @file_name, figma_last_modified: file["lastModified"], component_key_map: component_key_map)
 
       # 2. Collect component metadata from file
       component_sets_data, standalone_data = collect_components(file)
