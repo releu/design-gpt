@@ -1146,9 +1146,18 @@ module Figma
         return "<#{component_name}#{props_string} />"
       end
 
-      # Unresolved instance — check if it's a vector frame with an inline SVG
+      # Unresolved instance — check if it's a vector frame with an inline SVG.
+      # But skip if this instance is bound to an INSTANCE_SWAP prop — the SVG
+      # would be the component default, not the intended icon for this context.
+      bound_to_swap = false
+      swap_ref = node.dig("componentPropertyReferences", "mainComponent")
+      if swap_ref
+        defn = find_prop_definition(swap_ref)
+        bound_to_swap = defn&.dig("type") == "INSTANCE_SWAP"
+      end
+
       node_id = node["id"]
-      if vector_frame?(node) && @inline_svgs_by_node_id[node_id]
+      if !bound_to_swap && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
         svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
         clean_svg = svg_content
           .gsub(/<\?xml[^>]*\?>/, "")
