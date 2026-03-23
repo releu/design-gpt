@@ -86,12 +86,6 @@ module Figma
 
       component_name = to_component_name(component_set.name)
 
-      # Skip codegen if react_code was pre-populated (copied from previous version)
-      if default_variant.react_code.present? && default_variant.react_code_compiled.present?
-        @generated[component_set.node_id] = { name: component_name, code: default_variant.react_code, compiled_code: default_variant.react_code_compiled, node_id: component_set.node_id, type: :component_set }
-        return @generated[component_set.node_id]
-      end
-
       if component_set.is_image
         code = generate_image_component_code(component_name)
         compiled_code = defer_or_compile(code, component_name, "cs_#{component_set.id}", default_variant)
@@ -166,12 +160,6 @@ module Figma
       return nil unless figma.present?
 
       component_name = to_component_name(component.name)
-
-      # Skip codegen if react_code was pre-populated (copied from previous version)
-      if component.react_code.present? && component.react_code_compiled.present?
-        @generated[component.node_id] = { name: component_name, code: component.react_code, compiled_code: component.react_code_compiled, node_id: component.node_id }
-        return @generated[component.node_id]
-      end
 
       if component.is_image
         code = generate_image_component_code(component_name)
