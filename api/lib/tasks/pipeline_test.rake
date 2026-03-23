@@ -421,15 +421,22 @@ namespace :pipeline do
     figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
 
     # Collect default variant node_ids for component sets
+    # Extract the actual React name from compiled code (the var X = function declaration)
     components = []
     ff_main.component_sets.order(:name).each do |cs|
       v = cs.default_variant
-      next unless v&.react_code_compiled.present?
-      react_name = to_component_name(cs.name)
+      compiled = v&.react_code_compiled
+      next unless compiled.present?
+      # Extract: var ComponentName = function or var ComponentName_cs_NNN__vN = function
+      react_name = compiled.match(/var\s+([A-Z][a-zA-Z0-9_]*)\s*=\s*function/)&.captures&.first
+      # For multi-variant, use the dispatcher name (without _cs_NNN__vN suffix)
+      react_name = react_name&.sub(/_cs_\d+__v\d+$/, "")
+      next unless react_name
       components << { name: cs.name, react_name: react_name, node_id: v.node_id, file_key: cs.figma_file_key, type: "set" }
     end
     ff_main.components.where.not(react_code_compiled: [nil, ""]).order(:name).each do |c|
-      react_name = to_component_name(c.name)
+      react_name = c.react_code_compiled.match(/var\s+([A-Z][a-zA-Z0-9_]*)\s*=\s*function/)&.captures&.first
+      next unless react_name
       components << { name: c.name, react_name: react_name, node_id: c.node_id, file_key: c.figma_file_key, type: "comp" }
     end
 
@@ -513,8 +520,12 @@ namespace :pipeline do
           await page.waitForTimeout(200);
 
           try {
-            const el = await page.locator('[data-component="' + react_name + '"]').first();
-            await el.waitFor({ timeout: 1000 });
+            // Try data-component first, then any first child of root
+            let el = page.locator('[data-component]').first();
+            try { await el.waitFor({ timeout: 500 }); } catch(e) {
+              el = page.locator('#root > *').first();
+              await el.waitFor({ timeout: 500 });
+            }
             const box = await el.boundingBox();
             if (box && box.width > 0 && box.height > 0) {
               await el.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
@@ -571,8 +582,42 @@ namespace :pipeline do
 
   def pixel_diff(path_a, path_b, diff_path)
     FileUtils.mkdir_p(File.dirname(diff_path))
-    result = Figma::VisualDiff.new.send(:pixel_diff, path_a, path_b, diff_path)
-    result[:diff_pixels] || 999999
+
+    img1 = ChunkyPNG::Image.from_file(path_a)
+    img2 = ChunkyPNG::Image.from_file(path_b)
+
+    w = [img1.width, img2.width].min
+    h = [img1.height, img2.height].min
+
+    img1 = img1.crop(0, 0, w, h) if img1.width != w || img1.height != h
+    img2 = img2.crop(0, 0, w, h) if img2.width != w || img2.height != h
+
+    diff_image = ChunkyPNG::Image.new(w, h, ChunkyPNG::Color::TRANSPARENT)
+    diff_pixels = 0
+    threshold = 30
+
+    h.times do |y|
+      w.times do |x|
+        c1 = img1[x, y]
+        c2 = img2[x, y]
+        dr = (ChunkyPNG::Color.r(c1) - ChunkyPNG::Color.r(c2)).abs
+        dg = (ChunkyPNG::Color.g(c1) - ChunkyPNG::Color.g(c2)).abs
+        db = (ChunkyPNG::Color.b(c1) - ChunkyPNG::Color.b(c2)).abs
+
+        if dr > threshold || dg > threshold || db > threshold
+          diff_pixels += 1
+          diff_image[x, y] = ChunkyPNG::Color.rgba(255, 0, 0, 180)
+        else
+          r = (ChunkyPNG::Color.r(c1) * 0.3).to_i
+          g = (ChunkyPNG::Color.g(c1) * 0.3).to_i
+          b = (ChunkyPNG::Color.b(c1) * 0.3).to_i
+          diff_image[x, y] = ChunkyPNG::Color.rgba(r, g, b, 255)
+        end
+      end
+    end
+
+    diff_image.save(diff_path)
+    diff_pixels
   rescue => e
     puts "    WARN: pixel_diff failed for #{File.basename(path_a)}: #{e.message}"
     999999
