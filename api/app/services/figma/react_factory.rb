@@ -270,7 +270,7 @@ module Figma
         .gsub(/xmlns="[^"]*"/, "")
         .strip
 
-      # Extract intrinsic size from SVG attributes
+      # Extract intrinsic size from SVG attributes for default sizing
       w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
       h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
       style_obj = if w && h
@@ -731,12 +731,24 @@ module Figma
         return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@inline_pngs_by_node_id[node_id]}\"} />"
       end
       if !is_root && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
-        svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-        clean_svg = svg_content
-          .gsub(/<\?xml[^>]*\?>/, "")
-          .gsub(/xmlns="[^"]*"/, "")
-          .strip
-        return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
+        # Don't inline SVG if frame contains resolvable INSTANCE children —
+        # those should render as component references (e.g. <ChevronDown />)
+        has_resolvable_instance = (node["children"] || []).any? { |child|
+          child["type"] == "INSTANCE" && child["componentId"] && (
+            @components_by_node_id[child["componentId"]] ||
+            @component_sets_by_node_id[child["componentId"]] ||
+            @variants_by_node_id[child["componentId"]] ||
+            (@component_key_by_node_id[child["componentId"]] && @variants_by_component_key[@component_key_by_node_id[child["componentId"]]])
+          )
+        }
+        unless has_resolvable_instance
+          svg_content = @inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+          clean_svg = svg_content
+            .gsub(/<\?xml[^>]*\?>/, "")
+            .gsub(/xmlns="[^"]*"/, "")
+            .strip
+          return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
+        end
       end
 
       uses_absolute = !node["layoutMode"] && (node["children"] || []).any?

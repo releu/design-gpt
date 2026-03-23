@@ -520,12 +520,15 @@ namespace :pipeline do
           await page.waitForTimeout(200);
 
           try {
-            // Try data-component first, then any first child of root
+            // Try data-component first, then any visible non-style child of root
             let el = page.locator('[data-component]').first();
-            try { await el.waitFor({ timeout: 500 }); } catch(e) {
-              el = page.locator('#root > *').first();
-              await el.waitFor({ timeout: 500 });
+            let found = false;
+            try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
+            if (!found) {
+              el = page.locator('#root > div, #root > span, #root > img').first();
+              try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
             }
+            if (!found) { results[safe_name] = { error: 'no_element' }; continue; }
             const box = await el.boundingBox();
             if (box && box.width > 0 && box.height > 0) {
               await el.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
@@ -534,7 +537,7 @@ namespace :pipeline do
               results[safe_name] = { error: 'zero_size' };
             }
           } catch(e) {
-            results[safe_name] = { error: 'no_element' };
+            results[safe_name] = { error: e.message.substring(0, 100) };
           }
         }
 
