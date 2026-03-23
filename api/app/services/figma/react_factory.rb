@@ -1380,9 +1380,10 @@ module Figma
         end
       end.compact
 
-      # Preprocess per-variant snippets
+      # Preprocess per-variant snippets (use unique key, not shared component_id,
+      # so styles/svg variables don't collide across variants in browser scope)
       variant_snippets = @pending_variant_compilations.map do |entry|
-        preprocessed = preprocess_for_browser(entry[:code], entry[:component_name], entry[:component_id])
+        preprocessed = preprocess_for_browser(entry[:code], entry[:component_name], entry[:key])
         { key: entry[:key], code: preprocessed }
       end
 
@@ -1528,7 +1529,7 @@ module Figma
             component_id: component_id
           }
         else
-          compiled = compile_for_browser(per_variant_code, component_name, component_id)
+          compiled = compile_for_browser(per_variant_code, component_name, "#{component_id}_v#{entry[:index]}")
           entry[:variant_record].update!(react_code_compiled: compiled)
         end
       end
