@@ -648,13 +648,12 @@ module Figma
         when "SLOT"
           @has_slot = true
           slot_name = @slot_map[node["id"]] || "children"
-          if node["layoutMode"]
-            styles = extract_frame_styles(node, false)
-            css_rules[class_name] = styles
-            "<div className=\"#{class_name}\">{props.#{slot_name}}</div>"
-          else
-            "{props.#{slot_name}}"
-          end
+          styles = extract_frame_styles(node, false)
+          # Ensure slot content respects parent flex layout
+          styles["min-width"] = "0" if styles["flex-grow"] || styles["align-self"]
+          styles["overflow"] = "hidden" if styles["flex-grow"]
+          css_rules[class_name] = styles
+          "<div className=\"#{class_name}\">{props.#{slot_name}}</div>"
         when "INSTANCE"
           ref = node["componentPropertyReferences"]&.dig("mainComponent")
           if @is_list_component && ref && instance_swap_ref?(ref)
