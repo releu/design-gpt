@@ -1299,6 +1299,17 @@ module Figma
           child_props = extract_instance_override_props(child_node, ref_variant.component_set, root_name, css_rules, depth)
           return "<#{name}#{child_props} />"
         end
+
+        # Cross-file resolution via component_key
+        comp_key = @component_key_by_node_id[child_component_id]
+        if comp_key
+          ref_variant = @variants_by_component_key[comp_key]
+          if ref_variant
+            name = to_component_name(ref_variant.component_set.name)
+            child_props = extract_instance_override_props(child_node, ref_variant.component_set, root_name, css_rules, depth)
+            return "<#{name}#{child_props} />"
+          end
+        end
       end
 
       # Detached: render children inline
