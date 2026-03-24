@@ -3,10 +3,12 @@
 # Factory methods ensure consistent shape across Resolver and Emitter.
 module Figma
   module IR
-    def self.frame(node_id:, name:, styles:, children:, visible: true, visibility_prop: nil, data_component: nil)
+    def self.frame(node_id:, name:, styles:, children:, visible: true, visibility_prop: nil,
+                    data_component: nil, uses_absolute: false, child_positions: {})
       { kind: :frame, node_id: node_id, name: name, styles: styles,
         children: children, visible: visible, visibility_prop: visibility_prop,
-        data_component: data_component }
+        data_component: data_component, uses_absolute: uses_absolute,
+        child_positions: child_positions }
     end
 
     def self.text(node_id:, name:, styles:, text_content: nil, text_prop: nil, visible: true, visibility_prop: nil)
@@ -57,6 +59,34 @@ module Figma
     def self.unresolved(node_id:, name:, styles:, instance_name:, visible: true)
       { kind: :unresolved, node_id: node_id, name: name, styles: styles,
         instance_name: instance_name, visible: visible }
+    end
+
+    # Detached instance resolved to a known component (with optional props)
+    def self.detached_ref(node_id:, name:, component_name:, props_parts: [],
+                          swap_component_name: nil, visible: true, visibility_prop: nil)
+      { kind: :detached_ref, node_id: node_id, name: name,
+        component_name: component_name, props_parts: props_parts,
+        swap_component_name: swap_component_name,
+        visible: visible, visibility_prop: visibility_prop }
+    end
+
+    # Detached instance resolved to SVG content
+    def self.detached_svg(node_id:, name:, styles:, svg_content:, visible: true, visibility_prop: nil)
+      { kind: :detached_svg, node_id: node_id, name: name, styles: styles,
+        svg_content: svg_content,
+        visible: visible, visibility_prop: visibility_prop }
+    end
+
+    # SLOT Figma type node (not INSTANCE_SWAP slot)
+    def self.figma_slot(node_id:, name:, prop_name:, styles:, visible: true, visibility_prop: nil)
+      { kind: :figma_slot, node_id: node_id, name: name, prop_name: prop_name,
+        styles: styles, visible: visible, visibility_prop: visibility_prop }
+    end
+
+    # List-component deduplicated slot (renders once, then empty)
+    def self.list_slot(node_id:, name:, prop_name:, visible: true, visibility_prop: nil)
+      { kind: :list_slot, node_id: node_id, name: name, prop_name: prop_name,
+        visible: visible, visibility_prop: visibility_prop }
     end
 
     # Top-level wrapper for a resolved component

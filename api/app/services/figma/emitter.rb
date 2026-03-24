@@ -14,29 +14,18 @@ module Figma
       @class_index = 0
       @css_rules = {}
       @has_slot = false
-      @current_props = {}
-      @prop_definitions = {}
-      @slot_map = {}
-      @nested_instance_props = {}
-      @is_list_component = false
-      @rendered_list_slots = []
     end
 
-    # Set mutable state before generating a component
-    def configure(current_props:, prop_definitions:, slot_map:, nested_instance_props:,
-                  is_list_component: false, rendered_list_slots: [])
-      @current_props = current_props
-      @prop_definitions = prop_definitions
-      @slot_map = slot_map
-      @nested_instance_props = nested_instance_props
-      @is_list_component = is_list_component
-      @rendered_list_slots = rendered_list_slots
-      @class_index = 0
-      @css_rules = {}
-      @has_slot = false
-    end
+    # --- IR-based emission ---
 
-    # --- IR-based emission (for standalone emitter tests) ---
+    # Top-level: emit a full component code string from an IR.component
+    def emit(ir)
+      case ir[:kind]
+      when :component then emit_component(ir)
+      when :multi_variant then emit_multi_variant(ir)
+      else raise "Unknown IR kind for emit: #{ir[:kind]}"
+      end
+    end
 
     def emit_node(ir_node, depth = 0, is_root: false)
       return "" unless ir_node
@@ -52,6 +41,9 @@ module Figma
       when :svg_inline then emit_svg_inline(ir_node, depth)
       when :png_inline then emit_png_inline(ir_node, depth)
       when :unresolved then emit_unresolved(ir_node, depth)
+      when :detached_ref then emit_detached_ref(ir_node)
+      when :detached_svg then emit_detached_svg(ir_node)
+      when :figma_slot then emit_figma_slot(ir_node)
       else ""
       end
 
@@ -68,426 +60,296 @@ module Figma
       jsx
     end
 
-    # --- Figma JSON-based generation (moved from ReactFactory) ---
+    # --- Full component emission from IR ---
 
-    def generate_node(node, root_name, css_rules, depth, is_root = false)
-      return "" unless node.is_a?(Hash)
+    def emit_component(ir)
+      @component_name = ir[:react_name]
+      @class_index = 0
+      @css_rules = {}
+      @has_slot = ir[:has_slot]
 
-      prop_refs = node["componentPropertyReferences"] || {}
-      visibility_ref = prop_refs["visible"]
-
-      if visibility_ref
-        prop = @resolver.find_prop_for_reference(visibility_ref, @current_props)
-        if prop
-          if prop[:type] != "BOOLEAN"
-            return "" if node["visible"] == false
-          end
-        else
-          return "" if node["visible"] == false
-        end
-      else
-        return "" if node["visible"] == false
+      if ir[:is_image]
+        return generate_image_component_code(ir[:react_name])
       end
 
-      type = node["type"]
-      name = node["name"] || "element"
-
-      class_name = generate_class_name_legacy(root_name, name, is_root)
-
-      jsx = if node["_detached"] && node["_was_instance"]
-        generate_detached_instance(node, root_name, class_name, css_rules, depth)
-      else
-        case type
-        when "COMPONENT", "COMPONENT_SET", "FRAME", "GROUP"
-          generate_frame(node, root_name, class_name, css_rules, depth, is_root)
-        when "TEXT"
-          generate_text_node(node, root_name, class_name, css_rules, depth)
-        when *VECTOR_TYPES
-          generate_shape_node(node, root_name, class_name, css_rules, depth)
-        when "SLOT"
-          @has_slot = true
-          slot_name = @slot_map[node["id"]] || "children"
-          styles = extract_frame_styles(node, false)
-          styles["min-width"] = "0" if styles["flex-grow"] || styles["align-self"]
-          styles["overflow"] = "hidden" if styles["flex-grow"]
-          css_rules[class_name] = styles
-          "<div className=\"#{class_name}\">{props.#{slot_name}}</div>"
-        when "INSTANCE"
-          ref = node["componentPropertyReferences"]&.dig("mainComponent")
-          if @is_list_component && ref && @resolver.instance_swap_ref?(ref, @prop_definitions)
-            if @rendered_list_slots.include?(ref)
-              ""
-            else
-              @rendered_list_slots << ref
-              @has_slot = true
-              slot_name = @slot_map[node["id"]] || "children"
-              "{props.#{slot_name}}"
-            end
-          elsif @resolver.image_swap_instance?(node, @prop_definitions)
-            ref = node["componentPropertyReferences"]["mainComponent"]
-            prop_name = @resolver.to_prop_name(@resolver.strip_ref_suffix(ref))
-            styles = extract_frame_styles(node, false) rescue {}
-            css_rules[class_name] = styles if styles.any?
-            wrap_class = styles.any? ? " className=\"#{class_name}\"" : ""
-            "<div#{wrap_class} style={{width: '100%', height: '100%', backgroundImage: props.#{prop_name} ? `url(https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(props.#{prop_name})})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center'}} />"
-          elsif @resolver.slot_instance?(node, @prop_definitions)
-            @has_slot = true
-            slot_name = @slot_map[node["id"]] || "children"
-            "{props.#{slot_name}}"
-          elsif (swap_prop = @resolver.instance_swap_prop_name(node, @prop_definitions))
-            overrides = @resolver.extract_instance_style_overrides(node)
-            if overrides.any?
-              style_pairs = overrides.map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
-              "{#{swap_prop} && <#{swap_prop} style={{#{style_pairs}}} />}"
-            else
-              "{#{swap_prop} && <#{swap_prop} />}"
-            end
-          else
-            generate_instance(node, root_name, class_name, css_rules, depth)
-          end
-        else
-          generate_frame(node, root_name, class_name, css_rules, depth, is_root)
-        end
+      if ir[:is_svg]
+        return generate_svg_component_code(ir[:react_name], ir[:svg_content])
       end
 
-      if visibility_ref
-        prop = @resolver.find_prop_for_reference(visibility_ref, @current_props)
-        if prop && prop[:type] == "BOOLEAN"
-          if jsx.start_with?("{") && jsx.end_with?("}")
-            inner_expr = jsx[1..-2]
-            jsx = "{#{prop[:name]} && (#{inner_expr})}"
-          else
-            jsx = "{#{prop[:name]} && (#{jsx})}"
-          end
-        end
-      end
+      jsx = emit_node(ir[:tree], 0, is_root: true)
+      css = generate_css(@css_rules)
 
-      jsx
+      imports = (ir[:imports] || []).join("\n")
+      all_props = (ir[:props] || {}).merge(ir[:nested_props] || {})
+
+      build_component_code(ir[:react_name], imports, css, jsx, all_props, has_slot: @has_slot)
     end
 
-    def generate_frame(node, root_name, class_name, css_rules, depth, is_root = false)
-      styles = extract_frame_styles(node, is_root)
-      css_rules[class_name] = styles
+    def emit_multi_variant(ir)
+      component_name = ir[:react_name]
+      variant_prop_names = ir[:variant_prop_names]
+      prop_definitions = ir[:prop_definitions]
+      all_imports = []
 
-      node_id = node["id"]
-      if !is_root && @resolver.inline_pngs_by_node_id[node_id]
-        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@resolver.inline_pngs_by_node_id[node_id]}\"} />"
-      end
-      if !is_root && vector_frame?(node) && @resolver.inline_svgs_by_node_id[node_id]
-        has_resolvable_instance = (node["children"] || []).any? { |child|
-          child["type"] == "INSTANCE" && child["componentId"] && (
-            @resolver.components_by_node_id[child["componentId"]] ||
-            @resolver.component_sets_by_node_id[child["componentId"]] ||
-            @resolver.variants_by_node_id[child["componentId"]] ||
-            (@resolver.component_key_by_node_id[child["componentId"]] && @resolver.variants_by_component_key[@resolver.component_key_by_node_id[child["componentId"]]])
+      variant_entries = ir[:variants].map do |v_ir|
+        @component_name = component_name
+        @class_index = 0
+        @css_rules = {}
+        @has_slot = v_ir[:has_slot]
+
+        scope_id = "#{component_name.downcase.gsub(/[^a-z0-9]/, "")}v#{v_ir[:index]}"
+
+        jsx = emit_node(v_ir[:tree], 0, is_root: true)
+        css = generate_css(@css_rules)
+
+        scoped_css = css.gsub(/^\.([a-z0-9_-]+)/i) { ".#{scope_id}-#{$1}" }
+        scoped_jsx = jsx.gsub(/className="([^"]+)"/) { "className=\"#{scope_id}-#{$1}\"" }
+
+        variant_classes = variant_prop_names.filter_map do |prop_key|
+          clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+          prop_css = clean_key.downcase.gsub(/\s+/, "_").gsub(/[^a-z0-9_]/, "")
+          val = v_ir[:variant_properties][clean_key.downcase]
+          next nil if val.blank?
+          val_css = val.downcase.gsub(/\s+/, "_").gsub(/[^a-z0-9_]/, "")
+          "#{component_name}__#{prop_css}_#{val_css}"
+        end.join(" ")
+
+        if variant_classes.present?
+          scoped_jsx = scoped_jsx.sub(
+            /className="(#{Regexp.escape(scope_id)}-root)"/,
+            "className=\"\\1 #{variant_classes}\""
           )
+        end
+
+        imports_str = (v_ir[:imports] || []).join("\n")
+        all_imports << imports_str if imports_str.present?
+
+        {
+          index: v_ir[:index],
+          func_name: "#{component_name}__v#{v_ir[:index]}",
+          css: scoped_css,
+          jsx: scoped_jsx,
+          variant_properties: v_ir[:variant_properties],
+          props: v_ir[:props],
+          has_slot: v_ir[:has_slot],
+          is_default: v_ir[:variant_record]&.is_default,
+          variant_record: v_ir[:variant_record],
+          imports: imports_str
         }
-        unless has_resolvable_instance
-          svg_content = @resolver.inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-          clean_svg = svg_content
-            .gsub(/<\?xml[^>]*\?>/, "")
-            .gsub(/xmlns="[^"]*"/, "")
-            .strip
-          return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
-        end
       end
 
-      uses_absolute = !node["layoutMode"] && (node["children"] || []).any?
+      { variant_entries: variant_entries, all_imports: all_imports }
+    end
 
-      children_jsx = (node["children"] || []).map.with_index do |child, idx|
-        child_jsx = generate_node(child, root_name, css_rules, depth + 1)
+    # --- Code generation helpers (used by emit_component / emit_multi_variant) ---
 
-        if child_jsx.present? && uses_absolute
-          child_styles = extract_absolute_position(child, node)
-          if child_styles.any?
-            wrapper_class = "#{class_name}-pos-#{idx}"
-            css_rules[wrapper_class] = child_styles.merge("position" => "absolute")
-            child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
-          end
-        end
+    def generate_image_component_code(component_name)
+      <<~CODE
+        import React from 'react';
 
-        child_jsx
-      end.compact.join("\n")
+        export function #{component_name}({ prompt, ...props }) {
+          const src = prompt
+            ? `https://design-gpt.xyz/api/images/render?prompt=${encodeURIComponent(prompt)}`
+            : '';
+          return (
+            <div
+              data-component="#{component_name}"
+              style={{
+                width: '100%', height: '100%',
+                backgroundImage: src ? `url(${src})` : 'none',
+                backgroundSize: 'cover', backgroundPosition: 'center',
+              }}
+              {...props}
+            />
+          );
+        }
 
-      indent = "  " * (depth + 2)
-      children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
+        export default #{component_name};
+      CODE
+    end
 
-      data_attr = is_root ? " data-component=\"#{root_name}\"" : ""
+    def generate_svg_component_code(component_name, svg_content)
+      safe_svg = svg_content.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+      clean_svg = safe_svg
+        .gsub(/<\?xml[^>]*\?>/, "")
+        .gsub(/xmlns="[^"]*"/, "")
+        .strip
 
-      if children_jsx.strip.empty?
-        "<div className=\"#{class_name}\"#{data_attr} />"
+      clean_svg = clean_svg
+        .gsub(/fill="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'fill="currentColor"')
+        .gsub(/stroke="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'stroke="currentColor"')
+
+      w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
+      h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
+      style_obj = if w && h
+        "{ width: '#{w}px', height: '#{h}px', flexShrink: 0 }"
       else
-        "<div className=\"#{class_name}\"#{data_attr}>\n#{children_indented}\n#{"  " * (depth + 1)}</div>"
+        "{ flexShrink: 0 }"
       end
+
+      <<~CODE
+        import React from 'react';
+
+        const svg = `#{clean_svg.gsub('`', '\\`')}`;
+
+        export function #{component_name}(props) {
+          return (
+            <div data-component="#{component_name}" style={#{style_obj}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
+          );
+        }
+
+        export default #{component_name};
+      CODE
     end
 
-    def generate_text_node(node, root_name, class_name, css_rules, depth)
-      styles = extract_text_styles(node)
-      css_rules[class_name] = styles
+    def build_component_code(component_name, imports, css, jsx, props = {}, has_slot: false)
+      imports_section = imports.present? ? "#{imports}\n" : ""
+      scope_id = component_name.downcase.gsub(/[^a-z0-9]/, "")
 
-      text = node["characters"] || ""
+      scoped_css = css.gsub(/^\.([a-z0-9_-]+)/i) { ".#{scope_id}-#{$1}" }
+      scoped_jsx = jsx.gsub(/className="([^"]+)"/) { "className=\"#{scope_id}-#{$1}\"" }
 
-      prop_refs = node["componentPropertyReferences"] || {}
-      characters_ref = prop_refs["characters"]
+      props_with_defaults = generate_props_destructuring(props)
 
-      if characters_ref
-        prop = @resolver.find_prop_for_reference(characters_ref, @current_props)
-        if prop && prop[:type] == "TEXT"
-          return "<span className=\"#{class_name}\">{#{prop[:name]}}</span>"
-        end
-      end
+      children_line = ""
 
-      escaped_text = escape_jsx(text)
-      "<span className=\"#{class_name}\">#{escaped_text}</span>"
+      <<~CODE
+        import React from 'react';
+        #{imports_section}
+        const styles = `
+        #{scoped_css}
+        `;
+
+        export function #{component_name}(#{props_with_defaults}) {
+          return (
+            <>
+              <style>{styles}</style>
+              #{scoped_jsx}#{children_line}
+            </>
+          );
+        }
+
+        export default #{component_name};
+      CODE
     end
 
-    def generate_shape_node(node, root_name, class_name, css_rules, depth)
-      styles = extract_shape_styles(node)
+    def generate_props_destructuring(props)
+      return "props" if props.empty?
 
-      node_id = node["id"]
-      if @resolver.inline_pngs_by_node_id[node_id]
-        css_rules[class_name] = styles
-        return "<img className=\"#{class_name}\" src={\"data:image/png;base64,#{@resolver.inline_pngs_by_node_id[node_id]}\"} />"
-      end
-      if @resolver.inline_svgs_by_node_id[node_id]
-        svg_content = @resolver.inline_svgs_by_node_id[node_id].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-        clean_svg = svg_content
-          .gsub(/<\?xml[^>]*\?>/, "")
-          .gsub(/xmlns="[^"]*"/, "")
-          .strip
-        styles.delete("background")
-        css_rules[class_name] = styles
-        return "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
-      end
+      usable_props = props.values.select { |p| %w[TEXT BOOLEAN INSTANCE_SWAP].include?(p[:type]) }
+      return "props" if usable_props.empty?
 
-      css_rules[class_name] = styles
-      "<div className=\"#{class_name}\" />"
-    end
-
-    def generate_detached_instance(node, root_name, class_name, css_rules, depth)
-      original_component_id = node["_original_component_id"]
-      name = node["name"] || "icon"
-
-      prop_refs = node["componentPropertyReferences"] || {}
-      main_component_ref = prop_refs["mainComponent"]
-
-      component_set = @resolver.find_component_set_for_detached(node)
-
-      if component_set
-        component_name = to_component_name(component_set.name)
-        instance_key = node["_instance_key"]
-
-        if instance_key
-          props_parts = []
-          prop_definitions = component_set.prop_definitions || {}
-
-          prop_definitions.each do |key, definition|
-            if definition["type"] == "TEXT"
-              clean_name = key.gsub(/#[\d:]+$/, "").strip
-              original_prop_name = @resolver.to_prop_name(clean_name)
-              namespaced_prop_name = "#{instance_key}#{original_prop_name.sub(/^(\w)/) { $1.upcase }}"
-              if @nested_instance_props[namespaced_prop_name]
-                props_parts << "#{original_prop_name}={#{namespaced_prop_name}}"
-              end
-            elsif definition["type"] == "INSTANCE_SWAP"
-              clean_name = key.gsub(/#[\d:]+$/, "").strip.gsub(/^[\s\u21B3]+/, "")
-              original_prop_name = @resolver.to_prop_name(clean_name)
-              original_component_name = original_prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
-              namespaced_prop_name = "#{instance_key}#{original_component_name}"
-              if @nested_instance_props[namespaced_prop_name]
-                props_parts << "#{original_component_name}={#{namespaced_prop_name}}"
-              end
-            end
-          end
-
-          props_string = props_parts.empty? ? "" : " " + props_parts.join(" ")
-        else
-          overridden_props = @resolver.extract_overridden_props(node, component_set)
-          props_string = overridden_props.map { |k, v| "#{k}={#{v}}" }.join(" ")
-          props_string = " " + props_string unless props_string.empty?
-        end
-
-        if main_component_ref
-          prop = @resolver.find_prop_for_reference(main_component_ref, @current_props)
-          if prop && prop[:type] == "INSTANCE_SWAP"
-            prop_component_name = prop[:name].sub(/^(\w)/) { $1.upcase } + "Component"
-            return "{#{prop_component_name} ? <#{prop_component_name}#{props_string} /> : <#{component_name}#{props_string} />}"
-          end
-        end
-
-        return "<#{component_name}#{props_string} />"
-      end
-
-      svg_content = @resolver.find_svg_for_detached(node)
-
-      if svg_content
-        styles = extract_frame_styles(node, false)
-        css_rules[class_name] = styles.merge(
-          "display" => "inline-flex",
-          "align-items" => "center",
-          "justify-content" => "center"
-        )
-
-        safe_svg = svg_content.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
-        clean_svg = safe_svg
-          .gsub(/<\?xml[^>]*\?>/, "")
-          .gsub(/xmlns="[^"]*"/, "")
-          .gsub(/class="/, "className=\"")
-          .strip
-
-        "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
-      else
-        styles = extract_frame_styles(node, false)
-        css_rules[class_name] = styles
-        "<div className=\"#{class_name}\" />"
-      end
-    end
-
-    def generate_instance(node, root_name, class_name, css_rules, depth)
-      component_id = node["componentId"]
-
-      referenced = @resolver.components_by_node_id[component_id]
-      if referenced
-        component_name = to_component_name(referenced.name)
-        return "<#{component_name} />"
-      end
-
-      referenced_set = @resolver.component_sets_by_node_id[component_id]
-      if referenced_set
-        component_name = to_component_name(referenced_set.name)
-        props_string = extract_instance_override_props(node, referenced_set, root_name, css_rules, depth)
-        return "<#{component_name}#{props_string} />"
-      end
-
-      variant = @resolver.variants_by_node_id[component_id]
-      if variant
-        component_name = to_component_name(variant.component_set.name)
-        props_string = extract_instance_override_props(node, variant.component_set, root_name, css_rules, depth)
-        return "<#{component_name}#{props_string} />"
-      end
-
-      comp_key = @resolver.component_key_by_node_id[component_id]
-      if comp_key
-        variant = @resolver.variants_by_component_key[comp_key]
-        if variant
-          component_name = to_component_name(variant.component_set.name)
-          props_string = extract_instance_override_props(node, variant.component_set, root_name, css_rules, depth)
-          return "<#{component_name}#{props_string} />"
-        end
-      end
-
-      instance_name = node["name"] || "unknown"
-      @resolver.track_unresolved_instance(component_id, instance_name)
-
-      styles = extract_frame_styles(node, false)
-      bbox = node["absoluteBoundingBox"] || {}
-      w = bbox["width"]&.round
-      h = bbox["height"]&.round
-      styles["background"] = "#FF69B4"
-      styles["width"] = "#{w}px" if w
-      styles["height"] = "#{h}px" if h
-      css_rules[class_name] = styles
-      "<div className=\"#{class_name}\" title=\"Missing: #{escape_jsx(instance_name)}\" />"
-    end
-
-    def extract_instance_override_props(node, component_set, root_name = nil, css_rules = nil, depth = 0)
-      component_properties = node["componentProperties"]
-      return "" unless component_properties.is_a?(Hash) && component_properties.any?
-
-      prop_definitions = component_set.prop_definitions || {}
-      props_parts = []
-
-      children_by_swap_ref = {}
-      (node["children"] || []).each do |child|
-        ref = child.dig("componentPropertyReferences", "mainComponent")
-        children_by_swap_ref[ref] = child if ref
-      end
-
-      component_properties.each do |key, prop_data|
-        prop_type = prop_data["type"]
-        value = prop_data["value"]
-
-        clean_key = key.gsub(/#[\d:]+$/, "").strip
-        matching_def_key = prop_definitions.keys.find { |dk| dk.gsub(/#[\d:]+$/, "").strip == clean_key }
-        definition = matching_def_key ? prop_definitions[matching_def_key] : nil
-
-        next if definition && definition["defaultValue"].to_s == value.to_s
-
-        prop_name = @resolver.to_prop_name(clean_key.gsub(/^[\s\u21B3]+/, "").strip)
-
-        case prop_type
-        when "VARIANT"
-          props_parts << "#{prop_name}=\"#{value}\""
+      defaults = usable_props.map do |prop|
+        default = case prop[:type]
+        when "TEXT"
+          escaped_default = prop[:default_value].to_s.gsub('"', '\\"').gsub("\n", "\\n")
+          "\"#{escaped_default}\""
         when "BOOLEAN"
-          props_parts << "#{prop_name}={#{value}}"
+          prop[:default_value].to_s
         when "INSTANCE_SWAP"
-          preferred = definition&.dig("preferredValues") || []
-          if preferred.empty?
-            child_node = children_by_swap_ref[key]
-            next unless child_node
-            comp_name = @resolver.resolve_instance_component_name(child_node)
-            next unless comp_name
-            component_prop_name = prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
-            props_parts << "#{component_prop_name}={#{comp_name}}"
-          else
-            next unless root_name && css_rules
-            child_node = children_by_swap_ref[key]
-            next unless child_node
-            child_jsx = render_instance_swap_child(child_node, root_name, css_rules, depth)
-            next if child_jsx.blank?
-            props_parts << "#{prop_name}={#{child_jsx}}"
-          end
+          prop[:default_value] || "null"
+        else
+          "undefined"
+        end
+
+        if prop[:instance_key]
+          "#{prop[:name]} = #{default}"
+        elsif prop[:type] == "INSTANCE_SWAP"
+          prop_name = prop[:name].sub(/^(\w)/) { $1.upcase } + "Component"
+          "#{prop_name} = #{default}"
+        else
+          "#{prop[:name]} = #{default}"
         end
       end
 
-      props_parts.empty? ? "" : " " + props_parts.join(" ")
+      "{ #{defaults.join(', ')}, ...props }"
     end
 
-    def render_instance_swap_child(child_node, root_name, css_rules, depth)
-      child_component_id = child_node["componentId"]
-      if child_component_id
-        ref_comp = @resolver.components_by_node_id[child_component_id]
-        return "<#{to_component_name(ref_comp.name)} />" if ref_comp
+    def build_variant_component_code(component_name, all_imports, variant_entries, variant_prop_names, prop_definitions)
+      imports_section = all_imports.flat_map { |i| i.split("\n") }.uniq.join("\n")
+      imports_section = imports_section.present? ? "#{imports_section}\n" : ""
 
-        ref_set = @resolver.component_sets_by_node_id[child_component_id]
-        if ref_set
-          name = to_component_name(ref_set.name)
-          child_props = extract_instance_override_props(child_node, ref_set, root_name, css_rules, depth)
-          return "<#{name}#{child_props} />"
-        end
+      combined_css = variant_entries.map { |e| e[:css] }.join("\n")
 
-        ref_variant = @resolver.variants_by_node_id[child_component_id]
-        if ref_variant
-          name = to_component_name(ref_variant.component_set.name)
-          child_props = extract_instance_override_props(child_node, ref_variant.component_set, root_name, css_rules, depth)
-          return "<#{name}#{child_props} />"
-        end
+      variant_functions = variant_entries.map do |entry|
+        props_destructuring = generate_props_destructuring(entry[:props])
+        <<~FUNC.chomp
+          function #{entry[:func_name]}(#{props_destructuring}) {
+            return (#{entry[:jsx]});
+          }
+        FUNC
+      end.join("\n\n")
 
-        comp_key = @resolver.component_key_by_node_id[child_component_id]
-        if comp_key
-          ref_variant = @resolver.variants_by_component_key[comp_key]
-          if ref_variant
-            name = to_component_name(ref_variant.component_set.name)
-            child_props = extract_instance_override_props(child_node, ref_variant.component_set, root_name, css_rules, depth)
-            return "<#{name}#{child_props} />"
-          end
-        end
+      dispatcher_props = generate_variant_props_destructuring(variant_prop_names, prop_definitions, variant_entries)
+      dispatch_chain = generate_variant_dispatch(component_name, variant_entries, variant_prop_names, prop_definitions)
+
+      <<~CODE
+        import React from 'react';
+        #{imports_section}
+        const styles = `
+        #{combined_css}
+        `;
+
+        #{variant_functions}
+
+        export function #{component_name}(#{dispatcher_props}) {
+        #{dispatch_chain}
+        }
+
+        export default #{component_name};
+      CODE
+    end
+
+    def generate_per_variant_code(entry)
+      imports_section = entry[:imports].present? ? "#{entry[:imports]}\n" : ""
+      <<~CODE
+        import React from 'react';
+        #{imports_section}
+        const styles = `
+        #{entry[:css]}
+        `;
+
+        export function #{entry[:func_name]}(#{generate_props_destructuring(entry[:props])}) {
+          return (
+            <>
+              <style>{styles}</style>
+              #{entry[:jsx]}
+            </>
+          );
+        }
+      CODE
+    end
+
+    def generate_variant_dispatch(component_name, variant_entries, variant_prop_names, prop_definitions)
+      lines = []
+      default_entry = variant_entries.find { |e| e[:is_default] } || variant_entries.first
+
+      variant_entries.each do |entry|
+        conditions = variant_prop_names.map do |prop_key|
+          prop_name = @resolver.to_prop_name(prop_key.gsub(/#[\d:]+$/, "").strip)
+          value = entry[:variant_properties][prop_key.gsub(/#[\d:]+$/, "").strip.downcase]
+          next nil unless value
+          "#{prop_name} === \"#{value}\""
+        end.compact
+
+        next if conditions.empty?
+
+        lines << "  if (#{conditions.join(' && ')}) return <><style>{styles}</style><#{entry[:func_name]} {...props} /></>;"
       end
 
-      children_jsx = (child_node["children"] || []).map do |gc|
-        generate_node(gc, root_name, css_rules, depth + 1)
-      end.join("\n")
+      lines << "  return <><style>{styles}</style><#{default_entry[:func_name]} {...props} /></>;"
+      lines.join("\n")
+    end
 
-      return nil if children_jsx.strip.empty?
+    def generate_variant_props_destructuring(variant_prop_names, prop_definitions, variant_entries)
+      defaults = variant_prop_names.map do |prop_key|
+        clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+        prop_name = @resolver.to_prop_name(clean_key)
+        default_value = prop_definitions[prop_key]&.dig("defaultValue") || variant_entries.first[:variant_properties][clean_key.downcase]
+        "#{prop_name} = \"#{default_value}\""
+      end
 
-      @class_index += 1
-      cls = "#{root_name.downcase.gsub(/[^a-z0-9]/, "")}-swap-#{@class_index}"
-      styles = extract_frame_styles(child_node, false)
-      css_rules[cls] = styles
-
-      indent = "  " * (depth + 2)
-      children_indented = children_jsx.lines.map { |l| "#{indent}#{l.rstrip}" }.join("\n")
-      "<div className=\"#{cls}\">#{children_indented}</div>"
+      "{ #{defaults.join(', ')}, ...props }"
     end
 
     private
@@ -508,26 +370,26 @@ module Figma
       end
     end
 
-    # Legacy class name generation that takes root_name as first arg (matching ReactFactory's signature)
-    def generate_class_name_legacy(root_name, name, is_root = false)
-      if is_root
-        "root"
-      else
-        suffix = name.to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/^-|-$/, "")
-        suffix = "el" if suffix.empty?
-        index = next_class_index
-        "#{suffix}-#{index}"
-      end
-    end
-
-    # --- IR-based emission helpers ---
+    # --- IR node emission helpers ---
 
     def emit_frame(ir, depth, is_root: false)
       class_name = generate_class_name(ir[:name], is_root)
       @css_rules[class_name] = ir[:styles]
 
-      children_jsx = ir[:children].map do |child|
-        emit_node(child, depth + 1)
+      uses_absolute = ir[:uses_absolute]
+      child_positions = ir[:child_positions] || {}
+
+      children_jsx = ir[:children].each_with_index.map do |child, idx|
+        child_jsx = emit_node(child, depth + 1)
+        if child_jsx.present? && uses_absolute
+          pos = child_positions[child[:node_id]]
+          if pos
+            wrapper_class = "#{class_name}-pos-#{pos[:index]}"
+            @css_rules[wrapper_class] = pos[:styles]
+            child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
+          end
+        end
+        child_jsx
       end.compact.join("\n")
 
       indent = "  " * (depth + 2)
@@ -569,10 +431,6 @@ module Figma
       end
     end
 
-    def emit_slot(ir)
-      "{props.#{ir[:prop_name]}}"
-    end
-
     def emit_icon_swap(ir)
       prop = ir[:prop_name]
       if ir[:style_overrides].any?
@@ -611,6 +469,44 @@ module Figma
       class_name = generate_class_name(ir[:name], false)
       @css_rules[class_name] = ir[:styles]
       "<div className=\"#{class_name}\" title=\"Missing: #{escape_jsx(ir[:instance_name])}\" />"
+    end
+
+    def emit_detached_ref(ir)
+      component_name = ir[:component_name]
+      props_string = ir[:props_parts].empty? ? "" : " " + ir[:props_parts].join(" ")
+
+      if ir[:swap_component_name]
+        swap = ir[:swap_component_name]
+        "{#{swap} ? <#{swap}#{props_string} /> : <#{component_name}#{props_string} />}"
+      else
+        "<#{component_name}#{props_string} />"
+      end
+    end
+
+    def emit_detached_svg(ir)
+      class_name = generate_class_name(ir[:name], false)
+      @css_rules[class_name] = ir[:styles]
+
+      safe_svg = ir[:svg_content].to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
+      clean_svg = safe_svg
+        .gsub(/<\?xml[^>]*\?>/, "")
+        .gsub(/xmlns="[^"]*"/, "")
+        .gsub(/class="/, "className=\"")
+        .strip
+
+      "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
+    end
+
+    def emit_figma_slot(ir)
+      @has_slot = true
+      class_name = generate_class_name(ir[:name], false)
+      @css_rules[class_name] = ir[:styles]
+      "<div className=\"#{class_name}\">{props.#{ir[:prop_name]}}</div>"
+    end
+
+    def emit_slot(ir)
+      @has_slot = true
+      "{props.#{ir[:prop_name]}}"
     end
   end
 end

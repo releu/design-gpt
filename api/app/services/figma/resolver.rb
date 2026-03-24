@@ -25,6 +25,8 @@ module Figma
       @unresolved_instances = Hash.new { |h, k| h[k] = Set.new }
       @current_owner_node_id = nil
       @image_refs = nil
+      @slot_map = {}
+      @has_slot_during_resolve = false
 
       build_lookup_tables
       build_svg_asset_cache
@@ -153,12 +155,85 @@ module Figma
     # IR Resolution: Figma JSON -> IR hashes
     # ============================================
 
+    # Top-level: resolve an entire component_set into IR.component or IR.multi_variant
+    def resolve_component_set(component_set)
+      default_variant = component_set.default_variant
+      return nil unless default_variant&.figma_json.present?
+
+      component_name = to_component_name(component_set.name)
+
+      if component_set.is_image
+        return Figma::IR.component(name: component_set.name, react_name: component_name,
+                                    props: {}, tree: nil, is_image: true)
+      end
+
+      normalized_name = normalize_icon_name(component_set.name)
+      svg_content = @svg_assets_by_name[normalized_name]
+      if svg_content
+        return Figma::IR.component(name: component_set.name, react_name: component_name,
+                                    props: {}, tree: nil, is_svg: true, svg_content: svg_content)
+      end
+
+      prop_definitions = component_set.prop_definitions || {}
+      variant_prop_names = prop_definitions.select { |_, d| d["type"] == "VARIANT" }.keys
+      all_variants = component_set.variants
+        .select { |v| v.figma_json.present? }
+        .sort_by { |v| [v.is_default ? 0 : 1, v.id] }
+
+      if variant_prop_names.any? && all_variants.size > 1
+        resolve_multi_variant(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
+      else
+        resolve_single_variant(component_name, default_variant, prop_definitions, component_set)
+      end
+    end
+
+    # Top-level: resolve a standalone component into IR.component
+    def resolve_component(component)
+      figma = component.figma_json
+      return nil unless figma.present?
+
+      component_name = to_component_name(component.name)
+
+      if component.is_image
+        return Figma::IR.component(name: component.name, react_name: component_name,
+                                    props: {}, tree: nil, is_image: true)
+      end
+
+      node = if figma["type"] == "COMPONENT_SET"
+        default_variant_id = figma["defaultVariantId"]
+        default_variant = (figma["children"] || []).find { |c| c["id"] == default_variant_id }
+        default_variant || figma["children"]&.first || figma
+      else
+        figma
+      end
+
+      prop_definitions = component.prop_definitions || {}
+      is_list = component.name.include?("#list") || component.description.to_s.include?("#list")
+
+      setup_for_resolution(component_name, prop_definitions, node, is_list_component: is_list)
+
+      instances, detached_nodes = collect_instances(node)
+      imports_str = generate_imports(instances, detached_nodes)
+
+      tree = resolve_node(node)
+
+      all_props = (@current_props || {}).dup
+      Figma::IR.component(name: component.name, react_name: component_name,
+                           props: all_props, tree: tree, imports: parse_imports(imports_str),
+                           has_slot: @has_slot_during_resolve)
+    end
+
     def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil)
       return nil unless node.is_a?(Hash)
 
       pd = prop_definitions || @prop_definitions || {}
       cp = current_props || @current_props || {}
-      sm = slot_map || {}
+      sm = slot_map || @slot_map || {}
+
+      # Handle detached instances first
+      if node["_detached"] && node["_was_instance"]
+        return resolve_detached_instance(node, pd, cp, sm)
+      end
 
       # Visibility check
       prop_refs = node["componentPropertyReferences"] || {}
@@ -197,6 +272,8 @@ module Figma
         resolve_shape(node, visibility_prop)
       when "INSTANCE"
         resolve_instance_ir(node, pd, cp, sm, visibility_prop)
+      when "SLOT"
+        resolve_slot_node(node, pd, cp, sm, visibility_prop)
       else
         resolve_frame(node, pd, cp, sm, visibility_prop)
       end
@@ -231,13 +308,25 @@ module Figma
         end
       end
 
-      children = (node["children"] || []).filter_map do |child|
-        resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm)
+      raw_children = node["children"] || []
+      uses_absolute = !node["layoutMode"] && raw_children.any?
+
+      child_positions = {}
+      children = raw_children.each_with_index.filter_map do |child, idx|
+        ir_child = resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm)
+        if ir_child && uses_absolute
+          pos_styles = extract_absolute_position(child, node)
+          if pos_styles.any?
+            child_positions[ir_child[:node_id]] = { index: idx, styles: pos_styles.merge("position" => "absolute") }
+          end
+        end
+        ir_child
       end
 
       Figma::IR.frame(node_id: node_id, name: node["name"] || "element",
                        styles: styles, children: children,
-                       visibility_prop: visibility_prop)
+                       visibility_prop: visibility_prop,
+                       uses_absolute: uses_absolute, child_positions: child_positions)
     end
 
     def resolve_text(node, pd, cp, visibility_prop)
@@ -282,6 +371,20 @@ module Figma
     def resolve_instance_ir(node, pd, cp, sm, visibility_prop)
       ref = node["componentPropertyReferences"]&.dig("mainComponent")
 
+      # Check for list component dedup (INSTANCE_SWAP in a #list component)
+      if @is_list_component && ref && instance_swap_ref?(ref, pd)
+        @rendered_list_slots ||= []
+        if @rendered_list_slots.include?(ref)
+          return nil  # already rendered this slot once
+        else
+          @rendered_list_slots << ref
+          @has_slot_during_resolve = true
+          slot_name = sm[node["id"]] || "children"
+          return Figma::IR.slot(node_id: node["id"], name: node["name"] || "element",
+                                 prop_name: slot_name, visibility_prop: visibility_prop)
+        end
+      end
+
       # Check for image swap first
       if ref && image_swap_instance?(node, pd)
         prop_name = to_prop_name(strip_ref_suffix(ref))
@@ -293,6 +396,7 @@ module Figma
 
       # Check for slot (INSTANCE_SWAP with preferredValues)
       if ref && slot_instance?(node, pd)
+        @has_slot_during_resolve = true
         slot_name = sm[node["id"]] || to_prop_name(strip_ref_suffix(ref))
         return Figma::IR.slot(node_id: node["id"], name: node["name"] || "element",
                                prop_name: slot_name, visibility_prop: visibility_prop)
@@ -331,6 +435,156 @@ module Figma
 
       Figma::IR.unresolved(node_id: node["id"], name: node["name"] || "element",
                             styles: styles, instance_name: node["name"] || "unknown")
+    end
+
+    def resolve_slot_node(node, pd, cp, sm, visibility_prop)
+      @has_slot_during_resolve = true
+      styles = extract_frame_styles(node, false)
+      styles["min-width"] = "0" if styles["flex-grow"] || styles["align-self"]
+      styles["overflow"] = "hidden" if styles["flex-grow"]
+      slot_name = sm[node["id"]] || "children"
+      Figma::IR.figma_slot(node_id: node["id"], name: node["name"] || "element",
+                            prop_name: slot_name, styles: styles,
+                            visibility_prop: visibility_prop)
+    end
+
+    def resolve_detached_instance(node, pd, cp, sm)
+      prop_refs = node["componentPropertyReferences"] || {}
+      main_component_ref = prop_refs["mainComponent"]
+
+      component_set = find_component_set_for_detached(node)
+
+      if component_set
+        component_name = to_component_name(component_set.name)
+        instance_key = node["_instance_key"]
+
+        props_parts = []
+        if instance_key
+          prop_definitions = component_set.prop_definitions || {}
+          prop_definitions.each do |key, definition|
+            if definition["type"] == "TEXT"
+              clean_name = key.gsub(/#[\d:]+$/, "").strip
+              original_prop_name = to_prop_name(clean_name)
+              namespaced_prop_name = "#{instance_key}#{original_prop_name.sub(/^(\w)/) { $1.upcase }}"
+              if @nested_instance_props && @nested_instance_props[namespaced_prop_name]
+                props_parts << "#{original_prop_name}={#{namespaced_prop_name}}"
+              end
+            elsif definition["type"] == "INSTANCE_SWAP"
+              clean_name = key.gsub(/#[\d:]+$/, "").strip.gsub(/^[\s\u21B3]+/, "")
+              original_prop_name = to_prop_name(clean_name)
+              original_component_name = original_prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
+              namespaced_prop_name = "#{instance_key}#{original_component_name}"
+              if @nested_instance_props && @nested_instance_props[namespaced_prop_name]
+                props_parts << "#{original_component_name}={#{namespaced_prop_name}}"
+              end
+            end
+          end
+        else
+          overridden_props = extract_overridden_props(node, component_set)
+          overridden_props.each { |k, v| props_parts << "#{k}={#{v}}" }
+        end
+
+        swap_component_name = nil
+        if main_component_ref
+          prop = find_prop_for_reference(main_component_ref, cp)
+          if prop && prop[:type] == "INSTANCE_SWAP"
+            swap_component_name = prop[:name].sub(/^(\w)/) { $1.upcase } + "Component"
+          end
+        end
+
+        return Figma::IR.detached_ref(node_id: node["id"], name: node["name"] || "element",
+                                       component_name: component_name, props_parts: props_parts,
+                                       swap_component_name: swap_component_name)
+      end
+
+      # Not a known component — try SVG fallback
+      svg_content = find_svg_for_detached(node)
+      if svg_content
+        styles = extract_frame_styles(node, false)
+        styles = styles.merge(
+          "display" => "inline-flex",
+          "align-items" => "center",
+          "justify-content" => "center"
+        )
+        return Figma::IR.detached_svg(node_id: node["id"], name: node["name"] || "element",
+                                       styles: styles, svg_content: svg_content)
+      end
+
+      # Fallback: empty div
+      styles = extract_frame_styles(node, false)
+      Figma::IR.frame(node_id: node["id"], name: node["name"] || "element",
+                       styles: styles, children: [])
+    end
+
+    def resolve_single_variant(component_name, default_variant, prop_definitions, component_set)
+      node = default_variant.figma_json
+      is_list = component_set.name.include?("#list") || component_set.description.to_s.include?("#list")
+
+      setup_for_resolution(component_name, prop_definitions, node, is_list_component: is_list)
+
+      instances, detached_nodes = collect_instances(node)
+      imports_str = generate_imports(instances, detached_nodes)
+
+      tree = resolve_node(node)
+
+      all_props = (@current_props || {}).merge(@nested_instance_props || {})
+      Figma::IR.component(name: component_set.name, react_name: component_name,
+                           props: all_props, tree: tree, imports: parse_imports(imports_str),
+                           has_slot: @has_slot_during_resolve, nested_props: @nested_instance_props || {})
+    end
+
+    def resolve_multi_variant(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
+      variant_entries = all_variants.each_with_index.map do |variant, idx|
+        node = variant.figma_json
+        is_list = component_set.name.include?("#list") || component_set.description.to_s.include?("#list")
+
+        setup_for_resolution(component_name, prop_definitions, node, is_list_component: is_list)
+
+        instances, detached_nodes = collect_instances(node)
+        imports_str = generate_imports(instances, detached_nodes)
+
+        tree = resolve_node(node)
+
+        non_variant_props = (@current_props || {}).merge(@nested_instance_props || {}).reject { |_, p| p[:type] == "VARIANT" }
+
+        Figma::IR.variant_entry(
+          index: idx,
+          variant_properties: variant.variant_properties,
+          props: non_variant_props,
+          tree: tree,
+          imports: parse_imports(imports_str),
+          has_slot: @has_slot_during_resolve,
+          nested_props: @nested_instance_props || {},
+          variant_record: variant
+        )
+      end
+
+      Figma::IR.multi_variant(
+        name: component_set.name,
+        react_name: component_name,
+        variant_prop_names: variant_prop_names,
+        prop_definitions: prop_definitions,
+        variants: variant_entries
+      )
+    end
+
+    # Set up mutable state for a resolution pass (replaces ReactFactory#create_emitter setup)
+    def setup_for_resolution(component_name, prop_definitions, node, is_list_component: false)
+      @nested_instance_counters = {}
+      @nested_instance_props = {}
+      @is_list_component = is_list_component
+      @prop_definitions = prop_definitions
+      @rendered_list_slots = []
+      @has_slot_during_resolve = false
+
+      @current_props = extract_props(prop_definitions, node)
+      @slot_map = build_slot_map(node, prop_definitions)
+      collect_nested_instance_props(node)
+    end
+
+    def parse_imports(imports_str)
+      return [] if imports_str.blank?
+      imports_str.split("\n").reject(&:blank?)
     end
 
     public
