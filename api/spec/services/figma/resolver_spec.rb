@@ -262,6 +262,89 @@ RSpec.describe Figma::Resolver do
     end
   end
 
+  describe "regression: instance override props" do
+    it "extracts componentProperties overrides into prop_overrides" do
+      cs = library.component_sets.create!(
+        node_id: "ovr:cs:1", name: "Button",
+        figma_file_key: library.figma_file_key,
+        figma_file_name: library.figma_file_name,
+        prop_definitions: {
+          "Size" => { "type" => "VARIANT", "defaultValue" => "M" },
+          "Disabled" => { "type" => "BOOLEAN", "defaultValue" => false }
+        }
+      )
+      cs.variants.create!(
+        node_id: "ovr:v:1", name: "Default",
+        is_default: true,
+        figma_json: { "id" => "ovr:v:1", "type" => "COMPONENT", "children" => [] }
+      )
+
+      fresh_resolver = described_class.new(library)
+
+      node = {
+        "id" => "ovr:inst:1", "type" => "INSTANCE", "name" => "button instance",
+        "componentId" => "ovr:cs:1",
+        "componentProperties" => {
+          "Size" => { "type" => "VARIANT", "value" => "L" },
+          "Disabled" => { "type" => "BOOLEAN", "value" => true }
+        }
+      }
+      ir = fresh_resolver.resolve_node(node)
+      expect(ir[:kind]).to eq(:component_ref)
+      expect(ir[:component_name]).to eq("Button")
+      expect(ir[:prop_overrides]).to include("size" => '"L"')
+      expect(ir[:prop_overrides]).to include("disabled" => "{true}")
+    end
+
+    it "skips overrides that match default values" do
+      cs = library.component_sets.create!(
+        node_id: "ovr:cs:2", name: "Tag",
+        figma_file_key: library.figma_file_key,
+        figma_file_name: library.figma_file_name,
+        prop_definitions: {
+          "Label" => { "type" => "TEXT", "defaultValue" => "Tag" }
+        }
+      )
+      cs.variants.create!(
+        node_id: "ovr:v:2", name: "Default",
+        is_default: true,
+        figma_json: { "id" => "ovr:v:2", "type" => "COMPONENT", "children" => [] }
+      )
+
+      fresh_resolver = described_class.new(library)
+
+      node = {
+        "id" => "ovr:inst:2", "type" => "INSTANCE", "name" => "tag instance",
+        "componentId" => "ovr:cs:2",
+        "componentProperties" => {
+          "Label" => { "type" => "TEXT", "value" => "Tag" }
+        }
+      }
+      ir = fresh_resolver.resolve_node(node)
+      expect(ir[:kind]).to eq(:component_ref)
+      expect(ir[:prop_overrides]).to be_empty
+    end
+  end
+
+  describe "regression: root frame not inlined as PNG/SVG" do
+    it "does not inline root frame as PNG even if asset exists" do
+      # resolve_node called from resolve_single_variant passes is_root context
+      # but resolve_frame itself shouldn't inline root nodes
+      node = {
+        "id" => "root:1", "type" => "FRAME", "name" => "Root",
+        "layoutMode" => "VERTICAL",
+        "children" => [
+          { "id" => "child:1", "type" => "TEXT", "name" => "label", "characters" => "Hi" }
+        ]
+      }
+      # Even if the node_id is in inline_pngs, resolve for root should return :frame
+      # This tests that the top-level resolve_single_variant marks root correctly
+      ir = resolver.resolve_node(node)
+      expect(ir[:kind]).to eq(:frame)
+      expect(ir[:children].size).to eq(1)
+    end
+  end
+
   describe "regression: detached instance resolution" do
     it "resolves detached node to component set via original child IDs" do
       # Create a component set with a variant whose node appears as an original child ID

@@ -215,7 +215,7 @@ module Figma
       instances, detached_nodes = collect_instances(node)
       imports_str = generate_imports(instances, detached_nodes)
 
-      tree = resolve_node(node)
+      tree = resolve_node(node, is_root: true)
 
       all_props = (@current_props || {}).dup
       Figma::IR.component(name: component.name, react_name: component_name,
@@ -223,7 +223,7 @@ module Figma
                            has_slot: @has_slot_during_resolve)
     end
 
-    def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil)
+    def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil, is_root: false)
       return nil unless node.is_a?(Hash)
 
       pd = prop_definitions || @prop_definitions || {}
@@ -265,7 +265,7 @@ module Figma
 
       ir = case type
       when "COMPONENT", "COMPONENT_SET", "FRAME", "GROUP"
-        resolve_frame(node, pd, cp, sm, visibility_prop)
+        resolve_frame(node, pd, cp, sm, visibility_prop, is_root)
       when "TEXT"
         resolve_text(node, pd, cp, visibility_prop)
       when *VECTOR_TYPES
@@ -275,7 +275,7 @@ module Figma
       when "SLOT"
         resolve_slot_node(node, pd, cp, sm, visibility_prop)
       else
-        resolve_frame(node, pd, cp, sm, visibility_prop)
+        resolve_frame(node, pd, cp, sm, visibility_prop, is_root)
       end
 
       ir
@@ -283,16 +283,17 @@ module Figma
 
     private
 
-    def resolve_frame(node, pd, cp, sm, visibility_prop)
-      styles = extract_frame_styles(node, false)
+    def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false)
+      styles = extract_frame_styles(node, is_root)
 
       node_id = node["id"]
-      if @inline_pngs_by_node_id[node_id]
+      # Don't inline root frames as PNG/SVG — they must render as component containers
+      if !is_root && @inline_pngs_by_node_id[node_id]
         return Figma::IR.png_inline(node_id: node_id, name: node["name"] || "element",
                                      styles: styles, png_data: @inline_pngs_by_node_id[node_id],
                                      visibility_prop: visibility_prop)
       end
-      if vector_frame?(node) && @inline_svgs_by_node_id[node_id]
+      if !is_root && vector_frame?(node) && @inline_svgs_by_node_id[node_id]
         has_resolvable_instance = (node["children"] || []).any? { |child|
           child["type"] == "INSTANCE" && child["componentId"] && (
             @components_by_node_id[child["componentId"]] ||
@@ -415,11 +416,13 @@ module Figma
       return Figma::IR.unresolved(node_id: node["id"], name: node["name"] || "element",
                                    styles: {}, instance_name: node["name"] || "unknown") unless component_id
 
-      # Try to resolve via lookups
-      comp_name = resolve_instance_component_name(node)
+      # Try to resolve via lookups — need both name and component_set for override extraction
+      comp_name, component_set = resolve_instance_name_and_set(node)
       if comp_name
+        prop_overrides = extract_instance_override_props_for_ir(node, component_set)
         return Figma::IR.component_ref(node_id: node["id"], name: node["name"] || "element",
-                                        component_name: comp_name, visibility_prop: visibility_prop)
+                                        component_name: comp_name, prop_overrides: prop_overrides,
+                                        visibility_prop: visibility_prop)
       end
 
       # Unresolved
@@ -525,7 +528,7 @@ module Figma
       instances, detached_nodes = collect_instances(node)
       imports_str = generate_imports(instances, detached_nodes)
 
-      tree = resolve_node(node)
+      tree = resolve_node(node, is_root: true)
 
       all_props = (@current_props || {}).merge(@nested_instance_props || {})
       Figma::IR.component(name: component_set.name, react_name: component_name,
@@ -543,7 +546,7 @@ module Figma
         instances, detached_nodes = collect_instances(node)
         imports_str = generate_imports(instances, detached_nodes)
 
-        tree = resolve_node(node)
+        tree = resolve_node(node, is_root: true)
 
         non_variant_props = (@current_props || {}).merge(@nested_instance_props || {}).reject { |_, p| p[:type] == "VARIANT" }
 
@@ -1138,6 +1141,85 @@ module Figma
       end
 
       nil
+    end
+
+    # Like resolve_instance_component_name but also returns the component_set
+    # for extracting override props. Returns [name, component_set] or [nil, nil].
+    def resolve_instance_name_and_set(node)
+      component_id = node["componentId"]
+      return [nil, nil] unless component_id
+
+      ref = @components_by_node_id[component_id]
+      return [to_component_name(ref.name), nil] if ref  # standalone component, no component_set
+
+      ref_set = @component_sets_by_node_id[component_id]
+      return [to_component_name(ref_set.name), ref_set] if ref_set
+
+      variant = @variants_by_node_id[component_id]
+      return [to_component_name(variant.component_set.name), variant.component_set] if variant
+
+      comp_key = @component_key_by_node_id[component_id]
+      if comp_key
+        variant = @variants_by_component_key[comp_key]
+        return [to_component_name(variant.component_set.name), variant.component_set] if variant
+      end
+
+      [nil, nil]
+    end
+
+    # Extract componentProperties overrides from an INSTANCE node as a hash
+    # suitable for IR prop_overrides. Only includes props that differ from defaults.
+    def extract_instance_override_props_for_ir(node, component_set)
+      overrides = {}
+      component_properties = node["componentProperties"]
+      return overrides unless component_properties.is_a?(Hash) && component_properties.any?
+      return overrides unless component_set
+
+      prop_definitions = component_set.prop_definitions || {}
+
+      # Build a map from INSTANCE_SWAP prop key to child node
+      children_by_swap_ref = {}
+      (node["children"] || []).each do |child|
+        ref = child.dig("componentPropertyReferences", "mainComponent")
+        children_by_swap_ref[ref] = child if ref
+      end
+
+      component_properties.each do |key, prop_data|
+        prop_type = prop_data["type"]
+        value = prop_data["value"]
+
+        clean_key = key.gsub(/#[\d:]+$/, "").strip
+        matching_def_key = prop_definitions.keys.find { |dk| dk.gsub(/#[\d:]+$/, "").strip == clean_key }
+        definition = matching_def_key ? prop_definitions[matching_def_key] : nil
+
+        # Skip if value matches default
+        next if definition && definition["defaultValue"].to_s == value.to_s
+
+        prop_name = to_prop_name(clean_key.gsub(/^[\s\u21B3]+/, "").strip)
+
+        case prop_type
+        when "VARIANT"
+          overrides[prop_name] = "\"#{value}\""
+        when "BOOLEAN"
+          overrides[prop_name] = "{#{value}}"
+        when "INSTANCE_SWAP"
+          preferred = definition&.dig("preferredValues") || []
+          if preferred.empty?
+            # No preferredValues — resolve as component reference
+            child_node = children_by_swap_ref[key]
+            next unless child_node
+            comp_name = resolve_instance_component_name(child_node)
+            next unless comp_name
+            component_prop_name = prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
+            overrides[component_prop_name] = comp_name
+          end
+          # INSTANCE_SWAP with preferredValues (slot content) is complex —
+          # requires JSX rendering of child nodes. Skip for now; the slot
+          # content is rendered by the parent component's slot mechanism.
+        end
+      end
+
+      overrides
     end
 
     def generate_imports(instances, detached_nodes = [])
