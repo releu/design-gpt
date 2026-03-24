@@ -11,6 +11,25 @@ module Renderable
 
   # Extract prop values per component from JSX for variant matching
   # Returns { "Select" => [{"size"=>"M","state"=>"Default"}, {"size"=>"L","state"=>"Hover"}] }
+  # Extract prop values from compiled code for transitively-discovered components.
+  # Scans for React.createElement(ComponentName, { prop: "value" }) patterns.
+  def extract_usages_from_compiled(react_name, browser_code_parts)
+    usages = []
+    pattern = /React\.createElement\(#{Regexp.escape(react_name)},\s*\{([^}]{0,500})\}/
+
+    browser_code_parts.each do |code|
+      code.scan(pattern).each do |match|
+        props_str = match[0]
+        props = {}
+        # Extract key: "value" pairs
+        props_str.scan(/(\w+):\s*"([^"]*)"/).each { |k, v| props[k] = v }
+        usages << props if props.any?
+      end
+    end
+
+    usages.uniq
+  end
+
   def extract_component_usages(jsx)
     usages = {}
     jsx.scan(/<([A-Z][a-zA-Z0-9]*)\s+([^>]*?)\/?>/).each do |name, attrs|
@@ -42,9 +61,15 @@ module Renderable
     component_id = "cs_#{cs.id}"
     default_variant = all_variants.find(&:is_default) || all_variants.first
 
-    # If no usage info (DS preview), load all variants
     if usages.nil? || usages.empty?
-      matched = Set.new(all_variants.select { |v| v.react_code_compiled.present? })
+      # No direct usage in JSX — infer from compiled code of already-loaded components
+      usages = extract_usages_from_compiled(react_name, browser_code_parts)
+    end
+
+    if usages.nil? || usages.empty?
+      # Truly no usage info — load only default variant
+      matched = Set.new
+      matched << default_variant if default_variant&.react_code_compiled.present?
     else
       # Find which variants match the JSX prop values
       matched = Set.new
