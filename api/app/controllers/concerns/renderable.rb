@@ -54,7 +54,7 @@ module Renderable
   # Try to load only the needed variants for a component set.
   # Returns true if per-variant code was available and loaded, false to fall back to full blob.
   def try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
-    all_variants = cs.variants.to_a
+    all_variants = cs.variants.to_a.select { |v| v.figma_json.present? }
     non_default_with_code = all_variants.select { |v| !v.is_default && v.react_code_compiled.present? }
     return false if non_default_with_code.empty?
 
@@ -67,9 +67,8 @@ module Renderable
     end
 
     if usages.nil? || usages.empty?
-      # Truly no usage info — load only default variant
-      matched = Set.new
-      matched << default_variant if default_variant&.react_code_compiled.present?
+      # No usage info — load all variants (DS preview or component used without props)
+      matched = Set.new(all_variants.select { |v| v.react_code_compiled.present? })
     else
       # Find which variants match the JSX prop values
       matched = Set.new
