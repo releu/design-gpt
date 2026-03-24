@@ -247,11 +247,15 @@ class DesignGenerator
   end
 
   def eligible_component_sets
-    @eligible_component_sets ||= @libraries.flat_map { |lib| lib.component_sets.reject(&:vector?) }
+    @eligible_component_sets ||= @libraries.flat_map { |lib|
+      lib.component_sets.reject { |cs| cs.vector? || (cs.validation_warnings || []).any? }
+    }
   end
 
   def eligible_standalone_components
-    @eligible_standalone_components ||= @libraries.flat_map { |lib| lib.components.reject(&:vector?) }
+    @eligible_standalone_components ||= @libraries.flat_map { |lib|
+      lib.components.reject { |c| c.vector? || (c.validation_warnings || []).any? }
+    }
   end
 
   def root_components

@@ -286,6 +286,11 @@ module Figma
 
       # Bulk upsert component sets
       set_rows = component_sets.map do |node_id, data|
+        # Run validation on default variant's figma_json
+        default_json = data[:variants]&.values&.find { |v| v[:is_default] }&.dig(:figma_json) ||
+                       data[:variants]&.values&.first&.dig(:figma_json)
+        validation_warnings = default_json ? Figma::ComponentValidator.new(default_json, is_image: data[:is_image]).validate : []
+
         row = {
           figma_file_id: @figma_file.id,
           node_id: node_id,
@@ -298,7 +303,8 @@ module Figma
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
           component_key: data[:component_key],
-          content_hash: compute_component_set_hash(data)
+          content_hash: compute_component_set_hash(data),
+          validation_warnings: validation_warnings
         }
         if data[:invalid]
           row[:status] = "error"
@@ -351,6 +357,8 @@ module Figma
       @figma_file.components.where.not(node_id: existing_ids).destroy_all
 
       rows = components.map do |node_id, data|
+        validation_warnings = data[:figma_json] ? Figma::ComponentValidator.new(data[:figma_json], is_image: data[:is_image]).validate : []
+
         row = {
           figma_file_id: @figma_file.id,
           node_id: node_id,
@@ -365,6 +373,7 @@ module Figma
           is_image: data[:is_image] || false,
           component_key: data[:component_key],
           content_hash: compute_component_hash(data),
+          validation_warnings: validation_warnings,
           updated_at: Time.current
         }
         if data[:invalid]
