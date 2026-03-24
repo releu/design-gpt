@@ -513,8 +513,9 @@ namespace :pipeline do
             // Unmount previous component cleanly to avoid removeChild errors
             try { ReactDOM.unmountComponentAtNode(root); } catch(e) {}
             root.innerHTML = '';
-            root.style.padding = '20px';
+            root.style.padding = '0';
             root.style.background = 'white';
+            root.style.display = 'inline-block';
             try {
               if (typeof window[rn] === 'function') {
                 ReactDOM.render(React.createElement(window[rn]), root);
