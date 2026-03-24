@@ -513,7 +513,7 @@ namespace :pipeline do
             // Unmount previous component cleanly to avoid removeChild errors
             try { ReactDOM.unmountComponentAtNode(root); } catch(e) {}
             root.innerHTML = '';
-            root.style.padding = '0';
+            root.style.padding = '20px';
             root.style.background = 'white';
             try {
               if (typeof window[rn] === 'function') {
@@ -536,7 +536,8 @@ namespace :pipeline do
             if (found) {
               const box = await el.boundingBox();
               if (box && box.width > 0 && box.height > 0) {
-                await el.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png' });
+                // Use page.screenshot with clip to respect overflow:hidden (el.screenshot captures scroll height)
+                await page.screenshot({ path: '#{OUTPUT_DIR}/render_' + safe_name + '.png', clip: { x: box.x, y: box.y, width: box.width, height: box.height } });
                 results[safe_name] = { w: Math.round(box.width), h: Math.round(box.height) };
               } else {
                 results[safe_name] = { error: 'zero_size' };

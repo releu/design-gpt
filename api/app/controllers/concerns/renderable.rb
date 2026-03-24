@@ -148,7 +148,11 @@ module Renderable
       container_names << react_name if comp.slots.present? && comp.slots.any?
     }
 
-    libraries.each do |cl|
+    # Sort libraries: load complex components first, icon libraries last
+    # This prevents icon SVG components from shadowing full widget components with the same name
+    sorted_libs = libraries.sort_by { |cl| cl.components.count > 0 ? 0 : 1 }
+
+    sorted_libs.each do |cl|
       cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
         load_component.(comp, to_component_name(comp.name))
       end
