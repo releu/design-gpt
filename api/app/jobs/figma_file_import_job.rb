@@ -40,7 +40,7 @@ class FigmaFileImportJob < ApplicationJob
     prev = previous_version_file(ff)
     return false unless prev&.figma_last_modified.present?
 
-    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    figma = Figma::TokenPool.instance.primary_client
     meta = figma.get("/v1/files/#{ff.figma_file_key}?depth=1")
     current_modified = meta["lastModified"]
 

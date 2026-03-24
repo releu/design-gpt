@@ -13,7 +13,7 @@ class ComponentsController < ApplicationController
     end
 
     # Fetch from Figma and cache
-    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    figma = Figma::TokenPool.instance.primary_client
     response = figma.export_svg(component.figma_file_key, node_id)
     svg_url = response.dig("images", node_id)
 
@@ -161,7 +161,7 @@ class ComponentsController < ApplicationController
     end
 
     # Fetch from Figma and cache
-    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    figma = Figma::TokenPool.instance.primary_client
     response = figma.export_svg(component_set.figma_file_key, component_set.node_id)
     svg_url = response.dig("images", component_set.node_id)
 

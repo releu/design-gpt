@@ -9,7 +9,7 @@ module Figma
       @variants_by_node_id = {}
       @node_id_to_component_set = {}
       @generated = {}
-      @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+      @figma = Figma::TokenPool.instance.primary_client
       @svg_assets_by_name = {}
       @inline_svgs_by_node_id = {}
       @inline_pngs_by_node_id = {}

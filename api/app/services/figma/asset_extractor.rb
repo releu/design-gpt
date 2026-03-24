@@ -2,7 +2,7 @@ module Figma
   class AssetExtractor
     def initialize(figma_file)
       @figma_file = figma_file
-      @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+      @figma = Figma::TokenPool.instance.primary_client
     end
 
     VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION ELLIPSE RECTANGLE LINE STAR POLYGON].freeze
@@ -172,7 +172,7 @@ module Figma
 
       variant_to_set.keys.each_slice(100) do |batch_node_ids|
         begin
-          response = @figma.export_svg(file_key, batch_node_ids)
+          response = Figma::TokenPool.instance.next_client.export_svg(file_key, batch_node_ids)
           images = response["images"] || {}
 
           threads = []
@@ -183,7 +183,7 @@ module Figma
 
             threads << Thread.new(component_set, svg_url) do |cs, url|
               begin
-                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                svg_content = Figma::TokenPool.instance.next_client.fetch_svg_content(url)
                 mutex.synchronize do
                   save_component_set_asset(cs, svg_content)
                   puts "[AssetExtractor] Saved SVG for component set: #{cs.name}"
@@ -215,7 +215,7 @@ module Figma
         node_ids = batch.map(&:node_id)
 
         begin
-          response = @figma.export_svg(file_key, node_ids)
+          response = Figma::TokenPool.instance.next_client.export_svg(file_key, node_ids)
           images = response["images"] || {}
 
           threads = []
@@ -225,7 +225,7 @@ module Figma
 
             threads << Thread.new(component, svg_url) do |comp, url|
               begin
-                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                svg_content = Figma::TokenPool.instance.next_client.fetch_svg_content(url)
                 mutex.synchronize do
                   save_component_asset(comp, svg_content)
                   puts "[AssetExtractor] Saved SVG for component: #{comp.name}"
@@ -375,7 +375,9 @@ module Figma
         puts "[AssetExtractor]     Batch #{batch_idx + 1}/#{total_batches} (#{saved_count} saved so far)"
 
         begin
-          response = @figma.export_svg(file_key, batch)
+          # Rotate tokens across batches for rate limit distribution
+          export_client = Figma::TokenPool.instance.next_client
+          response = export_client.export_svg(file_key, batch)
           images = response["images"] || {}
 
           # Fetch SVG content in parallel (up to 10 threads)
@@ -386,7 +388,7 @@ module Figma
 
             threads << Thread.new(node_id, svg_url) do |nid, url|
               begin
-                svg_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_svg_content(url)
+                svg_content = Figma::TokenPool.instance.next_client.fetch_svg_content(url)
                 mutex.synchronize do
                   # Save for the representative node
                   save_inline_svg(nid, svg_content)
@@ -466,7 +468,8 @@ module Figma
         puts "[AssetExtractor]     PNG Batch #{batch_idx + 1}/#{total_batches} (#{saved_count} saved so far)"
 
         begin
-          response = @figma.export_png(file_key, batch, scale: 2)
+          export_client = Figma::TokenPool.instance.next_client
+          response = export_client.export_png(file_key, batch, scale: 2)
           images = response["images"] || {}
 
           threads = []
@@ -476,7 +479,7 @@ module Figma
 
             threads << Thread.new(node_id, png_url) do |nid, url|
               begin
-                png_content = Figma::Client.new(ENV["FIGMA_TOKEN"]).fetch_binary_content(url)
+                png_content = Figma::TokenPool.instance.next_client.fetch_binary_content(url)
                 mutex.synchronize do
                   save_inline_png(nid, png_content)
                   saved_count += 1

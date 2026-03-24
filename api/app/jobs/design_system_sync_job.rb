@@ -17,7 +17,7 @@ class DesignSystemSyncJob < ApplicationJob
     end
 
     # Check which files have changed via lightweight Figma API call
-    figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+    figma = Figma::TokenPool.instance.primary_client
     changed_file_keys = detect_changed_files(figma, source_files)
 
     # Scale up figma_worker (performance-l) for import + codegen

@@ -81,7 +81,7 @@ module Figma
     def self.fetch_figma_screenshot(file_key, node_id, output_dir)
       return nil unless file_key.present? && node_id.present?
 
-      figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+      figma = Figma::TokenPool.instance.primary_client
       response = figma.export_png(file_key, node_id)
       image_url = response.dig("images", node_id)
       return nil unless image_url.present?

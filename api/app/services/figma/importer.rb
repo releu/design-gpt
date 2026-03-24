@@ -4,7 +4,7 @@ module Figma
   class Importer
     def initialize(figma_file)
       @figma_file = figma_file
-      @figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
+      @figma = Figma::TokenPool.instance.primary_client
       @file_key = figma_file.figma_file_key
       @file_name = nil
     end
