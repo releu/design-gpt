@@ -246,15 +246,24 @@ class DesignGenerator
     end
   end
 
+  # "Unresolved external components" warnings are informational — the component
+  # still has working code with a pink placeholder for the missing icon.
+  # Only exclude components with structural warnings that make them unusable.
+  BLOCKING_WARNING_PATTERNS = [/glass effect/i, /skewed/i, /scrolling content/i, /fixed.position/i].freeze
+
+  def has_blocking_warnings?(record)
+    (record.validation_warnings || []).any? { |w| BLOCKING_WARNING_PATTERNS.any? { |p| w.match?(p) } }
+  end
+
   def eligible_component_sets
     @eligible_component_sets ||= @libraries.flat_map { |lib|
-      lib.component_sets.reject { |cs| cs.vector? || (cs.validation_warnings || []).any? }
+      lib.component_sets.reject { |cs| cs.vector? || has_blocking_warnings?(cs) }
     }
   end
 
   def eligible_standalone_components
     @eligible_standalone_components ||= @libraries.flat_map { |lib|
-      lib.components.reject { |c| c.vector? || (c.validation_warnings || []).any? }
+      lib.components.reject { |c| c.vector? || has_blocking_warnings?(c) }
     }
   end
 
