@@ -21,4 +21,24 @@ RSpec.describe DesignSystem, type: :model do
       expect(ds.errors[:name]).to include("can't be blank")
     end
   end
+
+  describe "#sync_async" do
+    before do
+      allow(DesignSystemSyncJob).to receive(:perform_later)
+    end
+
+    it "does not bump version until sync completes" do
+      original_version = ds.version
+      ds.sync_async
+
+      ds.reload
+      expect(ds.version).to eq(original_version)
+      expect(ds.status).to eq("pending")
+    end
+
+    it "enqueues the sync job with the next version number" do
+      ds.sync_async
+      expect(DesignSystemSyncJob).to have_received(:perform_later).with(ds.id, 2)
+    end
+  end
 end

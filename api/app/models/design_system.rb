@@ -17,11 +17,14 @@ class DesignSystem < ApplicationRecord
   end
 
   def sync_async
-    # Atomic status guard: only transition to "pending" if not already syncing
+    # Atomic status guard: only transition to "pending" if not already syncing.
+    # Version is NOT bumped here — it stays at the current value so iterations
+    # created during the sync still resolve to the last ready version.
+    # Version is bumped to new_version only when the sync completes successfully.
     new_version = version + 1
     rows = self.class.where(id: id)
       .where.not(status: %w[pending importing converting])
-      .update_all(["status = ?, version = ?, progress = ?::jsonb", "pending", new_version,
+      .update_all(["status = ?, progress = ?::jsonb", "pending",
         { "started_at" => Time.current.iso8601 }.to_json])
     return if rows == 0
 
