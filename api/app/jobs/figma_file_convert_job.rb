@@ -1,5 +1,5 @@
 class FigmaFileConvertJob < ApplicationJob
-  queue_as :default
+  queue_as :figma
 
   def perform(figma_file_id)
     ff = FigmaFile.find(figma_file_id)
@@ -92,7 +92,7 @@ class FigmaFileConvertJob < ApplicationJob
       ds.update!(status: "ready", progress: ds.progress.merge("completed_at" => Time.current.iso8601))
     end
 
-    # Shut down figma_worker — no work left
-    HerokuScaler.scale_down_figma_worker
+    # Schedule delayed shutdown — keeps worker alive for 10 min in case of re-sync
+    FigmaWorkerShutdownJob.set(wait: FigmaWorkerShutdownJob::IDLE_TIMEOUT).perform_later
   end
 end

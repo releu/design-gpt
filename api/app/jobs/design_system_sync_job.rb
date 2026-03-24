@@ -2,10 +2,6 @@ class DesignSystemSyncJob < ApplicationJob
   queue_as :default
   limits_concurrency key: ->(design_system_id, _new_version) { "ds_sync_#{design_system_id}" }, to: 1
 
-  # Estimated MB per component (full JSON tree in memory + processing overhead).
-  # DS #67: ~2246 components peaked at ~2GB → ~0.75 MB/component + base.
-  MB_PER_COMPONENT = 0.8
-  BASE_MEMORY_MB = 200
 
   def perform(design_system_id, new_version)
     ds = DesignSystem.find(design_system_id)
@@ -24,9 +20,9 @@ class DesignSystemSyncJob < ApplicationJob
     figma = Figma::Client.new(ENV["FIGMA_TOKEN"])
     changed_file_keys = detect_changed_files(figma, source_files)
 
-    # Only scale figma_worker if at least one file changed
+    # Scale up figma_worker (performance-l) for import + codegen
     if changed_file_keys.any?
-      scale_figma_worker_for(figma, source_files, changed_file_keys)
+      HerokuScaler.scale_up_figma_worker
     else
       puts "[DesignSystemSyncJob] All #{source_files.size} files unchanged, skipping worker scale"
     end
@@ -93,26 +89,4 @@ class DesignSystemSyncJob < ApplicationJob
     changed
   end
 
-  # Only probe and scale for files that actually changed.
-  def scale_figma_worker_for(figma, source_files, changed_file_keys)
-    max_components = 0
-
-    source_files.each do |ff|
-      next unless ff.figma_file_key.present?
-      next unless changed_file_keys.include?(ff.figma_file_key)
-
-      counts = figma.file_component_counts(ff.figma_file_key)
-      total = counts[:components] + counts[:component_sets]
-      max_components = total if total > max_components
-      puts "[DesignSystemSyncJob] File #{ff.figma_file_key}: #{counts[:components]} components, #{counts[:component_sets]} sets"
-    rescue => e
-      puts "[DesignSystemSyncJob] Failed to probe #{ff.figma_file_key}: #{e.message}"
-    end
-
-    estimated_mb = BASE_MEMORY_MB + (max_components * MB_PER_COMPONENT)
-    dyno_size = HerokuScaler.pick_dyno_size(estimated_mb.to_i)
-    puts "[DesignSystemSyncJob] Estimated memory: #{estimated_mb.to_i}MB → dyno size: #{dyno_size}"
-
-    HerokuScaler.scale_up_figma_worker(dyno_size)
-  end
 end

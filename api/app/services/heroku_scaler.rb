@@ -1,32 +1,14 @@
 class HerokuScaler
-  # Dyno sizes ordered by memory (MB)
-  DYNO_SIZES = {
-    "standard-1x" => 512,
-    "standard-2x" => 1024,
-    "performance-m" => 2560
-  }.freeze
-
-  DEFAULT_SIZE = "standard-1x"
+  FIGMA_WORKER_SIZE = "performance-l"
 
   def self.scale(process, quantity:, size: nil)
     new.scale(process, quantity: quantity, size: size)
   end
 
-  def self.pick_dyno_size(estimated_mb)
-    # Add 30% headroom over estimate
-    needed = estimated_mb * 1.3
-    DYNO_SIZES.each do |size, mb|
-      return size if mb >= needed
-    end
-    "performance-m"
+  def self.scale_up_figma_worker
+    scale("figma_worker", quantity: 1, size: FIGMA_WORKER_SIZE)
   end
 
-  # Convenience: spin up figma_worker with the right size
-  def self.scale_up_figma_worker(size)
-    scale("figma_worker", quantity: 1, size: size)
-  end
-
-  # Convenience: shut down figma_worker
   def self.scale_down_figma_worker
     scale("figma_worker", quantity: 0)
   end
@@ -35,7 +17,7 @@ class HerokuScaler
     return unless api_key.present? && app_name.present?
 
     body = { quantity: quantity }
-    body[:size] = size if size && DYNO_SIZES.key?(size)
+    body[:size] = size if size
 
     log "Scaling #{process}: quantity=#{quantity}#{size ? " size=#{size}" : ""}"
 
