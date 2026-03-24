@@ -270,6 +270,12 @@ module Figma
         .gsub(/xmlns="[^"]*"/, "")
         .strip
 
+      # Replace hardcoded black fills/strokes with currentColor so icons
+      # inherit color from parent via CSS color property
+      clean_svg = clean_svg
+        .gsub(/fill="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'fill="currentColor"')
+        .gsub(/stroke="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'stroke="currentColor"')
+
       # Extract intrinsic size from SVG attributes for default sizing
       w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
       h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
@@ -418,6 +424,31 @@ module Figma
       # Build prop name: strip #N suffix, convert to PascalCase + "Component"
       clean_key = ref.gsub(/#[\d:]+$/, "").strip.gsub(/^[\s↳]+/, "").strip
       to_prop_name(clean_key).sub(/^(\w)/) { $1.upcase } + "Component"
+    end
+
+    # Extract the fill color from an INSTANCE_SWAP icon node's children.
+    # Returns a hex color string (e.g. "#ffffff") if the icon has a non-black
+    # fill override, nil otherwise (black is the default for SVG icons).
+    def extract_instance_icon_color(node)
+      children = node["children"] || []
+      children.each do |child|
+        fills = child["fills"]
+        next unless fills.is_a?(Array) && fills.any?
+
+        fill = fills.find { |f| f["type"] == "SOLID" && f["color"] }
+        next unless fill
+
+        c = fill["color"]
+        r = (c["r"] * 255).round
+        g = (c["g"] * 255).round
+        b = (c["b"] * 255).round
+
+        # Skip black (default) — no override needed
+        next if r == 0 && g == 0 && b == 0
+
+        return "#%02x%02x%02x" % [r, g, b]
+      end
+      nil
     end
 
     # Returns true if this INSTANCE node is bound to an INSTANCE_SWAP prop
@@ -687,7 +718,12 @@ module Figma
             "{props.#{slot_name}}"
           elsif (swap_prop = instance_swap_prop_name(node))
             # INSTANCE_SWAP without preferredValues — render as dynamic component prop
-            "{#{swap_prop} && <#{swap_prop} />}"
+            icon_color = extract_instance_icon_color(node)
+            if icon_color
+              "{#{swap_prop} && <#{swap_prop} style={{color: \"#{icon_color}\"}} />}"
+            else
+              "{#{swap_prop} && <#{swap_prop} />}"
+            end
           else
             generate_instance(node, root_name, class_name, css_rules, depth)
           end
