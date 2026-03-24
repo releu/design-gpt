@@ -8,7 +8,13 @@ module Figma
     VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION ELLIPSE RECTANGLE LINE STAR POLYGON].freeze
     CONTAINER_TYPES = %w[FRAME GROUP INSTANCE].freeze
 
+    ASSET_CACHE_DIR = Rails.root.join("tmp", "figma_cache", "assets")
+
     def extract_all
+      if Figma::Client.cache_enabled? && restore_from_cache
+        return
+      end
+
       puts "[AssetExtractor] Starting asset extraction"
 
       component_sets_count = extract_for_component_sets
@@ -16,7 +22,80 @@ module Figma
       inline_count = extract_inline_vectors
 
       puts "[AssetExtractor] Extraction complete: #{component_sets_count} component sets, #{standalone_count} standalone components, #{inline_count} inline vectors"
+
+      dump_to_cache if Figma::Client.cache_enabled?
     end
+
+    private
+
+    def cache_key
+      lm = @figma_file.figma_last_modified || "unknown"
+      "#{@figma_file.figma_file_key}_#{Digest::SHA256.hexdigest(lm)[0..15]}"
+    end
+
+    def dump_to_cache
+      FileUtils.mkdir_p(ASSET_CACHE_DIR)
+      assets = FigmaAsset.where(component_id: @figma_file.components.pluck(:id))
+        .or(FigmaAsset.where(component_set_id: @figma_file.component_sets.pluck(:id)))
+        .or(FigmaAsset.where(component_id: nil, component_set_id: nil).where(node_id: all_node_ids))
+      data = assets.map { |a| a.attributes.except("id", "created_at", "updated_at") }
+      File.write(ASSET_CACHE_DIR.join("#{cache_key}.json"), JSON.generate(data))
+      puts "[AssetExtractor] Cached #{data.size} assets to disk"
+    rescue => e
+      puts "[AssetExtractor] Cache dump failed: #{e.message}"
+    end
+
+    def restore_from_cache
+      path = ASSET_CACHE_DIR.join("#{cache_key}.json")
+      return false unless path.exist?
+
+      data = JSON.parse(File.read(path))
+      return false if data.empty?
+
+      puts "[AssetExtractor] Restoring #{data.size} assets from cache..."
+
+      # Build node_id maps for the NEW figma_file's component/component_set IDs
+      cs_by_node = @figma_file.component_sets.index_by(&:node_id)
+      comp_by_node = @figma_file.components.index_by(&:node_id)
+
+      # We need to remap component_id/component_set_id from old to new
+      # The cached data has old IDs, but we can match by node_id
+      old_cs_ids = data.filter_map { |d| d["component_set_id"] }.uniq
+      old_comp_ids = data.filter_map { |d| d["component_id"] }.uniq
+
+      old_cs_node_map = ComponentSet.where(id: old_cs_ids).pluck(:id, :node_id).to_h
+      old_comp_node_map = Component.where(id: old_comp_ids).pluck(:id, :node_id).to_h
+
+      records = data.map do |attrs|
+        new_attrs = attrs.dup
+        if attrs["component_set_id"]
+          node_id = old_cs_node_map[attrs["component_set_id"]]
+          new_cs = node_id ? cs_by_node[node_id] : nil
+          new_attrs["component_set_id"] = new_cs&.id
+        end
+        if attrs["component_id"]
+          node_id = old_comp_node_map[attrs["component_id"]]
+          new_comp = node_id ? comp_by_node[node_id] : nil
+          new_attrs["component_id"] = new_comp&.id
+        end
+        new_attrs
+      end
+
+      # Bulk insert
+      FigmaAsset.insert_all(records)
+      puts "[AssetExtractor] Restored #{records.size} assets from cache"
+      true
+    rescue => e
+      puts "[AssetExtractor] Cache restore failed: #{e.message}, falling back to extraction"
+      false
+    end
+
+    def all_node_ids
+      @figma_file.component_sets.joins(:variants).pluck("component_variants.node_id") +
+        @figma_file.components.pluck(:node_id)
+    end
+
+    public
 
     def extract_for_component_sets
       component_sets = @figma_file.component_sets

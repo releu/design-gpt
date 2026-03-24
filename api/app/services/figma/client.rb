@@ -8,12 +8,73 @@ module Figma
     class ApiError < StandardError; end
 
     MAX_RETRIES = 5
+    CACHE_DIR = Rails.root.join("tmp", "figma_cache")
 
     def initialize(token)
       @token = token
     end
 
+    # Enable/disable local file caching for API responses.
+    # When enabled, GET responses are cached in tmp/figma_cache/.
+    # Full file fetches check lastModified before re-downloading.
+    def self.cache_enabled?
+      @cache_enabled.nil? ? true : @cache_enabled
+    end
+
+    def self.cache_enabled=(val)
+      @cache_enabled = val
+    end
+
     def get(path)
+      return get_uncached(path) unless self.class.cache_enabled?
+
+      cache_hash = Digest::SHA256.hexdigest(path)[0..31]
+      # Keep a short readable prefix for debugging
+      prefix = path.split("/").last(2).join("_").gsub(/[^a-zA-Z0-9._-]/, "_")[0..40]
+      cache_key = "#{prefix}_#{cache_hash}"
+      cache_path = CACHE_DIR.join("#{cache_key}.json")
+      meta_path = CACHE_DIR.join("#{cache_key}.meta")
+      FileUtils.mkdir_p(CACHE_DIR)
+
+      # For full file fetches, check lastModified with cheap depth=1 call
+      if path.match?(%r{^/v1/files/[^/]+$}) && cache_path.exist?
+        file_key = path.split("/").last
+        cached_modified = meta_path.exist? ? File.read(meta_path).strip : nil
+        if cached_modified
+          begin
+            light = get_uncached("/v1/files/#{file_key}?depth=1")
+            current_modified = light["lastModified"]
+            if current_modified == cached_modified
+              puts "[Figma::Client] Cache hit for #{path} (lastModified: #{cached_modified})"
+              return JSON.parse(File.read(cache_path))
+            else
+              puts "[Figma::Client] Cache stale for #{path} (#{cached_modified} → #{current_modified})"
+            end
+          rescue => e
+            puts "[Figma::Client] Cache check failed: #{e.message}, fetching fresh"
+          end
+        end
+      elsif cache_path.exist?
+        # For non-file endpoints (images, components, etc.) — use simple TTL cache (1 hour)
+        if (Time.now - File.mtime(cache_path)) < 3600
+          puts "[Figma::Client] Cache hit for #{path}"
+          return JSON.parse(File.read(cache_path))
+        end
+      end
+
+      # Fetch fresh
+      result = get_uncached(path)
+
+      # Write cache
+      File.write(cache_path, JSON.generate(result))
+      if path.match?(%r{^/v1/files/[^/]+$}) && result["lastModified"]
+        File.write(meta_path, result["lastModified"])
+      end
+
+      result
+    end
+
+    def get_uncached(path)
       uri = URI("https://api.figma.com#{path}")
       req = Net::HTTP::Get.new(uri)
       req["X-Figma-Token"] = @token
@@ -97,6 +158,21 @@ module Figma
     private
 
     def fetch_content(url, retries: MAX_RETRIES)
+      if self.class.cache_enabled?
+        cache_key = Digest::SHA256.hexdigest(url)[0..31]
+        cache_path = CACHE_DIR.join("cdn_#{cache_key}.bin")
+        FileUtils.mkdir_p(CACHE_DIR)
+        if cache_path.exist? && (Time.now - File.mtime(cache_path)) < 86400
+          return File.binread(cache_path)
+        end
+        result = fetch_content_uncached(url, retries: retries)
+        File.binwrite(cache_path, result)
+        return result
+      end
+      fetch_content_uncached(url, retries: retries)
+    end
+
+    def fetch_content_uncached(url, retries: MAX_RETRIES)
       uri = URI(url)
       http = Net::HTTP.new(uri.hostname, uri.port)
       http.use_ssl = true

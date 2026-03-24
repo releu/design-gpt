@@ -37,9 +37,38 @@ module Figma
       stdout.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "")
     end
 
-    # Batch-compile multiple JSX snippets in a single esbuild invocation.
+    # Batch-compile multiple JSX snippets using parallel esbuild invocations.
+    # Splits work across CPU cores for M2-class machines.
     # Takes [{ key:, code: }], returns { key => compiled_code }.
     def compile_batch(snippets)
+      return {} if snippets.empty?
+
+      require "tmpdir"
+      require "open3"
+
+      # Use available CPU cores (M2 has 8)
+      num_workers = [snippets.size, Etc.nprocessors, 8].min
+      chunk_size = (snippets.size.to_f / num_workers).ceil
+      chunks = snippets.each_slice(chunk_size).to_a
+
+      results = {}
+      mutex = Mutex.new
+
+      threads = chunks.map do |chunk|
+        Thread.new(chunk) do |batch|
+          batch_results = compile_batch_single(batch)
+          mutex.synchronize { results.merge!(batch_results) }
+        end
+      end
+      threads.each(&:join)
+
+      results
+    end
+
+    private
+
+    # Single esbuild invocation for a batch of snippets
+    def compile_batch_single(snippets)
       return {} if snippets.empty?
 
       require "tmpdir"
@@ -74,8 +103,7 @@ module Figma
           end
           results
         else
-          # Fallback: compile each snippet individually
-          Rails.logger.warn("Batch esbuild failed (#{stderr.truncate(200)}), falling back to individual compilation")
+          Rails.logger.warn("Batch esbuild failed (#{stderr.to_s.truncate(200)}), falling back to individual compilation")
           results = {}
           snippets.each do |snippet|
             results[snippet[:key]] = compile(snippet[:code])
@@ -87,6 +115,8 @@ module Figma
         end
       end
     end
+
+    public
 
     def compile_component(jsx_code, component_name)
       return "" if jsx_code.blank?
