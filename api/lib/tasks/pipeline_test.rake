@@ -615,8 +615,17 @@ namespace :pipeline do
     w = [img1.width, img2.width].min
     h = [img1.height, img2.height].min
 
-    img1 = img1.crop(0, 0, w, h) if img1.width != w || img1.height != h
-    img2 = img2.crop(0, 0, w, h) if img2.width != w || img2.height != h
+    # Center-crop the larger image (Figma exports include shadow padding)
+    if img1.width > w || img1.height > h
+      ox = (img1.width - w) / 2
+      oy = (img1.height - h) / 2
+      img1 = img1.crop(ox, oy, w, h)
+    end
+    if img2.width > w || img2.height > h
+      ox = (img2.width - w) / 2
+      oy = (img2.height - h) / 2
+      img2 = img2.crop(ox, oy, w, h)
+    end
 
     diff_image = ChunkyPNG::Image.new(w, h, ChunkyPNG::Color::TRANSPARENT)
     diff_pixels = 0
