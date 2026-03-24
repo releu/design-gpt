@@ -2,6 +2,10 @@ module Figma
   class ReactFactory
     include Figma::StyleExtractor
 
+    # Bump this when code generation logic changes to force recompilation
+    # on next DS sync, even if Figma content is unchanged.
+    CODEGEN_VERSION = 2
+
     def initialize(figma_file)
       @figma_file = figma_file
       @components_by_node_id = {}

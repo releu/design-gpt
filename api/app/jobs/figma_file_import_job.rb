@@ -66,6 +66,8 @@ class FigmaFileImportJob < ApplicationJob
 
   def copy_from_previous_version(ff)
     prev = previous_version_file(ff)
+    needs_recompile = prev.progress&.dig("codegen_version").to_i < Figma::ReactFactory::CODEGEN_VERSION
+
     ff.update!(status: "importing", figma_last_modified: prev.figma_last_modified, figma_file_name: prev.figma_file_name)
 
     # Copy component sets + variants + assets
@@ -74,9 +76,9 @@ class FigmaFileImportJob < ApplicationJob
         cs.attributes.except("id", "figma_file_id", "created_at", "updated_at")
       )
       cs.variants.each do |v|
-        new_cs.variants.create!(
-          v.attributes.except("id", "component_set_id", "created_at", "updated_at")
-        )
+        attrs = v.attributes.except("id", "component_set_id", "created_at", "updated_at")
+        attrs["react_code_compiled"] = nil if needs_recompile
+        new_cs.variants.create!(attrs)
       end
       cs.figma_assets.each do |a|
         FigmaAsset.create!(
@@ -88,9 +90,9 @@ class FigmaFileImportJob < ApplicationJob
 
     # Copy standalone components + assets
     prev.components.includes(:figma_assets).each do |c|
-      new_c = ff.components.create!(
-        c.attributes.except("id", "figma_file_id", "created_at", "updated_at")
-      )
+      attrs = c.attributes.except("id", "figma_file_id", "created_at", "updated_at")
+      attrs["react_code_compiled"] = nil if needs_recompile
+      new_c = ff.components.create!(attrs)
       c.figma_assets.each do |a|
         FigmaAsset.create!(
           a.attributes.except("id", "component_id", "component_set_id", "created_at", "updated_at")
@@ -99,10 +101,15 @@ class FigmaFileImportJob < ApplicationJob
       end
     end
 
-    ff.update!(status: "ready", progress: ff.progress.merge(
-      "completed_at" => Time.current.iso8601,
-      "message" => "Unchanged, copied from v#{prev.version}"
-    ))
+    if needs_recompile
+      puts "[FigmaFileImportJob] Codegen version changed, recompiling #{ff.figma_file_key}"
+      FigmaFileConvertJob.perform_later(ff.id)
+    else
+      ff.update!(status: "ready", progress: ff.progress.merge(
+        "completed_at" => Time.current.iso8601,
+        "message" => "Unchanged, copied from v#{prev.version}"
+      ))
+    end
   end
 
   def maybe_finalize_design_system(ff)

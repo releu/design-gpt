@@ -20,7 +20,10 @@ class FigmaFileConvertJob < ApplicationJob
     ff.update_progress(step: "converting", step_number: 3, total_steps: 4,
       message: "Complete - #{sets_with_code} component sets, #{components_with_code} standalone components with React code#{skip_msg}")
 
-    ff.update!(status: "ready", progress: ff.progress.merge("completed_at" => Time.current.iso8601))
+    ff.update!(status: "ready", progress: ff.progress.merge(
+      "completed_at" => Time.current.iso8601,
+      "codegen_version" => Figma::ReactFactory::CODEGEN_VERSION
+    ))
     VisualDiffJob.perform_later(ff.id)
 
     maybe_finalize_design_system(ff)
@@ -42,6 +45,9 @@ class FigmaFileConvertJob < ApplicationJob
 
   def copy_unchanged_codegen(ff, prev)
     skipped = 0
+    # Only copy compiled code if the codegen version matches; otherwise
+    # copy source (react_code) to speed up generation but force recompilation.
+    can_copy_compiled = prev.progress&.dig("codegen_version").to_i >= Figma::ReactFactory::CODEGEN_VERSION
 
     # Component sets: copy react_code from previous version's default variant if content_hash matches
     prev_sets = prev.component_sets.includes(:variants).index_by(&:node_id)
@@ -55,7 +61,7 @@ class FigmaFileConvertJob < ApplicationJob
 
       cs_default.update!(
         react_code: prev_default.react_code,
-        react_code_compiled: prev_default.react_code_compiled
+        react_code_compiled: can_copy_compiled ? prev_default.react_code_compiled : nil
       )
       skipped += 1
     end
@@ -68,7 +74,7 @@ class FigmaFileConvertJob < ApplicationJob
 
       c.update!(
         react_code: prev_c.react_code,
-        react_code_compiled: prev_c.react_code_compiled
+        react_code_compiled: can_copy_compiled ? prev_c.react_code_compiled : nil
       )
       skipped += 1
     end
