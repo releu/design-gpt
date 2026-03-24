@@ -4,6 +4,11 @@ require "json"
 
 module Figma
   class Client
+    class RateLimitError < StandardError; end
+    class ApiError < StandardError; end
+
+    MAX_RETRIES = 5
+
     def initialize(token)
       @token = token
     end
@@ -20,8 +25,36 @@ module Figma
       http.open_timeout = 30
       http.read_timeout = 300  # 5 minutes for large files
 
-      res = http.request(req)
-      JSON.parse(res.body)
+      attempt = 0
+      begin
+        attempt += 1
+        res = http.request(req)
+
+        case res.code.to_i
+        when 200
+          JSON.parse(res.body)
+        when 429
+          wait = (res["Retry-After"] || (attempt * 10)).to_i
+          puts "[Figma::Client] Rate limited (429). Waiting #{wait}s... (attempt #{attempt}/#{MAX_RETRIES})"
+          sleep(wait)
+          raise RateLimitError, "Rate limited"
+        when 500..599
+          puts "[Figma::Client] Server error #{res.code}. Retrying in #{attempt * 2}s..."
+          sleep(attempt * 2)
+          raise ApiError, "Server error #{res.code}"
+        else
+          raise ApiError, "HTTP #{res.code}: #{res.body.to_s[0..200]}"
+        end
+      rescue RateLimitError, ApiError => e
+        retry if attempt < MAX_RETRIES
+        raise e
+      rescue Errno::ECONNRESET, OpenSSL::SSL::SSLError, Net::OpenTimeout, Net::ReadTimeout => e
+        if attempt < MAX_RETRIES
+          sleep(attempt * 0.5)
+          retry
+        end
+        raise e
+      end
     end
 
     # Lightweight metadata — counts components without downloading the full document tree
@@ -52,33 +85,18 @@ module Figma
       get("/v1/images/#{file_key}?ids=#{ids}&format=png&scale=#{scale}")
     end
 
-    # Download binary content from a URL (for PNG exports, etc.)
-    def fetch_binary_content(url, retries: 3)
-      uri = URI(url)
-      http = Net::HTTP.new(uri.hostname, uri.port)
-      http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-      http.cert_store = OpenSSL::X509::Store.new.tap(&:set_default_paths)
-      http.open_timeout = 10
-      http.read_timeout = 30
-
-      attempts = 0
-      begin
-        attempts += 1
-        req = Net::HTTP::Get.new(uri)
-        res = http.request(req)
-        res.body
-      rescue Errno::ECONNRESET, OpenSSL::SSL::SSLError, Net::OpenTimeout, Net::ReadTimeout => e
-        if attempts < retries
-          sleep(attempts * 0.5)
-          retry
-        else
-          raise e
-        end
-      end
+    # Download content from a URL (SVG text or PNG binary from Figma CDN)
+    def fetch_svg_content(url, retries: MAX_RETRIES)
+      fetch_content(url, retries: retries)
     end
 
-    def fetch_svg_content(url, retries: 3)
+    def fetch_binary_content(url, retries: MAX_RETRIES)
+      fetch_content(url, retries: retries)
+    end
+
+    private
+
+    def fetch_content(url, retries: MAX_RETRIES)
       uri = URI(url)
       http = Net::HTTP.new(uri.hostname, uri.port)
       http.use_ssl = true
@@ -87,20 +105,35 @@ module Figma
       http.open_timeout = 10
       http.read_timeout = 30
 
-      attempts = 0
+      attempt = 0
       begin
-        attempts += 1
+        attempt += 1
         req = Net::HTTP::Get.new(uri)
         res = http.request(req)
-        res.body
-      rescue Errno::ECONNRESET, OpenSSL::SSL::SSLError, Net::OpenTimeout, Net::ReadTimeout => e
-        if attempts < retries
-          sleep_time = attempts * 0.5  # 0.5s, 1s, 1.5s backoff
-          sleep(sleep_time)
-          retry
+
+        case res.code.to_i
+        when 200
+          res.body
+        when 429
+          wait = (res["Retry-After"] || (attempt * 5)).to_i
+          puts "[Figma::Client] CDN rate limited. Waiting #{wait}s..."
+          sleep(wait)
+          raise RateLimitError
+        when 500..599
+          sleep(attempt * 1)
+          raise ApiError, "CDN #{res.code}"
         else
-          raise e
+          raise ApiError, "CDN HTTP #{res.code}"
         end
+      rescue RateLimitError, ApiError => e
+        retry if attempt < retries
+        raise e
+      rescue Errno::ECONNRESET, OpenSSL::SSL::SSLError, Net::OpenTimeout, Net::ReadTimeout => e
+        if attempt < retries
+          sleep(attempt * 0.5)
+          retry
+        end
+        raise e
       end
     end
   end
