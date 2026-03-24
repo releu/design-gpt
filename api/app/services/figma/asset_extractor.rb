@@ -285,13 +285,16 @@ module Figma
               @image_instance_component_groups[comp_id] << node["id"] unless @image_instance_component_groups[comp_id].include?(node["id"])
             end
           elsif vector_frame?(node)
-            result[file_key] ||= []
-            result[file_key] << node["id"] unless result[file_key].include?(node["id"])
-            # Group by componentId for deduplication
+            # Skip export for INSTANCE nodes that resolve to known components —
+            # ReactFactory will render <ComponentName /> instead of inline SVG
             comp_id = node["componentId"]
-            if comp_id && @instance_component_groups
-              @instance_component_groups[comp_id] ||= []
-              @instance_component_groups[comp_id] << node["id"] unless @instance_component_groups[comp_id].include?(node["id"])
+            unless comp_id && resolvable_instance?(comp_id)
+              result[file_key] ||= []
+              result[file_key] << node["id"] unless result[file_key].include?(node["id"])
+              if comp_id && @instance_component_groups
+                @instance_component_groups[comp_id] ||= []
+                @instance_component_groups[comp_id] << node["id"] unless @instance_component_groups[comp_id].include?(node["id"])
+              end
             end
           end
         end
@@ -416,6 +419,34 @@ module Figma
       end
 
       saved_count
+    end
+
+    # Check if a componentId resolves to a known component in the same design system
+    def resolvable_instance?(component_id)
+      return false unless @figma_file.design_system
+
+      @resolvable_cache ||= begin
+        ids = Set.new
+        @figma_file.design_system.current_figma_files.each do |ff|
+          ff.component_sets.pluck(:node_id).each { |nid| ids << nid }
+          ff.components.pluck(:node_id).each { |nid| ids << nid }
+          ComponentVariant.where(component_set_id: ff.component_set_ids).pluck(:node_id).each { |nid| ids << nid }
+        end
+        # Also check component_key_map for cross-file resolution
+        key_map = @figma_file.component_key_map || {}
+        variant_keys = Set.new
+        @figma_file.design_system.current_figma_files.each do |ff|
+          ComponentVariant.where(component_set_id: ff.component_set_ids).where.not(component_key: nil).pluck(:component_key).each { |k| variant_keys << k }
+        end
+        { ids: ids, key_map: key_map, variant_keys: variant_keys }
+      end
+
+      return true if @resolvable_cache[:ids].include?(component_id)
+
+      comp_key = @resolvable_cache[:key_map][component_id]
+      return true if comp_key && @resolvable_cache[:variant_keys].include?(comp_key)
+
+      false
     end
 
     def has_image_fill?(node)
