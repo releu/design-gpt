@@ -149,7 +149,7 @@ module Figma
 
           node = default_variant.figma_json
 
-          @current_props = extract_props(prop_definitions)
+          @current_props = extract_props(prop_definitions, node)
           @slot_map = build_slot_map(node, prop_definitions)
 
           collect_nested_instance_props(node)
@@ -211,7 +211,7 @@ module Figma
       @is_list_component = component.name.include?("#list") || component.description.to_s.include?("#list")
       @rendered_list_slots = []
 
-      @current_props = extract_props(component.prop_definitions || {})
+      @current_props = extract_props(component.prop_definitions || {}, node)
       @slot_map = build_slot_map(node, @prop_definitions)
 
       instances, detached_nodes = collect_instances(node)
@@ -304,7 +304,7 @@ module Figma
       CODE
     end
 
-    def extract_props(prop_definitions)
+    def extract_props(prop_definitions, variant_tree = nil)
       props = {}
       return props unless prop_definitions.is_a?(Hash)
 
@@ -340,16 +340,11 @@ module Figma
             # Image INSTANCE_SWAP — treat as TEXT prop (prompt string)
             prop_type = "TEXT"
             default_value = ""
-          elsif default_value.present?
-            component_set = find_component_set_by_any_node_id(default_value)
-            unless component_set
-              # Cross-file resolution via component_key
-              comp_key = @component_key_by_node_id[default_value]
-              if comp_key
-                variant = @variants_by_component_key[comp_key]
-                component_set = variant&.component_set
-              end
-            end
+          elsif default_value.present? && variant_tree
+            # defaultValue is a componentId — find the instance node in the tree
+            # and resolve via its original child IDs
+            instance_node = find_node_by_component_id(variant_tree, default_value)
+            component_set = find_component_set_for_detached(instance_node) if instance_node
             default_value = component_set ? to_component_name(component_set.name) : nil
           end
         end
@@ -1057,6 +1052,16 @@ module Figma
       @node_id_to_component_set[node_id]
     end
 
+    def find_node_by_component_id(node, component_id)
+      return nil unless node.is_a?(Hash)
+      return node if node["componentId"] == component_id
+      (node["children"] || []).each do |child|
+        result = find_node_by_component_id(child, component_id)
+        return result if result
+      end
+      nil
+    end
+
     def find_component_set_for_detached(node)
       original_child_ids = extract_original_child_ids(node)
 
@@ -1229,20 +1234,29 @@ module Figma
     end
 
     def build_node_id_cache
-      @figma_file.component_sets.includes(:variants).each do |component_set|
-        @component_sets_by_node_id[component_set.node_id] = component_set
-        component_set.variants.each do |variant|
-          @variants_by_node_id[variant.node_id] = variant
-          if variant.figma_json.present?
-            collect_all_node_ids(variant.figma_json).each do |node_id|
-              @node_id_to_component_set[node_id] = component_set
+      files = if @figma_file.design_system
+        @figma_file.design_system.current_figma_files
+      else
+        [@figma_file]
+      end
+
+      files.each do |ff|
+        ff.component_sets.includes(:variants).each do |component_set|
+          @component_sets_by_node_id[component_set.node_id] = component_set
+          component_set.variants.each do |variant|
+            @variants_by_node_id[variant.node_id] = variant
+            @variants_by_component_key[variant.component_key] = variant if variant.component_key.present?
+            if variant.figma_json.present?
+              collect_all_node_ids(variant.figma_json).each do |node_id|
+                @node_id_to_component_set[node_id] = component_set
+              end
             end
           end
         end
-      end
 
-      @figma_file.components.each do |component|
-        @components_by_node_id[component.node_id] = component
+        ff.components.each do |component|
+          @components_by_node_id[component.node_id] = component
+        end
       end
     end
 
@@ -1652,7 +1666,7 @@ module Figma
         node = variant.figma_json
         scope_id = "#{component_name.downcase.gsub(/[^a-z0-9]/, "")}v#{idx}"
 
-        @current_props = extract_props(prop_definitions)
+        @current_props = extract_props(prop_definitions, node)
         @slot_map = build_slot_map(node, prop_definitions)
 
         collect_nested_instance_props(node)
