@@ -151,10 +151,9 @@ namespace :e2e do
         # ========================================
         # CHECK 3: White Plus icon in rendered DOM
         # ========================================
-        # NOTE: This check requires Page's main content area to have a slot
-        # with Button as allowed child, and Button's StartIcon defaulting to Plus.
-        # Currently Page's second frame has no slot (empty in Figma component def).
-        # When the DS is updated with proper slots, re-enable this as a hard check.
+        # SiteSelector renders <Button StartIconComponent={Plus} />.
+        # The Button variant (view=Action, iconOnly=On) passes
+        # style={{ color: "#ffffff" }} to the icon component.
         puts "\n=== Check 3: White Plus icon in button ==="
         dom_html = page.evaluate("document.getElementById('root').innerHTML")
         expected_icon = '<div data-component="Plus" style="color: rgb(255, 255, 255); width: 16px; height: 16px;"><svg'
@@ -165,11 +164,11 @@ namespace :e2e do
         else
           plus_match = dom_html.to_s.match(/data-component="Plus"[^>]*>/)
           if plus_match
-            puts "  WARN: Plus icon found but with wrong styles: #{plus_match[0]}"
+            puts "  FAIL: Plus icon found but with wrong attrs: #{plus_match[0][0..200]}"
           else
-            puts "  WARN: No Plus icon in rendered DOM (Page has no main content slot — DS config needed)"
+            puts "  FAIL: No Plus icon found in rendered DOM"
           end
-          # Soft warning, not a failure — requires DS slot configuration
+          errors << "White Plus icon missing or wrong styles"
         end
 
       ensure

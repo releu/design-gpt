@@ -217,9 +217,16 @@ module Figma
 
       tree = resolve_node(node, is_root: true)
 
+      # Add imports for components referenced in INSTANCE_SWAP overrides
+      all_imports = parse_imports(imports_str)
+      @extra_instance_imports.each do |name|
+        imp = "import { #{name} } from './#{name}';"
+        all_imports << imp unless all_imports.include?(imp)
+      end
+
       all_props = (@current_props || {}).dup
       Figma::IR.component(name: component.name, react_name: component_name,
-                           props: all_props, tree: tree, imports: parse_imports(imports_str),
+                           props: all_props, tree: tree, imports: all_imports,
                            has_slot: @has_slot_during_resolve)
     end
 
@@ -419,7 +426,9 @@ module Figma
       # Try to resolve via lookups — need both name and component_set for override extraction
       comp_name, component_set = resolve_instance_name_and_set(node)
       if comp_name
-        prop_overrides = extract_instance_override_props_for_ir(node, component_set)
+        prop_overrides, extra_imports = extract_instance_override_props_for_ir(node, component_set)
+        # Track extra imports from INSTANCE_SWAP overrides (e.g. StartIconComponent=Plus)
+        extra_imports.each { |name| @extra_instance_imports << name } if extra_imports.any?
         return Figma::IR.component_ref(node_id: node["id"], name: node["name"] || "element",
                                         component_name: comp_name, prop_overrides: prop_overrides,
                                         visibility_prop: visibility_prop)
@@ -530,9 +539,15 @@ module Figma
 
       tree = resolve_node(node, is_root: true)
 
+      all_imports = parse_imports(imports_str)
+      @extra_instance_imports.each do |name|
+        imp = "import { #{name} } from './#{name}';"
+        all_imports << imp unless all_imports.include?(imp)
+      end
+
       all_props = (@current_props || {}).merge(@nested_instance_props || {})
       Figma::IR.component(name: component_set.name, react_name: component_name,
-                           props: all_props, tree: tree, imports: parse_imports(imports_str),
+                           props: all_props, tree: tree, imports: all_imports,
                            has_slot: @has_slot_during_resolve, nested_props: @nested_instance_props || {})
     end
 
@@ -548,6 +563,12 @@ module Figma
 
         tree = resolve_node(node, is_root: true)
 
+        all_imports = parse_imports(imports_str)
+        @extra_instance_imports.each do |name|
+          imp = "import { #{name} } from './#{name}';"
+          all_imports << imp unless all_imports.include?(imp)
+        end
+
         non_variant_props = (@current_props || {}).merge(@nested_instance_props || {}).reject { |_, p| p[:type] == "VARIANT" }
 
         Figma::IR.variant_entry(
@@ -555,7 +576,7 @@ module Figma
           variant_properties: variant.variant_properties,
           props: non_variant_props,
           tree: tree,
-          imports: parse_imports(imports_str),
+          imports: all_imports,
           has_slot: @has_slot_during_resolve,
           nested_props: @nested_instance_props || {},
           variant_record: variant
@@ -579,6 +600,7 @@ module Figma
       @prop_definitions = prop_definitions
       @rendered_list_slots = []
       @has_slot_during_resolve = false
+      @extra_instance_imports = Set.new
 
       @current_props = extract_props(prop_definitions, node)
       @slot_map = build_slot_map(node, prop_definitions)
@@ -1169,11 +1191,13 @@ module Figma
 
     # Extract componentProperties overrides from an INSTANCE node as a hash
     # suitable for IR prop_overrides. Only includes props that differ from defaults.
+    # Returns [overrides_hash, extra_import_names_array].
     def extract_instance_override_props_for_ir(node, component_set)
       overrides = {}
+      extra_imports = []
       component_properties = node["componentProperties"]
-      return overrides unless component_properties.is_a?(Hash) && component_properties.any?
-      return overrides unless component_set
+      return [overrides, extra_imports] unless component_properties.is_a?(Hash) && component_properties.any?
+      return [overrides, extra_imports] unless component_set
 
       prop_definitions = component_set.prop_definitions || {}
 
@@ -1212,6 +1236,7 @@ module Figma
             next unless comp_name
             component_prop_name = prop_name.sub(/^(\w)/) { $1.upcase } + "Component"
             overrides[component_prop_name] = comp_name
+            extra_imports << comp_name
           end
           # INSTANCE_SWAP with preferredValues (slot content) is complex —
           # requires JSX rendering of child nodes. Skip for now; the slot
@@ -1219,7 +1244,7 @@ module Figma
         end
       end
 
-      overrides
+      [overrides, extra_imports]
     end
 
     def generate_imports(instances, detached_nodes = [])

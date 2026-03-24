@@ -180,9 +180,16 @@ module Figma
 
       code = code.gsub(/\b#{Regexp.escape(component_name)}__v(\d+)\b/) { "#{component_name}_#{component_id}__v#{$1}" }
 
+      # Extract imported component names before stripping imports.
+      # The renderer loads components as globals — declare them so esbuild
+      # preserves references (e.g. StartIconComponent=Plus).
+      imported_names = code.scan(/^import \{ (\w+) \} from/).flatten
       code = code.gsub(/^import [^\n]+\n/, "")
       code = code.gsub(/^export default [^\n]+\n?/, "")
       code = code.gsub(/^export /, "")
+
+      # No additional transforms needed — imported component names are available
+      # as globals in the renderer. esbuild preserves undefined references.
 
       code
     end

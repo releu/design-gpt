@@ -424,7 +424,16 @@ module Figma
 
     def emit_component_ref(ir)
       if ir[:prop_overrides].any?
-        props_string = ir[:prop_overrides].map { |k, v| "#{k}=#{v}" }.join(" ")
+        props_string = ir[:prop_overrides].map { |k, v|
+          # Values already wrapped in quotes/braces (e.g. "\"Action\"", "{true}")
+          # are emitted as-is. Bare identifiers (component refs like Plus)
+          # need curly braces for valid JSX.
+          if v.start_with?('"') || v.start_with?("{")
+            "#{k}=#{v}"
+          else
+            "#{k}={#{v}}"
+          end
+        }.join(" ")
         "<#{ir[:component_name]} #{props_string} />"
       else
         "<#{ir[:component_name]} />"

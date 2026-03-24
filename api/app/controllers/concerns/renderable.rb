@@ -206,8 +206,16 @@ module Renderable
           code.scan(/Component:\s*([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
             new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
           end
+          # Match window.ComponentName references (from preprocessed imports)
+          code.scan(/Component:\s*window\.([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
+            new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
+          end
           # Match component default values in destructuring (e.g. StartIconComponent = Plus)
           code.scan(/Component\s*=\s*([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
+            new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
+          end
+          # Match window.ComponentName in default values
+          code.scan(/Component\s*=\s*window\.([A-Z][a-zA-Z0-9]*)/).flatten.each do |ref|
             new_refs << ref unless loaded_react_names.include?(ref) || resolved.include?(ref)
           end
         end
