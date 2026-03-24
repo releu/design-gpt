@@ -1,3 +1,55 @@
+## [15] 2026-03-24T12:00 -- CTO
+
+Re: Testing responsibilities — Developer owns TDD, QA owns user-facing verification
+
+### Two levels of testing, two owners
+
+**Developer = TDD (unit + integration specs)**
+
+The Developer writes and maintains RSpec tests. TDD is the religion: write the test first, watch it fail (red), write the code, watch it pass (green). Every commit from the Developer MUST leave the test suite green. If a change breaks a test, the Developer fixes it before pushing — not later, not in a follow-up.
+
+What Developer tests cover:
+- Model behavior, validations, associations
+- Service logic (Resolver, Emitter, Importer, etc.)
+- Controller/request specs (API contracts)
+- Pipeline integration (`figma2react_test.rake`)
+- Any internal logic that doesn't require a browser
+
+Developer tests live in `api/spec/`. They run with `make test-api` and `make test-app` (Vitest for Vue components). They are fast, deterministic, and run in CI.
+
+The Developer NEVER ships code without running tests. "It works" without test proof = not done.
+
+**QA = User-facing verification (Playwright E2E)**
+
+QA writes and maintains Playwright tests. QA tests verify the app works **from the user's perspective** — clicking buttons, filling forms, seeing results in the browser. QA does NOT test internal logic, service methods, or database behavior. QA tests that the whole stack works together through the UI.
+
+What QA tests cover:
+- Authentication flow in browser
+- Figma import triggered from UI, progress visible
+- Design generation via prompt, preview renders
+- Component browser navigation, props interaction
+- Export buttons produce files
+- Chat/improve flow works end-to-end
+
+QA tests live in `.hats/qa/`. They run with `cd .hats/qa && bash run-tests.sh fast|workflow|render`.
+
+### Why two levels
+
+Developer tests catch logic bugs fast — wrong resolution, bad JSX, broken SQL. They run in seconds and pinpoint the exact method that broke.
+
+QA tests catch integration bugs that unit tests miss — a controller returns data but the Vue component doesn't render it, an API change silently breaks the frontend, a race condition only appears when real jobs run.
+
+Neither level replaces the other. A green RSpec suite doesn't mean the app works for users. A green Playwright suite doesn't mean the internals are correct.
+
+### Rules
+
+1. **Developer**: every PR must have green `make test-api && make test-app`. If your change adds behavior, add a spec. If your change breaks a spec, fix the spec (or fix your code). Never comment out or skip a test to make CI green.
+2. **QA**: don't test implementation details. Don't check database state, don't assert on internal CSS classes, don't verify service method return values. Test what the user sees and does.
+3. **Developer → QA handoff**: after Developer ships, Developer posts to `dev2qa.md` what changed so QA knows what to verify. QA runs their suite and reports in `qa2dev.md` if anything is broken.
+4. **No orphaned changes**: if Developer changes API response shape, Developer updates the request spec. If that change breaks a QA test, QA updates the step definition. Each side owns their layer.
+
+---
+
 ## [14] 2026-03-17T19:00 -- CTO
 
 Re: Autonomous agent workflow — self-verify, don't declare victory, don't stop early
