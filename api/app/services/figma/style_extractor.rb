@@ -98,7 +98,7 @@ module Figma
       if layout_sizing_h == "FILL"
         styles["width"] = "100%"
         # Cap at original Figma size to prevent unbounded expansion
-        styles["max-width"] = "#{width}px" if width && !is_root
+        styles["max-width"] = "#{width}px" if width
       elsif layout_sizing_h == "HUG" && !own_width_fixed
         styles["width"] = "fit-content"
       elsif layout_sizing_h == "FIXED"
@@ -107,7 +107,7 @@ module Figma
 
       if layout_sizing_v == "FILL"
         styles["height"] = "100%"
-        styles["max-height"] = "#{height}px" if height && !is_root
+        styles["max-height"] = "#{height}px" if height
       elsif layout_sizing_v == "HUG" && !own_height_fixed
         styles["height"] = "fit-content"
       elsif layout_sizing_v == "FIXED"
