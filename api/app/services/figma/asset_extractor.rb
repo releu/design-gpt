@@ -193,7 +193,7 @@ module Figma
               end
             end
 
-            if threads.size >= 10
+            if threads.size >= 20
               threads.each(&:join)
               threads.clear
             end
@@ -235,7 +235,7 @@ module Figma
               end
             end
 
-            if threads.size >= 10
+            if threads.size >= 20
               threads.each(&:join)
               threads.clear
             end
@@ -406,7 +406,7 @@ module Figma
             end
 
             # Limit concurrency to 10 parallel fetches
-            if threads.size >= 10
+            if threads.size >= 20
               threads.each(&:join)
               threads.clear
             end
@@ -493,7 +493,7 @@ module Figma
               end
             end
 
-            if threads.size >= 10
+            if threads.size >= 20
               threads.each(&:join)
               threads.clear
             end
