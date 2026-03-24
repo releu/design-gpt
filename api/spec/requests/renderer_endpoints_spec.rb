@@ -36,30 +36,38 @@ RSpec.describe "Renderer Endpoints", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
-    context "when iteration is created during DS sync" do
-      it "pins to the last ready version, not the in-progress version" do
-        ds = design_systems(:alice_ds)
-        design = designs(:alice_design)
+    it "always uses the current DS version, not a pinned one" do
+      ds = design_systems(:alice_ds)
+      design = designs(:alice_design)
 
-        # DS version is 1 (has files). Simulate sync_async: status changes
-        # but version stays at 1 until sync completes.
-        ds.update!(status: "pending")
+      # Create iteration — it no longer pins a version
+      iteration = design.iterations.create!(
+        comment: "test",
+        jsx: "<Button />",
+        design_system: ds
+      )
 
-        iteration = design.iterations.create!(
-          comment: "test",
-          jsx: "<Button />",
-          design_system: ds,
-          design_system_version: ds.version
-        )
+      # Simulate DS sync: bump version to 2 with new files
+      new_lib = ds.figma_files.create!(
+        user: ds.user, name: "v2 lib", version: 2, status: "ready",
+        figma_url: "https://figma.com/test", figma_file_key: "test123"
+      )
+      new_lib.component_sets.create!(
+        node_id: "v2:100", name: "Button",
+        figma_file_key: "test123", figma_file_name: "test",
+        prop_definitions: {}
+      ).variants.create!(
+        node_id: "v2:101", name: "Default", is_default: true,
+        figma_json: { "id" => "v2:101", "type" => "COMPONENT", "name" => "Default", "children" => [] },
+        react_code_compiled: "var Button = function() { return React.createElement('button', null, 'v2'); }"
+      )
+      ds.update!(version: 2)
 
-        # Version is still 1 (the ready version), so components load
-        expect(iteration.design_system_version).to eq(1)
+      get "/api/iterations/#{iteration.id}/renderer"
 
-        get "/api/iterations/#{iteration.id}/renderer"
-
-        expect(response).to have_http_status(:ok)
-        expect(response.body).to match(/_loaded = \[.*"Button"/)
-      end
+      expect(response).to have_http_status(:ok)
+      # Should use v2 components (the current DS version), not v1
+      expect(response.body).to include("v2")
     end
   end
 end

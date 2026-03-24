@@ -5,11 +5,7 @@ class IterationsController < ApplicationController
 
   def renderer
     iteration = Iteration.find(params[:id])
-    if iteration.design_system_id && iteration.design_system_version
-      libraries = FigmaFile.where(design_system_id: iteration.design_system_id, version: iteration.design_system_version)
-    else
-      libraries = iteration.design.figma_files
-    end
+    libraries = iteration.design.figma_files
     used = extract_component_names(iteration.jsx) if iteration.jsx.present?
     usages = extract_component_usages(iteration.jsx) if iteration.jsx.present?
     precompiled = precompile_jsx(iteration.jsx) if iteration.jsx.present?

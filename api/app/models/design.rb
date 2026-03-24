@@ -72,7 +72,6 @@ class Design < ApplicationRecord
     iterations.create! do |i|
       i.comment = text
       i.design_system = design_system
-      i.design_system_version = design_system&.version
     end
   end
 
