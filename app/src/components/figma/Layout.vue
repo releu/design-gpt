@@ -38,13 +38,13 @@
       </div>
     </template>
 
-    <!-- Layout 3: Desktop (stacked) -->
+    <!-- Layout 3: Desktop (narrow chat left, desktop preview right) -->
     <template v-else-if="layout === 'desktop'">
-      <div class="Layout__row Layout__row_chat Layout__connector_down Layout__prompt">
+      <div class="Layout__col Layout__col_desktop-chat Layout__connector_right Layout__prompt">
         <slot name="left-panel" />
         <slot name="prompt" />
       </div>
-      <div class="Layout__row Layout__row_desktop-preview Layout__preview">
+      <div class="Layout__col Layout__col_desktop-preview Layout__preview">
         <slot name="preview" />
       </div>
     </template>
@@ -268,16 +268,14 @@ export default {
 
   /* ===== LAYOUT 3: DESKTOP (Stacked) ===== */
   &_layout-desktop {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr 1fr;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
     grid-template-areas:
-      "header"
-      "chat"
-      "preview";
-    row-gap: var(--sp-3);
+      "header header"
+      "chat   preview";
 
-    .Layout__row_chat { grid-area: chat; }
-    .Layout__row_desktop-preview { grid-area: preview; }
+    .Layout__col_desktop-chat { grid-area: chat; }
+    .Layout__col_desktop-preview { grid-area: preview; }
   }
 
   /* ===== LAYOUT 4: CODE (Three columns) ===== */
