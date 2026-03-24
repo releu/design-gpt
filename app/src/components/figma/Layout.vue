@@ -273,6 +273,8 @@ export default {
     grid-template-areas:
       "header header"
       "chat   preview";
+    column-gap: var(--sp-3);
+    row-gap: var(--sp-3);
 
     .Layout__col_desktop-chat { grid-area: chat; }
     .Layout__col_desktop-preview { grid-area: preview; }
