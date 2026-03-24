@@ -426,12 +426,15 @@ module Figma
       to_prop_name(clean_key).sub(/^(\w)/) { $1.upcase } + "Component"
     end
 
-    # Extract the fill color from an INSTANCE_SWAP icon node's children.
-    # Returns a hex color string (e.g. "#ffffff") if the icon has a non-black
-    # fill override, nil otherwise (black is the default for SVG icons).
-    def extract_instance_icon_color(node)
-      children = node["children"] || []
-      children.each do |child|
+    # Extract visual style overrides from an INSTANCE node.
+    # Checks the node's children for fill color overrides and the node itself
+    # for size overrides. Returns a hash of CSS style properties, e.g.
+    # { "color" => "#ffffff", "width" => "20px", "height" => "20px" }
+    def extract_instance_style_overrides(node)
+      style = {}
+
+      # Fill color override: scan children for non-black solid fills
+      (node["children"] || []).each do |child|
         fills = child["fills"]
         next unless fills.is_a?(Array) && fills.any?
 
@@ -444,11 +447,22 @@ module Figma
         b = (c["b"] * 255).round
 
         # Skip black (default) — no override needed
-        next if r == 0 && g == 0 && b == 0
-
-        return "#%02x%02x%02x" % [r, g, b]
+        unless r == 0 && g == 0 && b == 0
+          style["color"] = "#%02x%02x%02x" % [r, g, b]
+          break
+        end
       end
-      nil
+
+      # Size override from bounding box
+      bbox = node["absoluteBoundingBox"]
+      if bbox
+        w = bbox["width"]&.round
+        h = bbox["height"]&.round
+        style["width"] = "#{w}px" if w && w > 0
+        style["height"] = "#{h}px" if h && h > 0
+      end
+
+      style
     end
 
     # Returns true if this INSTANCE node is bound to an INSTANCE_SWAP prop
@@ -718,9 +732,10 @@ module Figma
             "{props.#{slot_name}}"
           elsif (swap_prop = instance_swap_prop_name(node))
             # INSTANCE_SWAP without preferredValues — render as dynamic component prop
-            icon_color = extract_instance_icon_color(node)
-            if icon_color
-              "{#{swap_prop} && <#{swap_prop} style={{color: \"#{icon_color}\"}} />}"
+            overrides = extract_instance_style_overrides(node)
+            if overrides.any?
+              style_pairs = overrides.map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+              "{#{swap_prop} && <#{swap_prop} style={{#{style_pairs}}} />}"
             else
               "{#{swap_prop} && <#{swap_prop} />}"
             end
