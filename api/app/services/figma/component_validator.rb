@@ -5,14 +5,10 @@ module Figma
   class ComponentValidator
     SKEW_TOLERANCE = 0.01
 
-    def initialize(figma_json)
-      @json = figma_json
-    end
-
-    # Run all validations. Returns array of warning strings.
-    def initialize(figma_json, is_image: false)
+    def initialize(figma_json, is_image: false, variant_json_by_id: {})
       @json = figma_json
       @is_image = is_image
+      @variant_json_by_id = variant_json_by_id
     end
 
     # Run all validations. Returns array of warning strings.
@@ -111,9 +107,16 @@ module Figma
 
       if node["type"] == "INSTANCE"
         instance_name = node["name"] || "unknown"
-        (node["children"] || []).each do |child|
+        # Look up the source variant to compare against
+        source_children = source_variant_children(node)
+
+        (node["children"] || []).each_with_index do |child, idx|
           next unless OVERRIDE_TYPES.include?(child["type"])
           next if child["visible"] == false
+
+          # Skip if the source variant's matching child has the same fills/strokes
+          source_child = source_children && source_children[idx]
+          next if source_child && same_fills?(child, source_child)
 
           has_fill = (child["fills"] || []).any? { |f| f["visible"] != false }
           has_stroke = (child["strokes"] || []).any? { |f| f["visible"] != false }
@@ -127,6 +130,21 @@ module Figma
       end
 
       (node["children"] || []).each { |child| find_instance_overrides(child, warnings) }
+    end
+
+    def source_variant_children(instance_node)
+      component_id = instance_node["componentId"]
+      return nil unless component_id
+      variant_json = @variant_json_by_id[component_id]
+      return nil unless variant_json
+      variant_json["children"] || []
+    end
+
+    def same_fills?(child, source_child)
+      child_fills = (child["fills"] || []).select { |f| f["visible"] != false }
+      source_fills = (source_child["fills"] || []).select { |f| f["visible"] != false }
+      return true if child_fills.empty? && source_fills.empty?
+      child_fills.size == source_fills.size
     end
 
     # Recursive node finder — yields each node, collects those where block returns true

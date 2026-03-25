@@ -47,9 +47,17 @@ module Figma
       standalone_data.reject! { |_, data| !data[:is_image] && empty_component?(data[:figma_json]) }
       log "After filtering: #{component_sets_data.size} component sets, #{standalone_data.size} standalone components"
 
-      # 6. Persist
-      persist_component_sets(component_sets_data)
-      persist_standalone_components(standalone_data)
+      # 6. Build variant JSON lookup for validation (detect instance overrides vs variant-inherited styles)
+      variant_json_by_id = {}
+      component_sets_data.each_value do |data|
+        (data[:variants] || {}).each do |vid, vdata|
+          variant_json_by_id[vid] = vdata[:figma_json] if vdata[:figma_json]
+        end
+      end
+
+      # 7. Persist
+      persist_component_sets(component_sets_data, variant_json_by_id)
+      persist_standalone_components(standalone_data, variant_json_by_id)
 
       log "Import complete!"
     end
@@ -278,7 +286,7 @@ module Figma
       false
     end
 
-    def persist_component_sets(component_sets)
+    def persist_component_sets(component_sets, variant_json_by_id = {})
       log "Persisting #{component_sets.size} component sets..."
 
       existing_ids = component_sets.keys
@@ -289,7 +297,7 @@ module Figma
         # Run validation on default variant's figma_json
         default_json = data[:variants]&.values&.find { |v| v[:is_default] }&.dig(:figma_json) ||
                        data[:variants]&.values&.first&.dig(:figma_json)
-        validation_warnings = default_json ? Figma::ComponentValidator.new(default_json, is_image: data[:is_image]).validate : []
+        validation_warnings = default_json ? Figma::ComponentValidator.new(default_json, is_image: data[:is_image], variant_json_by_id: variant_json_by_id).validate : []
 
         row = {
           figma_file_id: @figma_file.id,
@@ -350,14 +358,14 @@ module Figma
       ComponentVariant.upsert_all(variant_rows, unique_by: [:component_set_id, :node_id]) if variant_rows.any?
     end
 
-    def persist_standalone_components(components)
+    def persist_standalone_components(components, variant_json_by_id = {})
       log "Persisting #{components.size} standalone components..."
 
       existing_ids = components.keys
       @figma_file.components.where.not(node_id: existing_ids).destroy_all
 
       rows = components.map do |node_id, data|
-        validation_warnings = data[:figma_json] ? Figma::ComponentValidator.new(data[:figma_json], is_image: data[:is_image]).validate : []
+        validation_warnings = data[:figma_json] ? Figma::ComponentValidator.new(data[:figma_json], is_image: data[:is_image], variant_json_by_id: variant_json_by_id).validate : []
 
         row = {
           figma_file_id: @figma_file.id,
