@@ -138,11 +138,12 @@ namespace :e2e do
 
         # DOM checks
         if page
-          check_plus_icon(page, errors)
           check_plus_svg(page, errors)
           check_select_width(page, errors)
           check_menu_item_icons(page, errors)
-          check_select_background(page, errors)
+          # Note: scenario B uses view=Normal (border, no fill) and Button view=Normal
+          # (not Action/orange), so no white Plus wrapper or Select background checks
+          check_select_border(page, errors)
           check_search_menu_item(page, errors)
           check_footer_icons(page, errors)
           check_selected_item_z_index(page, errors)
@@ -409,6 +410,27 @@ namespace :e2e do
     else
       menu_errors.each { |e| puts "  FAIL: #{e}" }
       errors << "SiteMenu: #{menu_errors.join("; ")}"
+    end
+  end
+
+  def check_select_border(page, errors)
+    puts "\n=== Select border ==="
+    result = page.evaluate(<<~JS)
+      (() => {
+        const el = document.querySelector('[data-component="Select"]');
+        if (!el) return null;
+        const inner = el.querySelector('div');
+        if (!inner) return null;
+        return { boxShadow: getComputedStyle(inner).boxShadow };
+      })()
+    JS
+    if result.nil?
+      puts "  SKIP: No Select in DOM"
+    elsif result["boxShadow"] && result["boxShadow"] != "none"
+      puts "  PASS: Select has border (box-shadow: #{result["boxShadow"].first(60)})"
+    else
+      puts "  FAIL: Select missing border"
+      errors << "Select missing border (view=Normal should have inset box-shadow)"
     end
   end
 
