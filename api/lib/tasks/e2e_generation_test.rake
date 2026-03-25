@@ -195,6 +195,63 @@ namespace :e2e do
           errors << "Plus icon missing inlined SVG"
         end
 
+        # ========================================
+        # CHECK 5: Select fills the website slot width
+        # ========================================
+        # The Select inside the "website" slot should stretch to match
+        # the slot container's width (not be narrower).
+        puts "\n=== Check 5: Select fills website slot width ==="
+        widths = page.evaluate(<<~JS)
+          (() => {
+            const slot = document.querySelector('[class*="website"]');
+            const select = slot && slot.querySelector('[data-component="Select"]');
+            if (!slot || !select) return null;
+            return {
+              slot: slot.getBoundingClientRect().width,
+              select: select.getBoundingClientRect().width
+            };
+          })()
+        JS
+        if widths.nil?
+          puts "  FAIL: Could not find website slot or Select component"
+          errors << "Select width check: elements not found"
+        elsif (widths["slot"] - widths["select"]).abs < 2
+          puts "  PASS: Select width (#{widths["select"]}px) matches slot (#{widths["slot"]}px)"
+        else
+          puts "  FAIL: Select width (#{widths["select"]}px) != slot width (#{widths["slot"]}px)"
+          errors << "Select width mismatch: select=#{widths["select"]}px slot=#{widths["slot"]}px"
+        end
+
+        # ========================================
+        # CHECK 6: Select background on inner element
+        # ========================================
+        # The background should be on .selectv0-select-1 (the inner frame),
+        # not on .selectv0-root (the component root div).
+        puts "\n=== Check 6: Select background on inner element ==="
+        bg_info = page.evaluate(<<~JS)
+          (() => {
+            const root = document.querySelector('[class*="selectv0-root"]');
+            const inner = document.querySelector('[class*="selectv0-select-1"]');
+            if (!root || !inner) return null;
+            const rootBg = getComputedStyle(root).backgroundColor;
+            const innerBg = getComputedStyle(inner).backgroundColor;
+            return { rootBg, innerBg };
+          })()
+        JS
+        if bg_info.nil?
+          puts "  FAIL: Could not find selectv0-root or selectv0-select-1"
+          errors << "Select background check: elements not found"
+        else
+          root_transparent = bg_info["rootBg"] == "rgba(0, 0, 0, 0)" || bg_info["rootBg"] == "transparent"
+          inner_has_bg = bg_info["innerBg"] != "rgba(0, 0, 0, 0)" && bg_info["innerBg"] != "transparent"
+          if root_transparent && inner_has_bg
+            puts "  PASS: Background on selectv0-select-1 (#{bg_info["innerBg"]}), root is transparent"
+          else
+            puts "  FAIL: root bg=#{bg_info["rootBg"]}, inner bg=#{bg_info["innerBg"]}"
+            errors << "Select background wrong: root=#{bg_info["rootBg"]} inner=#{bg_info["innerBg"]}"
+          end
+        end
+
       ensure
         browser.quit
       end
