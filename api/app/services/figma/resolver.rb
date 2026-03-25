@@ -218,9 +218,16 @@ module Figma
       end
 
       all_props = (@current_props || {}).dup
+
+      # Pure vector-frame icons: the root IS the SVG, promote to is_svg component
+      svg_content = if vector_frame?(node)
+        @inline_svgs_by_node_id[node["id"]] || @inline_svgs_by_node_id[component.node_id]
+      end
+
       Figma::IR.component(name: component.name, react_name: component_name,
                            props: all_props, tree: tree, imports: all_imports,
-                           has_slot: @has_slot_during_resolve)
+                           has_slot: @has_slot_during_resolve,
+                           is_svg: !!svg_content, svg_content: svg_content)
     end
 
     def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil, is_root: false)
@@ -539,9 +546,17 @@ module Figma
       end
 
       all_props = (@current_props || {}).merge(@nested_instance_props || {})
+
+      # Pure vector-frame icons: the root IS the SVG, promote to is_svg component.
+      # SVG assets may be keyed by the variant node or the component_set node.
+      svg_content = if vector_frame?(node)
+        @inline_svgs_by_node_id[node["id"]] || @inline_svgs_by_node_id[component_set.node_id]
+      end
+
       Figma::IR.component(name: component_set.name, react_name: component_name,
                            props: all_props, tree: tree, imports: all_imports,
-                           has_slot: @has_slot_during_resolve, nested_props: @nested_instance_props || {})
+                           has_slot: @has_slot_during_resolve, nested_props: @nested_instance_props || {},
+                           is_svg: !!svg_content, svg_content: svg_content)
     end
 
     def resolve_multi_variant(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
