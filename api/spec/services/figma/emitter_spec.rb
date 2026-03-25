@@ -52,12 +52,17 @@ RSpec.describe Figma::Emitter do
       expect(jsx).to include("{props.content}")
     end
 
-    it "emits icon_swap with style overrides" do
+    it "emits icon_swap with style overrides wrapped in a styled span" do
       ir = Figma::IR.icon_swap(node_id: "1", name: "icon", prop_name: "IconComponent",
                                 style_overrides: { "color" => "#ffffff", "width" => "20px", "height" => "20px" })
       jsx = emitter.emit_node(ir)
-      expect(jsx).to include("IconComponent")
-      expect(jsx).to include("style=")
+      # Icon must be wrapped in a <span> with style, not receive style as a prop.
+      # This ensures color works for both SVG components (which spread props)
+      # and regular multi-variant components (which do not spread props).
+      expect(jsx).to include("<span style=")
+      expect(jsx).to include("color: \"#ffffff\"")
+      expect(jsx).to include("<IconComponent />")
+      expect(jsx).to include("</span>")
     end
 
     it "emits icon_swap without style overrides" do

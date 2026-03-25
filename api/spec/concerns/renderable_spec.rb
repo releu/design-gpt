@@ -212,5 +212,45 @@ RSpec.describe Renderable do
         end
       end
     end
+
+    context "variant prop named 'style' (collision with React CSS style)" do
+      let!(:icon_cs) do
+        build_component_set_with_variants(
+          library,
+          name: "Plus",
+          prop_definitions: {
+            "style" => { "type" => "VARIANT", "defaultValue" => "regular" },
+            "keywords" => { "type" => "VARIANT", "defaultValue" => "add" }
+          },
+          variants: [
+            { name: "style=regular, keywords=add", is_default: true, label: "regular" },
+            { name: "style=filled, keywords=add", is_default: false, label: "filled" }
+          ]
+        )
+      end
+
+      it "does not destructure 'style' from props in the dispatcher" do
+        parts = []
+        host.send(:try_load_per_variant, icon_cs, "Plus", ["style", "keywords"], [], parts)
+
+        dispatcher = parts.last
+        # 'style' must NOT appear in the destructuring — it collides with React's CSS style prop.
+        # The dispatcher should use a safe variable (__v_style) instead.
+        expect(dispatcher).not_to match(/function\(\{[^}]*\bstyle\b/)
+        expect(dispatcher).to include("__v_style")
+        # Non-colliding props should still be destructured normally
+        expect(dispatcher).to match(/function\(\{[^}]*\bkeywords\b/)
+      end
+
+      it "preserves CSS style in props passed to variant functions" do
+        parts = []
+        host.send(:try_load_per_variant, icon_cs, "Plus", ["style", "keywords"], [], parts)
+
+        dispatcher = parts.last
+        # The dispatcher reads the variant value only when it's a string,
+        # so a CSS style object passes through in props untouched.
+        expect(dispatcher).to include('typeof props.style === "string"')
+      end
+    end
   end
 end

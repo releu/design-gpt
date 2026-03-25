@@ -374,4 +374,78 @@ RSpec.describe Figma::Resolver do
       expect(resolved).to eq(cs)
     end
   end
+
+  describe "#resolve_component_set (vector-only icons)" do
+    # Vector-only component sets (icons) must resolve as normal components —
+    # NOT as bare SVG components. They should produce a div wrapping inline SVG,
+    # preserving the component's node structure.
+    let(:icon_set) do
+      cs = library.component_sets.create!(
+        node_id: "icon:cs:1",
+        name: "plus",
+        figma_file_key: library.figma_file_key,
+        figma_file_name: library.figma_file_name,
+        prop_definitions: {
+          "style" => { "type" => "VARIANT", "defaultValue" => "regular" }
+        }
+      )
+      cs.variants.create!(
+        node_id: "icon:v:1",
+        name: "style=regular",
+        is_default: true,
+        figma_json: {
+          "id" => "icon:v:1",
+          "type" => "COMPONENT",
+          "name" => "style=regular",
+          "children" => [
+            { "id" => "icon:vec:1", "type" => "VECTOR", "name" => "path",
+              "fills" => [{ "type" => "SOLID", "color" => { "r" => 0, "g" => 0, "b" => 0 } }] }
+          ]
+        }
+      )
+      cs.variants.create!(
+        node_id: "icon:v:2",
+        name: "style=filled",
+        is_default: false,
+        figma_json: {
+          "id" => "icon:v:2",
+          "type" => "COMPONENT",
+          "name" => "style=filled",
+          "children" => [
+            { "id" => "icon:vec:2", "type" => "VECTOR", "name" => "path",
+              "fills" => [{ "type" => "SOLID", "color" => { "r" => 0, "g" => 0, "b" => 0 } }] }
+          ]
+        }
+      )
+      cs
+    end
+
+    it "never resolves a component set as is_svg, even with an SVG asset" do
+      # Create an SVG asset for the component set (simulating AssetExtractor)
+      icon_set.figma_assets.create!(
+        node_id: icon_set.node_id,
+        name: icon_set.name,
+        asset_type: "svg",
+        content: '<svg width="16" height="16"><path d="M8 0v16"/></svg>'
+      )
+
+      # Re-create resolver so it picks up the new asset
+      fresh_resolver = described_class.new(library)
+      fresh_resolver.current_owner_node_id = icon_set.node_id
+      ir = fresh_resolver.resolve_component_set(icon_set)
+
+      expect(ir).not_to be_nil
+      expect(ir[:is_svg]).to be_falsey
+      expect(ir[:kind]).to eq(:multi_variant)
+    end
+
+    it "resolves vector-only icon as multi_variant with normal node tree" do
+      resolver.current_owner_node_id = icon_set.node_id
+      ir = resolver.resolve_component_set(icon_set)
+
+      expect(ir[:kind]).to eq(:multi_variant)
+      expect(ir[:variants].size).to eq(2)
+      expect(ir[:variant_prop_names]).to include("style")
+    end
+  end
 end
