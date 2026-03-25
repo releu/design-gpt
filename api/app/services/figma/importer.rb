@@ -55,12 +55,19 @@ module Figma
           variant_json_by_id[vid] = vdata[:figma_json] if vdata[:figma_json]
         end
       end
+      # Include standalone components (instances reference them by node_id too)
+      standalone_data.each do |node_id, data|
+        variant_json_by_id[node_id] = data[:figma_json] if data[:figma_json]
+      end
       if @figma_file.design_system
         @figma_file.design_system.figma_files_for_version(@figma_file.version).where.not(id: @figma_file.id).each do |sibling|
           sibling.component_sets.includes(:variants).each do |cs|
             cs.variants.each do |v|
               variant_json_by_id[v.node_id] = v.figma_json if v.figma_json.present?
             end
+          end
+          sibling.components.each do |comp|
+            variant_json_by_id[comp.node_id] = comp.figma_json if comp.figma_json.present?
           end
         end
       end
