@@ -51,7 +51,7 @@ namespace :e2e do
     puts "[2/4] Import complete"
 
     # --- Step 2: Generate with AI ---
-    prompt = "Generate a page layout for website deadsimple.xyz"
+    prompt = "generate a website page. the active menu item is Сводка. the selected website is deadsimple.xyz. Page title - Сводка. subtitle - Информация о сайте"
     design = user.designs.create!(
       prompt: prompt,
       name: "E2E Webmaster Design",
@@ -86,6 +86,8 @@ namespace :e2e do
       "<SiteSelector",
       "<Select",
       "deadsimple.xyz",
+      "Сводка",
+      "Информация о сайте",
       "</Page>"
     ].each do |fragment|
       if jsx.to_s.include?(fragment)
@@ -125,6 +127,80 @@ namespace :e2e do
         wc[:warnings].each { |w| puts "  FAIL: #{wc[:name]}: #{w}" }
       end
       errors << "#{warned_components.size} component(s) have validation warnings: #{warned_components.map { |w| w[:name] }.join(", ")}"
+    end
+
+    # ========================================
+    # CHECK 1c: SiteSelector Button has no text (icon-only)
+    # ========================================
+    puts "\n=== Check 1c: SiteSelector Button is icon-only ==="
+    # The Button inside SiteSelector is rendered by the component code with iconOnly="On".
+    # The AI-generated JSX should NOT add a content/text prop to override this.
+    site_selector_jsx = jsx.to_s[/(<SiteSelector[\s\S]*?<\/SiteSelector>)/m, 1] || ""
+    button_in_selector = site_selector_jsx[/<Button[^>]*>/]
+    if button_in_selector
+      has_text = button_in_selector =~ /content="|text="/
+      if has_text
+        puts "  FAIL: Button in SiteSelector has text content"
+        errors << "SiteSelector Button should be icon-only, but has text"
+      else
+        puts "  PASS: Button in SiteSelector is icon-only"
+      end
+    else
+      # Button is rendered by SiteSelector component code, not in JSX — that's correct
+      puts "  PASS: No Button override in SiteSelector JSX (rendered by component)"
+    end
+
+    # ========================================
+    # CHECK 1d: SiteMenu structure
+    # ========================================
+    puts "\n=== Check 1d: SiteMenu structure ==="
+    site_menu_jsx = jsx.to_s[/<SiteMenu>[\s\S]*?<\/SiteMenu>/m] || ""
+    menu_items = site_menu_jsx.scan(/<SiteMenuItem\s+([^\/]*)\/>/)
+    menu_errors = []
+
+    if menu_items.size < 10
+      menu_errors << "Expected >= 10 SiteMenuItems, got #{menu_items.size}"
+    end
+
+    # Parse each item's props
+    parsed_items = menu_items.map do |match|
+      props_str = match[0]
+      props = {}
+      props_str.scan(/(\w+)=(?:"([^"]*)"|(\{[^}]*\}))/).each do |key, str_val, expr_val|
+        props[key] = str_val || expr_val
+      end
+      props
+    end
+
+    # Check for Сводка item: should be selected, no hasChildren
+    svodka = parsed_items.find { |p| p["title"] == "Сводка" }
+    if svodka
+      if svodka["selected"] == "{true}"
+        puts "  PASS: Сводка is selected"
+      else
+        menu_errors << "Сводка should be selected"
+      end
+      if svodka["hasChildren"]
+        menu_errors << "Сводка should NOT have hasChildren"
+      end
+    else
+      menu_errors << "Missing SiteMenuItem with title=\"Сводка\""
+    end
+
+    # Check other items: should have hasChildren={true}
+    other_items = parsed_items.reject { |p| p["title"] == "Сводка" }
+    items_without_children = other_items.reject { |p| p["hasChildren"] == "{true}" }
+    if items_without_children.any?
+      menu_errors << "#{items_without_children.size} item(s) missing hasChildren: #{items_without_children.map { |p| p["title"] }.join(", ")}"
+    else
+      puts "  PASS: All non-Сводка items have hasChildren"
+    end
+
+    if menu_errors.any?
+      menu_errors.each { |e| puts "  FAIL: #{e}" }
+      errors << "SiteMenu structure: #{menu_errors.join("; ")}"
+    else
+      puts "  PASS: SiteMenu has #{menu_items.size} items with correct structure"
     end
 
     # ========================================
