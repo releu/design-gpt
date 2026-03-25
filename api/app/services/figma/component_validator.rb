@@ -110,6 +110,10 @@ module Figma
         # Look up the source variant to compare against
         source_children = source_variant_children(node)
 
+        # Vector components (SVG icons etc.) use fill overrides as the only way
+        # to set color — allow these via currentColor inheritance.
+        is_vector = vector_instance?(node, source_children)
+
         (node["children"] || []).each_with_index do |child, idx|
           next unless OVERRIDE_TYPES.include?(child["type"])
           next if child["visible"] == false
@@ -117,6 +121,10 @@ module Figma
           # Skip if the source variant's matching child has the same fills/strokes
           source_child = source_children && source_children[idx]
           next if source_child && same_fills?(child, source_child)
+
+          # Allow fill color overrides on vector instances — they communicate
+          # color via currentColor inheritance, not a design system violation
+          next if is_vector && %w[VECTOR BOOLEAN_OPERATION].include?(child["type"])
 
           has_fill = (child["fills"] || []).any? { |f| f["visible"] != false }
           has_stroke = (child["strokes"] || []).any? { |f| f["visible"] != false }
@@ -130,6 +138,16 @@ module Figma
       end
 
       (node["children"] || []).each { |child| find_instance_overrides(child, warnings) }
+    end
+
+    # A vector instance is one whose children are all vector shapes (no FRAME/TEXT).
+    # Same concept as vector_frame? in StyleExtractor.
+    VECTOR_TYPES = %w[VECTOR BOOLEAN_OPERATION LINE ELLIPSE RECTANGLE STAR POLYGON].freeze
+
+    def vector_instance?(node, source_children)
+      children = source_children || node["children"] || []
+      return false if children.empty?
+      children.all? { |c| VECTOR_TYPES.include?(c["type"]) }
     end
 
     def source_variant_children(instance_node)
