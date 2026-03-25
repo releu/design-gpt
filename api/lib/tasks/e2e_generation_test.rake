@@ -89,6 +89,9 @@ namespace :e2e do
           check_select_width(page, errors)
           check_select_background(page, errors)
           check_menu_item_icons(page, errors)
+          check_search_menu_item(page, errors)
+          check_footer_icons(page, errors)
+          check_selected_item_z_index(page, errors)
         end
       }
     )
@@ -140,6 +143,9 @@ namespace :e2e do
           check_select_width(page, errors)
           check_menu_item_icons(page, errors)
           check_select_background(page, errors)
+          check_search_menu_item(page, errors)
+          check_footer_icons(page, errors)
+          check_selected_item_z_index(page, errors)
         end
       }
     )
@@ -403,6 +409,103 @@ namespace :e2e do
     else
       menu_errors.each { |e| puts "  FAIL: #{e}" }
       errors << "SiteMenu: #{menu_errors.join("; ")}"
+    end
+  end
+
+  # The SiteMenu has a fixed first item "Поиск" with Magnifier icon.
+  # It's rendered by the SiteMenu component code, not from AI JSX.
+  def check_search_menu_item(page, errors)
+    puts "\n=== Search menu item (Поиск) ==="
+    result = page.evaluate(<<~JS)
+      (() => {
+        const menu = document.querySelector('[data-component="SiteMenu"]');
+        if (!menu) return null;
+        // The fixed first SiteMenuItem is rendered by SiteMenu, before the slot
+        const items = menu.querySelectorAll('[data-component="SiteMenuItem"]');
+        if (!items.length) return { found: false };
+        const first = items[0];
+        const text = first.textContent || '';
+        const hasSvg = !!first.querySelector('svg');
+        return { found: true, text: text.trim(), hasSvg: hasSvg };
+      })()
+    JS
+    if result.nil? || !result["found"]
+      puts "  SKIP: No SiteMenu or SiteMenuItems in DOM"
+    elsif result["text"].include?("Поиск") || result["text"].include?("Название пункта")
+      # "Название пункта" is the default text — the SiteMenu should override it to "Поиск"
+      if result["text"].include?("Поиск")
+        puts "  PASS: First menu item is \"Поиск\""
+      else
+        puts "  FAIL: First menu item shows default text \"#{result["text"].first(50)}\" instead of \"Поиск\""
+        errors << "Search menu item shows default text, not \"Поиск\""
+      end
+    else
+      puts "  FAIL: First menu item text is \"#{result["text"].first(50)}\", expected \"Поиск\""
+      errors << "Search menu item text wrong"
+    end
+  end
+
+  # The footer should render visible icons (person, bell, question, gear), not a black square
+  def check_footer_icons(page, errors)
+    puts "\n=== Footer icons ==="
+    result = page.evaluate(<<~JS)
+      (() => {
+        const footer = document.querySelector('[data-component="MenuFooter"]');
+        if (!footer) return null;
+        const svgs = footer.querySelectorAll('svg');
+        const bbox = footer.getBoundingClientRect();
+        const bg = getComputedStyle(footer).backgroundColor;
+        return {
+          svgCount: svgs.length,
+          width: bbox.width,
+          height: bbox.height,
+          bg: bg
+        };
+      })()
+    JS
+    if result.nil?
+      puts "  SKIP: No MenuFooter in DOM"
+    elsif result["svgCount"] >= 3
+      puts "  PASS: Footer has #{result["svgCount"]} SVG icons"
+    else
+      puts "  FAIL: Footer has #{result["svgCount"]} SVG icons (expected >= 3), bg=#{result["bg"]}"
+      errors << "Footer missing icons (#{result["svgCount"]} SVGs, expected >= 3)"
+    end
+  end
+
+  # The selected menu item's background should be behind the text, not covering it
+  def check_selected_item_z_index(page, errors)
+    puts "\n=== Selected item z-index ==="
+    result = page.evaluate(<<~JS)
+      (() => {
+        const items = document.querySelectorAll('[data-component="SiteMenuItem"]');
+        for (const item of items) {
+          const bg = item.querySelector('[class*="background"]');
+          if (!bg || getComputedStyle(bg).display === 'none') continue;
+          // Found the selected item with visible background
+          const bgZ = parseInt(getComputedStyle(bg).zIndex) || 0;
+          const bgPos = getComputedStyle(bg).position;
+          const text = item.querySelector('span');
+          const textZ = text ? (parseInt(getComputedStyle(text).zIndex) || 0) : 0;
+          // Background should be behind text: either lower z-index or positioned behind
+          return {
+            found: true,
+            bgZ: bgZ,
+            bgPos: bgPos,
+            textZ: textZ,
+            bgCoversText: bgPos === 'absolute' && bgZ >= textZ && textZ === 0
+          };
+        }
+        return { found: false };
+      })()
+    JS
+    if result.nil? || !result["found"]
+      puts "  SKIP: No selected item with background found"
+    elsif result["bgCoversText"]
+      puts "  FAIL: Selected background covers text (bg z-index=#{result["bgZ"]}, position=#{result["bgPos"]}, text z-index=#{result["textZ"]})"
+      errors << "Selected item background covers text (z-index issue)"
+    else
+      puts "  PASS: Selected background is behind text"
     end
   end
 
