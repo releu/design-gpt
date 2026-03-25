@@ -114,6 +114,11 @@ module Figma
         styles["height"] = "#{height}px"
       end
 
+      # Root frames should fill their container, not use Figma's fixed width
+      if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
+        styles.delete("width")
+      end
+
       if node["layoutAlign"] == "STRETCH"
         styles["align-self"] = "stretch"
       end
@@ -125,13 +130,7 @@ module Figma
       add_padding(styles, node)
       add_fills(styles, node["fills"])
 
-      if node["type"] == "COMPONENT" && !styles["background"]
-        fills = node["fills"] || []
-        visible_fills = fills.select { |f| f["visible"] != false }
-        if visible_fills.empty?
-          styles["background"] = "#fff"
-        end
-      end
+      # No default background for components — transparent unless Figma specifies fills
 
       add_strokes(styles, node)
       add_border_radius(styles, node)

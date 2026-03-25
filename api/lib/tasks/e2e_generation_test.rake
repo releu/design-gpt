@@ -230,24 +230,29 @@ namespace :e2e do
         puts "\n=== Check 6: Select background on inner element ==="
         bg_info = page.evaluate(<<~JS)
           (() => {
-            const root = document.querySelector('[class*="selectv0-root"]');
-            const inner = document.querySelector('[class*="selectv0-select-1"]');
-            if (!root || !inner) return null;
-            const rootBg = getComputedStyle(root).backgroundColor;
-            const innerBg = getComputedStyle(inner).backgroundColor;
-            return { rootBg, innerBg };
+            const selectEl = document.querySelector('[data-component="Select"]');
+            if (!selectEl) return null;
+            // root is the data-component element itself; inner is its first child div
+            const inner = selectEl.querySelector('div');
+            const rootBg = getComputedStyle(selectEl).backgroundColor;
+            const innerBg = inner ? getComputedStyle(inner).backgroundColor : null;
+            return {
+              rootBg, innerBg,
+              rootClass: selectEl.className,
+              innerClass: inner ? inner.className : null
+            };
           })()
         JS
         if bg_info.nil?
-          puts "  FAIL: Could not find selectv0-root or selectv0-select-1"
+          puts "  FAIL: Could not find Select component in DOM"
           errors << "Select background check: elements not found"
         else
           root_transparent = bg_info["rootBg"] == "rgba(0, 0, 0, 0)" || bg_info["rootBg"] == "transparent"
-          inner_has_bg = bg_info["innerBg"] != "rgba(0, 0, 0, 0)" && bg_info["innerBg"] != "transparent"
+          inner_has_bg = bg_info["innerBg"] && bg_info["innerBg"] != "rgba(0, 0, 0, 0)" && bg_info["innerBg"] != "transparent"
           if root_transparent && inner_has_bg
-            puts "  PASS: Background on selectv0-select-1 (#{bg_info["innerBg"]}), root is transparent"
+            puts "  PASS: Background on inner (#{bg_info["innerBg"]}), root is transparent"
           else
-            puts "  FAIL: root bg=#{bg_info["rootBg"]}, inner bg=#{bg_info["innerBg"]}"
+            puts "  FAIL: root bg=#{bg_info["rootBg"]} (#{bg_info["rootClass"]}), inner bg=#{bg_info["innerBg"]} (#{bg_info["innerClass"]})"
             errors << "Select background wrong: root=#{bg_info["rootBg"]} inner=#{bg_info["innerBg"]}"
           end
         end
