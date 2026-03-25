@@ -106,6 +106,9 @@ class JsonToJsx
     when String
       if val.start_with?("__id:")
         "{#{val.sub('__id:', '')}}"
+      elsif key.end_with?("Component") && val.match?(/\A[A-Z]/)
+        # Component reference prop (e.g. IconComponent="Plus" → IconComponent={Plus})
+        "{#{val}}"
       else
         if val.include?('"')
           "{\"#{val.gsub('\\', '\\\\\\\\').gsub('"', '\\"')}\"}"

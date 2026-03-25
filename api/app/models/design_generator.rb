@@ -19,7 +19,7 @@ class DesignGenerator
 
   def build_payload(prompt)
     {
-      model: "gpt-5",
+      model: "o4-mini",
       input: [
         { role: "system", content: [{ type: "input_text", text: system_prompt }] },
         { role: "user", content: [{ type: "input_text", text: prompt }] }
@@ -125,10 +125,11 @@ class DesignGenerator
           props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
         elsif preferred.any?
+          component_prop = camel_name.sub(/^(\w)/) { $1.upcase } + "Component"
           names = preferred.filter_map { |pv| key_to_name_map[pv["key"]] }.uniq.map { |n| to_component_name(n) }.sort
           if names.any?
-            props[camel_name] = { type: "string", enum: names }
-            required << camel_name
+            props[component_prop] = { type: "string", enum: names }
+            required << component_prop
           end
         end
       end
@@ -140,7 +141,9 @@ class DesignGenerator
 
     slots.each do |slot|
       slot_name = slot["name"]
-      next if props.key?(slot_name)
+      # Skip slots already handled as INSTANCE_SWAP component props
+      component_prop = to_prop_name(slot_name).sub(/^(\w)/) { $1.upcase } + "Component"
+      next if props.key?(slot_name) || props.key?(component_prop)
 
       children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
 
@@ -198,11 +201,13 @@ class DesignGenerator
           props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
         elsif preferred.any?
-          # Non-image icon/component swap — expose as enum of component names
+          # Non-image component swap — expose as ComponentName enum
+          # Use "Component" suffix to match the emitter's prop naming
+          component_prop = camel_name.sub(/^(\w)/) { $1.upcase } + "Component"
           names = preferred.filter_map { |pv| key_to_name_map[pv["key"]] }.uniq.map { |n| to_component_name(n) }.sort
           if names.any?
-            props[camel_name] = { type: "string", enum: names }
-            required << camel_name
+            props[component_prop] = { type: "string", enum: names }
+            required << component_prop
           end
         end
       end
@@ -213,8 +218,9 @@ class DesignGenerator
 
     slots.each do |slot|
       slot_name = slot["name"]
-      # Skip slots already handled as INSTANCE_SWAP enum props
-      next if props.key?(slot_name)
+      # Skip slots already handled as INSTANCE_SWAP component props
+      component_prop = to_prop_name(slot_name).sub(/^(\w)/) { $1.upcase } + "Component"
+      next if props.key?(slot_name) || props.key?(component_prop)
 
       children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
 

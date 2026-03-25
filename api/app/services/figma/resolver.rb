@@ -714,7 +714,13 @@ module Figma
       return false if image_swap_instance?(node, prop_defs)
 
       defn = find_prop_definition(ref, prop_defs)
-      defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+      return false unless defn&.dig("type") == "INSTANCE_SWAP" && (defn["preferredValues"] || []).any?
+
+      # Only treat as slot if preferred values include non-component-set entries
+      # (i.e. actual content slots). If all preferred values are component sets
+      # (icon libraries), treat as icon swap instead.
+      preferred = defn["preferredValues"] || []
+      preferred.any? { |pv| pv["type"] != "COMPONENT_SET" }
     end
 
     def instance_swap_prop_name(node, prop_defs = nil)
@@ -724,8 +730,9 @@ module Figma
       defn = find_prop_definition(ref, prop_defs)
       return nil unless defn&.dig("type") == "INSTANCE_SWAP"
 
+      # Allow icon swaps: no preferred values, or all preferred are component sets (icon libraries)
       preferred = defn["preferredValues"] || []
-      return nil if preferred.any?
+      return nil if preferred.any? && preferred.any? { |pv| pv["type"] != "COMPONENT_SET" }
 
       clean_key = ref.gsub(/#[\d:]+$/, "").strip.gsub(/^[\s\u21B3]+/, "").strip
       to_prop_name(clean_key).sub(/^(\w)/) { $1.upcase } + "Component"
