@@ -158,11 +158,11 @@ namespace :e2e do
         browser_path: chrome_path,
         process_timeout: 30,
         browser_options: { "no-sandbox" => nil, "disable-setuid-sandbox" => nil },
-        window_size: [393, 800]
+        window_size: [1200, 800]
       )
       begin
         page = browser.create_page
-        page.command("Emulation.setDeviceMetricsOverride", width: 393, height: 800, deviceScaleFactor: 1, mobile: true)
+        page.command("Emulation.setDeviceMetricsOverride", width: 1200, height: 800, deviceScaleFactor: 2, mobile: false)
         page.goto(renderer_url)
         page.network.wait_for_idle
         sleep 1
@@ -176,7 +176,7 @@ namespace :e2e do
         sleep 2
 
         react_path = File.join(OUTPUT_DIR, "react.png")
-        page.screenshot(path: react_path, full: true, format: :png)
+        page.screenshot(path: react_path, format: :png)
         puts "  React screenshot: #{react_path}"
 
         # ========================================
