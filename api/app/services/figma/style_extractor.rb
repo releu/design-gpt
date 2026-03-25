@@ -116,7 +116,7 @@ module Figma
 
       # Root frames should fill their container, not use Figma's fixed width
       if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
-        styles.delete("width")
+        styles["width"] = "100%"
       end
 
       if node["layoutAlign"] == "STRETCH"
