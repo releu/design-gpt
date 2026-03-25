@@ -45,9 +45,11 @@ class FigmaFileConvertJob < ApplicationJob
 
   def copy_unchanged_codegen(ff, prev)
     skipped = 0
-    # Only copy compiled code if the codegen version matches; otherwise
-    # copy source (react_code) to speed up generation but force recompilation.
-    can_copy_compiled = prev.progress&.dig("codegen_version").to_i >= Figma::ReactFactory::CODEGEN_VERSION
+    # Skip copying entirely if codegen version changed — the generation logic
+    # may produce different source code (e.g. new imports for INSTANCE_SWAP).
+    codegen_current = prev.progress&.dig("codegen_version").to_i >= Figma::ReactFactory::CODEGEN_VERSION
+    return 0 unless codegen_current
+    can_copy_compiled = codegen_current
 
     # Component sets: copy react_code from previous version's default variant if content_hash matches
     prev_sets = prev.component_sets.includes(:variants).index_by(&:node_id)
