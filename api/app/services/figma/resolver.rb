@@ -167,13 +167,6 @@ module Figma
                                     props: {}, tree: nil, is_image: true)
       end
 
-      normalized_name = normalize_icon_name(component_set.name)
-      svg_content = @svg_assets_by_name[normalized_name]
-      if svg_content
-        return Figma::IR.component(name: component_set.name, react_name: component_name,
-                                    props: {}, tree: nil, is_svg: true, svg_content: svg_content)
-      end
-
       prop_definitions = component_set.prop_definitions || {}
       variant_prop_names = prop_definitions.select { |_, d| d["type"] == "VARIANT" }.keys
       all_variants = component_set.variants
