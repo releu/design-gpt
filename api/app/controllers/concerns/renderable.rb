@@ -6,7 +6,10 @@ module Renderable
 
   # Extract PascalCase component names referenced in code
   def extract_component_names(code)
-    code.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten.to_set
+    # Match JSX tags: <ComponentName and component references in props: {ComponentName}
+    tags = code.scan(/<([A-Z][a-zA-Z0-9]*)[\s\/>]/).flatten
+    refs = code.scan(/\{([A-Z][a-zA-Z0-9]*)\}/).flatten
+    (tags + refs).to_set
   end
 
   # Extract prop values per component from JSX for variant matching
