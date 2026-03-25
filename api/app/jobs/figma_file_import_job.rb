@@ -68,7 +68,8 @@ class FigmaFileImportJob < ApplicationJob
     prev = previous_version_file(ff)
     needs_recompile = prev.progress&.dig("codegen_version").to_i < Figma::ReactFactory::CODEGEN_VERSION
 
-    ff.update!(status: "importing", figma_last_modified: prev.figma_last_modified, figma_file_name: prev.figma_file_name)
+    ff.update!(status: "importing", figma_last_modified: prev.figma_last_modified,
+               figma_file_name: prev.figma_file_name, component_key_map: prev.component_key_map)
 
     # Copy component sets + variants + assets
     prev.component_sets.includes(:variants, :figma_assets).each do |cs|
