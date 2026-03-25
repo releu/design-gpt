@@ -9,17 +9,16 @@ namespace :e2e do
 
     source_ds = DesignSystem.find(1)
     user = source_ds.user || User.first
-    errors = []
+    all_errors = []
     ds = nil
-    design = nil
+    designs = []
 
     puts "=== E2E Webmaster Test ==="
 
     # --- Step 1: Create fresh DS and import (parallel) ---
     ds = DesignSystem.create!(name: "E2E Webmaster #{Time.now.to_i}", user: user)
-    puts "[1/4] Created DS ##{ds.id}"
+    puts "[1] Created DS ##{ds.id}"
 
-    # Create all FigmaFile records first (main thread)
     figma_files = source_ds.current_figma_files.map do |source_ff|
       ds.figma_files.create!(
         figma_file_key: source_ff.figma_file_key,
@@ -31,7 +30,6 @@ namespace :e2e do
       )
     end
 
-    # Import all files in parallel threads
     threads = figma_files.map do |ff|
       Thread.new do
         t0 = Time.now
@@ -46,377 +44,127 @@ namespace :e2e do
       end
     end
     threads.each(&:join)
-
     ds.update!(status: "ready")
-    puts "[2/4] Import complete"
+    puts "[2] Import complete"
 
-    # --- Step 2: Generate with AI ---
-    prompt = "generate a website page. the active menu item is Сводка. the selected website is deadsimple.xyz. Page title - Сводка. subtitle - Информация о сайте"
-    design = user.designs.create!(
-      prompt: prompt,
-      name: "E2E Webmaster Design",
-      design_system: ds,
-      status: "generating"
+    # ======================================================================
+    # SCENARIO A: Empty state (no site selected)
+    # ======================================================================
+    puts "\n#{"=" * 60}"
+    puts "SCENARIO A: Empty state"
+    puts "=" * 60
+
+    a_errors = run_scenario(
+      ds: ds, user: user, designs: designs,
+      prompt: "Generate a page for the website when no site is selected. The title should be Ваши сайты and the subtitle is Выберите сайт чтобы продолжить",
+      figma_node_id: "51215:5257",
+      output_subdir: "scenario_a",
+      checks: ->(jsx, page, errors) {
+        # JSX structure
+        check_jsx_fragments(jsx, errors, [
+          "<Page>",
+          "<SiteSelector",
+          "Ваши сайты",
+          "Выберите сайт чтобы продолжить",
+          "</Page>"
+        ])
+
+        # No specific site should be selected
+        select_match = jsx.to_s[/<Select[^\/]*\/>/]
+        if select_match
+          if select_match.include?("deadsimple")
+            puts "  FAIL: Select should not have a specific site selected"
+            errors << "Select should be empty in scenario A"
+          else
+            puts "  PASS: Select shows empty/default state"
+          end
+        end
+
+        # Validation warnings
+        check_validation_warnings(jsx, ds, errors)
+
+        # DOM checks (if page available)
+        if page
+          check_plus_icon(page, errors)
+          check_select_width(page, errors)
+          check_select_background(page, errors)
+        end
+      }
     )
-    design.chat_messages.create!(author: "user", message: prompt)
-    iteration = design.iterations.create!(comment: prompt)
-    designer_msg = design.chat_messages.create!(author: "designer", message: "", state: "thinking")
+    all_errors.concat(a_errors.map { |e| "A: #{e}" })
 
-    gen = DesignGenerator.new(design)
-    task = gen.generate_task(prompt)
-    puts "[3/4] Calling OpenAI..."
+    # ======================================================================
+    # SCENARIO B: Selected state (site selected, active menu item)
+    # ======================================================================
+    puts "\n#{"=" * 60}"
+    puts "SCENARIO B: Selected state"
+    puts "=" * 60
 
-    AiRequestJob.perform_now(task.id, iteration.id, designer_msg.id, :set_jsx)
-    iteration.reload
-    design.reload
-    jsx = iteration.jsx
+    b_errors = run_scenario(
+      ds: ds, user: user, designs: designs,
+      prompt: "generate a website page. the active menu item is Сводка. the selected website is deadsimple.xyz. Page title - Сводка. subtitle - Информация о сайте",
+      figma_node_id: "51215:5043",
+      output_subdir: "scenario_b",
+      checks: ->(jsx, page, errors) {
+        # JSX structure
+        check_jsx_fragments(jsx, errors, [
+          "<Page>",
+          "<SiteSelector",
+          "deadsimple.xyz",
+          "Сводка",
+          "Информация о сайте",
+          "</Page>"
+        ])
 
-    puts "[4/4] Generation done. Status: #{design.status}"
-    puts "\n--- Generated JSX ---"
-    puts jsx
-    puts "---"
+        # Validation warnings
+        check_validation_warnings(jsx, ds, errors)
 
-    # ========================================
-    # CHECK 1: JSX structure
-    # ========================================
-    puts "\n=== Check 1: JSX structure ==="
-    [
-      "<Page>",
-      '<Slot name="sideColumnItems">',
-      "<SiteSelector",
-      "<Select",
-      "deadsimple.xyz",
-      "Сводка",
-      "Информация о сайте",
-      "</Page>"
-    ].each do |fragment|
-      if jsx.to_s.include?(fragment)
-        puts "  PASS: #{fragment.inspect}"
-      else
-        puts "  FAIL: #{fragment.inspect}"
-        errors << "JSX missing: #{fragment.inspect}"
-      end
-    end
-
-    # ========================================
-    # CHECK 1b: All used components are valid (no warnings)
-    # ========================================
-    puts "\n=== Check 1b: Component validation warnings ==="
-    # Extract component names from JSX tags
-    used_components = jsx.to_s.scan(/<([A-Z]\w+)/).flatten.uniq
-    warned_components = []
-
-    ds.figma_files.where(version: ds.version).each do |ff|
-      used_components.each do |comp_name|
-        cs = ff.component_sets.detect { |c| c.name == comp_name || c.name.tr(" ", "") == comp_name }
-        c = ff.components.detect { |c| c.name == comp_name || c.name.tr(" ", "") == comp_name } unless cs
-        record = cs || c
-        next unless record
-
-        warnings = record.validation_warnings || []
-        if warnings.any?
-          warned_components << { name: comp_name, warnings: warnings }
-        end
-      end
-    end
-
-    if warned_components.empty?
-      puts "  PASS: All #{used_components.size} components (#{used_components.join(", ")}) have no warnings"
-    else
-      warned_components.each do |wc|
-        wc[:warnings].each { |w| puts "  FAIL: #{wc[:name]}: #{w}" }
-      end
-      errors << "#{warned_components.size} component(s) have validation warnings: #{warned_components.map { |w| w[:name] }.join(", ")}"
-    end
-
-    # ========================================
-    # CHECK 1c: SiteSelector Button has no text (icon-only)
-    # ========================================
-    puts "\n=== Check 1c: SiteSelector Button is icon-only ==="
-    # The Button inside SiteSelector is rendered by the component code with iconOnly="On".
-    # The AI-generated JSX should NOT add a content/text prop to override this.
-    site_selector_jsx = jsx.to_s[/(<SiteSelector[\s\S]*?<\/SiteSelector>)/m, 1] || ""
-    button_in_selector = site_selector_jsx[/<Button[^>]*>/]
-    if button_in_selector
-      has_text = button_in_selector =~ /content="|text="/
-      if has_text
-        puts "  FAIL: Button in SiteSelector has text content"
-        errors << "SiteSelector Button should be icon-only, but has text"
-      else
-        puts "  PASS: Button in SiteSelector is icon-only"
-      end
-    else
-      # Button is rendered by SiteSelector component code, not in JSX — that's correct
-      puts "  PASS: No Button override in SiteSelector JSX (rendered by component)"
-    end
-
-    # ========================================
-    # CHECK 1d: SiteMenu structure
-    # ========================================
-    puts "\n=== Check 1d: SiteMenu structure ==="
-    site_menu_jsx = jsx.to_s[/<SiteMenu>[\s\S]*?<\/SiteMenu>/m] || ""
-    menu_items = site_menu_jsx.scan(/<SiteMenuItem\s+([^\/]*)\/>/)
-    menu_errors = []
-
-    if menu_items.size < 10
-      menu_errors << "Expected >= 10 SiteMenuItems, got #{menu_items.size}"
-    end
-
-    # Parse each item's props
-    parsed_items = menu_items.map do |match|
-      props_str = match[0]
-      props = {}
-      props_str.scan(/(\w+)=(?:"([^"]*)"|(\{[^}]*\}))/).each do |key, str_val, expr_val|
-        props[key] = str_val || expr_val
-      end
-      props
-    end
-
-    # Check for Сводка item: should be selected, no hasChildren
-    svodka = parsed_items.find { |p| p["title"] == "Сводка" }
-    if svodka
-      if svodka["selected"] == "{true}"
-        puts "  PASS: Сводка is selected"
-      else
-        menu_errors << "Сводка should be selected"
-      end
-      if svodka["hasChildren"]
-        menu_errors << "Сводка should NOT have hasChildren"
-      end
-    else
-      menu_errors << "Missing SiteMenuItem with title=\"Сводка\""
-    end
-
-    # Check other items: should have hasChildren={true}
-    other_items = parsed_items.reject { |p| p["title"] == "Сводка" }
-    items_without_children = other_items.reject { |p| p["hasChildren"] == "{true}" }
-    if items_without_children.any?
-      menu_errors << "#{items_without_children.size} item(s) missing hasChildren: #{items_without_children.map { |p| p["title"] }.join(", ")}"
-    else
-      puts "  PASS: All non-Сводка items have hasChildren"
-    end
-
-    if menu_errors.any?
-      menu_errors.each { |e| puts "  FAIL: #{e}" }
-      errors << "SiteMenu structure: #{menu_errors.join("; ")}"
-    else
-      puts "  PASS: SiteMenu has #{menu_items.size} items with correct structure"
-    end
-
-    # ========================================
-    # CHECK 2: Main page visual diff vs Figma
-    # ========================================
-    puts "\n=== Check 2: Main page diff ==="
-    figma_file_key = "oL5zKzFeTuZRd2rFMbUJWa"
-    figma_node_id = "51108:11396"
-
-    # Fetch Figma reference screenshot
-    figma_path = Figma::VisualDiff.fetch_figma_screenshot(figma_file_key, figma_node_id, OUTPUT_DIR)
-    if figma_path
-      puts "  Figma screenshot: #{figma_path}"
-    else
-      puts "  FAIL: Could not fetch Figma screenshot"
-      errors << "Figma screenshot fetch failed"
-    end
-
-    # Render the generated design in headless Chrome
-    react_path = nil
-    if jsx.present? && figma_path
-      port = ENV.fetch("PORT", 3000)
-      renderer_url = "http://127.0.0.1:#{port}/api/iterations/#{iteration.id}/renderer"
-
-      chrome_path = ENV["BROWSER_PATH"] || ENV["GOOGLE_CHROME_BIN"] ||
-        `which chromium 2>/dev/null`.strip.presence ||
-        `which google-chrome 2>/dev/null`.strip.presence ||
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      browser = Ferrum::Browser.new(
-        headless: true,
-        browser_path: chrome_path,
-        process_timeout: 30,
-        browser_options: { "no-sandbox" => nil, "disable-setuid-sandbox" => nil },
-        window_size: [1200, 800]
-      )
-      begin
-        page = browser.create_page
-        page.command("Emulation.setDeviceMetricsOverride", width: 1200, height: 800, deviceScaleFactor: 2, mobile: false)
-        page.goto(renderer_url)
-        page.network.wait_for_idle
-        sleep 1
-
-        page.evaluate(<<~JS)
-          window.postMessage({
-            type: "render",
-            jsx: `#{jsx.gsub('`', '\\\\`')}`,
-          }, location.origin);
-        JS
-        sleep 2
-
-        react_path = File.join(OUTPUT_DIR, "react.png")
-        page.screenshot(path: react_path, format: :png)
-        puts "  React screenshot: #{react_path}"
-
-        # ========================================
-        # CHECK 3: White Plus icon in rendered DOM
-        # ========================================
-        # SiteSelector renders <Button StartIconComponent={Plus} />.
-        # The Button variant (view=Action, iconOnly=On) wraps the icon
-        # in a styled span with color/size overrides. SVG icons inherit
-        # the color via CSS currentColor.
-        puts "\n=== Check 3: White Plus icon in button ==="
-        dom_html = page.evaluate("document.getElementById('root')?.innerHTML || ''")
-        normalized_dom = dom_html.to_s.gsub(/\s+/, " ")
-        has_plus = normalized_dom.include?('data-component="Plus"')
-        has_white_wrapper = normalized_dom.match?(/style="[^"]*color:\s*rgb\(255,\s*255,\s*255\)[^"]*"[^>]*>[^<]*<[^>]*data-component="Plus"/) ||
-                            normalized_dom.include?('style="color: rgb(255, 255, 255);')
-        if has_plus && has_white_wrapper
-          puts "  PASS: Found white Plus icon with correct styles"
+        # SiteSelector Button is icon-only
+        site_selector_jsx = jsx.to_s[/(<SiteSelector[\s\S]*?<\/SiteSelector>)/m, 1] || ""
+        button_in_selector = site_selector_jsx[/<Button[^>]*>/]
+        if button_in_selector && button_in_selector =~ /content="|text="/
+          puts "  FAIL: Button in SiteSelector has text content"
+          errors << "SiteSelector Button should be icon-only"
         else
-          if !has_plus
-            puts "  FAIL: No Plus icon found in rendered DOM"
-          else
-            # Show context around Plus icon
-            plus_ctx = dom_html.to_s.match(/.{0,100}data-component="Plus".{0,100}/)
-            puts "  FAIL: Plus icon found but missing white color wrapper"
-            puts "  Context: #{plus_ctx&.[](0)&.first(250)}" if plus_ctx
-          end
-          errors << "White Plus icon missing or wrong styles"
+          puts "  PASS: SiteSelector Button is icon-only"
         end
 
-        # ========================================
-        # CHECK 4: Plus icon contains inlined SVG
-        # ========================================
-        # The Plus component should render an actual <svg> element via
-        # dangerouslySetInnerHTML, not an <img> tag or empty placeholder.
-        puts "\n=== Check 4: Plus icon contains inlined SVG ==="
-        plus_html = page.evaluate(<<~JS)
-          (() => {
-            const el = document.querySelector('[data-component="Plus"]');
-            return el ? el.innerHTML : '';
-          })()
-        JS
-        if plus_html.to_s.include?("<svg")
-          puts "  PASS: Plus icon contains inlined <svg> element"
-        else
-          puts "  FAIL: Plus icon does not contain inlined <svg> element"
-          puts "  innerHTML: #{plus_html.to_s.first(300)}"
-          errors << "Plus icon missing inlined SVG"
+        # SiteMenu structure
+        check_site_menu(jsx, errors)
+
+        # DOM checks
+        if page
+          check_plus_icon(page, errors)
+          check_plus_svg(page, errors)
+          check_select_width(page, errors)
+          check_select_background(page, errors)
         end
+      }
+    )
+    all_errors.concat(b_errors.map { |e| "B: #{e}" })
 
-        # ========================================
-        # CHECK 5: Select fills the website slot width
-        # ========================================
-        # The Select inside the "website" slot should stretch to match
-        # the slot container's width (not be narrower).
-        puts "\n=== Check 5: Select fills website slot width ==="
-        widths = page.evaluate(<<~JS)
-          (() => {
-            const slot = document.querySelector('[class*="website"]');
-            const select = slot && slot.querySelector('[data-component="Select"]');
-            if (!slot || !select) return null;
-            return {
-              slot: slot.getBoundingClientRect().width,
-              select: select.getBoundingClientRect().width
-            };
-          })()
-        JS
-        if widths.nil?
-          puts "  FAIL: Could not find website slot or Select component"
-          errors << "Select width check: elements not found"
-        elsif (widths["slot"] - widths["select"]).abs < 2
-          puts "  PASS: Select width (#{widths["select"]}px) matches slot (#{widths["slot"]}px)"
-        else
-          puts "  FAIL: Select width (#{widths["select"]}px) != slot width (#{widths["slot"]}px)"
-          errors << "Select width mismatch: select=#{widths["select"]}px slot=#{widths["slot"]}px"
-        end
-
-        # ========================================
-        # CHECK 6: Select background on inner element
-        # ========================================
-        # The background should be on .selectv0-select-1 (the inner frame),
-        # not on .selectv0-root (the component root div).
-        puts "\n=== Check 6: Select background on inner element ==="
-        bg_info = page.evaluate(<<~JS)
-          (() => {
-            const selectEl = document.querySelector('[data-component="Select"]');
-            if (!selectEl) return null;
-            // root is the data-component element itself; inner is its first child div
-            const inner = selectEl.querySelector('div');
-            const rootBg = getComputedStyle(selectEl).backgroundColor;
-            const innerBg = inner ? getComputedStyle(inner).backgroundColor : null;
-            return {
-              rootBg, innerBg,
-              rootClass: selectEl.className,
-              innerClass: inner ? inner.className : null
-            };
-          })()
-        JS
-        if bg_info.nil?
-          puts "  FAIL: Could not find Select component in DOM"
-          errors << "Select background check: elements not found"
-        else
-          root_transparent = bg_info["rootBg"] == "rgba(0, 0, 0, 0)" || bg_info["rootBg"] == "transparent"
-          inner_has_bg = bg_info["innerBg"] && bg_info["innerBg"] != "rgba(0, 0, 0, 0)" && bg_info["innerBg"] != "transparent"
-          if root_transparent && inner_has_bg
-            puts "  PASS: Background on inner (#{bg_info["innerBg"]}), root is transparent"
-          else
-            puts "  FAIL: root bg=#{bg_info["rootBg"]} (#{bg_info["rootClass"]}), inner bg=#{bg_info["innerBg"]} (#{bg_info["innerClass"]})"
-            errors << "Select background wrong: root=#{bg_info["rootBg"]} inner=#{bg_info["innerBg"]}"
-          end
-        end
-
-      ensure
-        browser.quit
-      end
-    end
-
-    # Pixel diff
-    if figma_path && react_path && File.exist?(figma_path) && File.exist?(react_path)
-      diff_path = File.join(OUTPUT_DIR, "diff.png")
-      diff_result = Figma::VisualDiff.new(nil, output_dir: OUTPUT_DIR).send(:pixel_diff, figma_path, react_path, diff_path)
-
-      diff_px = diff_result[:diff_pixels]
-      total_px = diff_result[:total_pixels]
-      diff_pct = diff_result[:diff_percent].round(2)
-
-      puts "  Diff: #{diff_px}/#{total_px} pixels (#{diff_pct}%)"
-      puts "  Diff image: #{diff_path}"
-
-      # Generate side-by-side comparison for problem areas
-      generate_diff_analysis(figma_path, react_path, diff_path, OUTPUT_DIR)
-
-      # Threshold: 5% of total pixels — catches major rendering breaks.
-      threshold_pct = 5.0
-      if diff_pct < threshold_pct
-        puts "  PASS: #{diff_pct}% diff < #{threshold_pct}% threshold"
-      else
-        puts "  FAIL: #{diff_pct}% diff >= #{threshold_pct}% threshold"
-        errors << "Visual diff: #{diff_pct}% (threshold: #{threshold_pct}%)"
-      end
-    elsif !figma_path
-      # already recorded above
-    else
-      puts "  FAIL: Could not produce React screenshot"
-      errors << "React screenshot failed"
-    end
-
-    # ========================================
-    # Result
-    # ========================================
-    puts "\n=== Result ==="
+    # ======================================================================
+    # Final result
+    # ======================================================================
+    puts "\n#{"=" * 60}"
+    puts "FINAL RESULT"
+    puts "=" * 60
     puts "Output dir: #{OUTPUT_DIR}"
-    if errors.empty?
+    if all_errors.empty?
       puts "ALL CHECKS PASSED"
     else
-      puts "#{errors.size} FAILURES:"
-      errors.each { |e| puts "  - #{e}" }
+      puts "#{all_errors.size} FAILURES:"
+      all_errors.each { |e| puts "  - #{e}" }
       exit 1
     end
 
   ensure
     if ds && ds.name.start_with?("E2E Webmaster")
-      design&.iterations&.destroy_all
-      design&.chat_messages&.destroy_all
-      design&.destroy
+      designs.each do |d|
+        d.iterations.destroy_all
+        d.chat_messages.destroy_all
+        d.destroy
+      end
       ds.figma_files.each { |ff| ff.component_sets.destroy_all; ff.components.destroy_all }
       ds.figma_files.destroy_all
       ds.destroy
@@ -424,6 +172,241 @@ namespace :e2e do
     end
   end
 
+  # ========================================================================
+  # Scenario runner
+  # ========================================================================
+  def run_scenario(ds:, user:, designs:, prompt:, figma_node_id:, output_subdir:, checks:)
+    output_dir = Rails.root.join("tmp", "e2e_webmaster", output_subdir)
+    FileUtils.mkdir_p(output_dir)
+    errors = []
+
+    # Generate
+    design = user.designs.create!(prompt: prompt, name: "E2E #{output_subdir}", design_system: ds, status: "generating")
+    designs << design
+    design.chat_messages.create!(author: "user", message: prompt)
+    iteration = design.iterations.create!(comment: prompt)
+    designer_msg = design.chat_messages.create!(author: "designer", message: "", state: "thinking")
+
+    gen = DesignGenerator.new(design)
+    task = gen.generate_task(prompt)
+    puts "[AI] Calling OpenAI..."
+    AiRequestJob.perform_now(task.id, iteration.id, designer_msg.id, :set_jsx)
+    iteration.reload
+    design.reload
+    jsx = iteration.jsx
+
+    puts "[AI] Done. Status: #{design.status}"
+    puts "\n--- Generated JSX ---"
+    puts jsx
+    puts "---"
+
+    # Fetch Figma reference
+    figma_file_key = "oL5zKzFeTuZRd2rFMbUJWa"
+    figma_path = Figma::VisualDiff.fetch_figma_screenshot(figma_file_key, figma_node_id, output_dir)
+
+    # Render in Chrome
+    react_path = nil
+    browser_page = nil
+    port = ENV.fetch("PORT", 3000)
+    renderer_url = "http://127.0.0.1:#{port}/api/iterations/#{iteration.id}/renderer"
+
+    chrome_path = ENV["BROWSER_PATH"] || ENV["GOOGLE_CHROME_BIN"] ||
+      `which chromium 2>/dev/null`.strip.presence ||
+      `which google-chrome 2>/dev/null`.strip.presence ||
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    browser = Ferrum::Browser.new(
+      headless: true, browser_path: chrome_path, process_timeout: 30,
+      browser_options: { "no-sandbox" => nil, "disable-setuid-sandbox" => nil },
+      window_size: [1200, 800]
+    )
+    begin
+      browser_page = browser.create_page
+      browser_page.command("Emulation.setDeviceMetricsOverride", width: 1200, height: 800, deviceScaleFactor: 2, mobile: false)
+      browser_page.goto(renderer_url)
+      browser_page.network.wait_for_idle
+      sleep 1
+
+      browser_page.evaluate(<<~JS)
+        window.postMessage({
+          type: "render",
+          jsx: `#{jsx.to_s.gsub('`', '\\\\`')}`,
+        }, location.origin);
+      JS
+      sleep 2
+
+      react_path = File.join(output_dir, "react.png")
+      browser_page.screenshot(path: react_path, format: :png)
+
+      # Run checks
+      checks.call(jsx, browser_page, errors)
+    ensure
+      browser.quit
+    end
+
+    # Pixel diff
+    if figma_path && react_path && File.exist?(figma_path) && File.exist?(react_path)
+      diff_path = File.join(output_dir, "diff.png")
+      diff_result = Figma::VisualDiff.new(nil, output_dir: output_dir).send(:pixel_diff, figma_path, react_path, diff_path)
+      diff_pct = diff_result[:diff_percent].round(2)
+      puts "  Diff: #{diff_result[:diff_pixels]}/#{diff_result[:total_pixels]} pixels (#{diff_pct}%)"
+
+      generate_diff_analysis(figma_path, react_path, diff_path, output_dir)
+
+      threshold_pct = 5.0
+      if diff_pct < threshold_pct
+        puts "  PASS: #{diff_pct}% diff < #{threshold_pct}% threshold"
+      else
+        puts "  FAIL: #{diff_pct}% diff >= #{threshold_pct}% threshold"
+        errors << "Visual diff: #{diff_pct}%"
+      end
+    end
+
+    errors
+  end
+
+  # ========================================================================
+  # Reusable checks
+  # ========================================================================
+  def check_jsx_fragments(jsx, errors, fragments)
+    puts "\n=== JSX structure ==="
+    fragments.each do |fragment|
+      if jsx.to_s.include?(fragment)
+        puts "  PASS: #{fragment.inspect}"
+      else
+        puts "  FAIL: #{fragment.inspect}"
+        errors << "JSX missing: #{fragment.inspect}"
+      end
+    end
+  end
+
+  def check_validation_warnings(jsx, ds, errors)
+    puts "\n=== Validation warnings ==="
+    used = jsx.to_s.scan(/<([A-Z]\w+)/).flatten.uniq
+    warned = []
+    ds.figma_files.where(version: ds.version).each do |ff|
+      used.each do |name|
+        record = ff.component_sets.detect { |c| c.name == name || c.name.tr(" ", "") == name } ||
+                 ff.components.detect { |c| c.name == name || c.name.tr(" ", "") == name }
+        next unless record
+        w = record.validation_warnings || []
+        warned << { name: name, warnings: w } if w.any?
+      end
+    end
+    if warned.empty?
+      puts "  PASS: All #{used.size} components valid"
+    else
+      warned.each { |w| w[:warnings].each { |msg| puts "  FAIL: #{w[:name]}: #{msg}" } }
+      errors << "Validation warnings: #{warned.map { |w| w[:name] }.join(", ")}"
+    end
+  end
+
+  def check_plus_icon(page, errors)
+    puts "\n=== Plus icon ==="
+    dom = page.evaluate("document.getElementById('root')?.innerHTML || ''").to_s.gsub(/\s+/, " ")
+    has_plus = dom.include?('data-component="Plus"')
+    has_white = dom.match?(/style="[^"]*color:\s*rgb\(255,\s*255,\s*255\)[^"]*"[^>]*>[^<]*<[^>]*data-component="Plus"/) ||
+                dom.include?('style="color: rgb(255, 255, 255);')
+    if has_plus && has_white
+      puts "  PASS: White Plus icon found"
+    else
+      puts "  FAIL: #{has_plus ? "Plus found but missing white wrapper" : "No Plus icon"}"
+      errors << "White Plus icon missing or wrong styles"
+    end
+  end
+
+  def check_plus_svg(page, errors)
+    puts "\n=== Plus SVG ==="
+    html = page.evaluate("document.querySelector('[data-component=\"Plus\"]')?.innerHTML || ''")
+    if html.to_s.include?("<svg")
+      puts "  PASS: Plus contains inlined SVG"
+    else
+      puts "  FAIL: Plus missing SVG. innerHTML: #{html.to_s.first(200)}"
+      errors << "Plus icon missing inlined SVG"
+    end
+  end
+
+  def check_select_width(page, errors)
+    puts "\n=== Select width ==="
+    widths = page.evaluate(<<~JS)
+      (() => {
+        const slot = document.querySelector('[class*="siteselector"] [class*="website"], [class*="selector"] [class*="website"]');
+        const select = slot && slot.querySelector('[data-component="Select"]');
+        if (!slot || !select) return null;
+        return { slot: slot.getBoundingClientRect().width, select: select.getBoundingClientRect().width };
+      })()
+    JS
+    if widths.nil?
+      puts "  SKIP: Could not find website slot or Select"
+    elsif (widths["slot"] - widths["select"]).abs < 2
+      puts "  PASS: Select width (#{widths["select"]}px) matches slot (#{widths["slot"]}px)"
+    else
+      puts "  FAIL: Select (#{widths["select"]}px) != slot (#{widths["slot"]}px)"
+      errors << "Select width mismatch"
+    end
+  end
+
+  def check_select_background(page, errors)
+    puts "\n=== Select background ==="
+    bg = page.evaluate(<<~JS)
+      (() => {
+        const el = document.querySelector('[data-component="Select"]');
+        if (!el) return null;
+        const inner = el.querySelector('div');
+        return {
+          rootBg: getComputedStyle(el).backgroundColor,
+          innerBg: inner ? getComputedStyle(inner).backgroundColor : null
+        };
+      })()
+    JS
+    if bg.nil?
+      puts "  SKIP: No Select in DOM"
+    else
+      root_ok = bg["rootBg"] == "rgba(0, 0, 0, 0)" || bg["rootBg"] == "transparent"
+      inner_ok = bg["innerBg"] && bg["innerBg"] != "rgba(0, 0, 0, 0)" && bg["innerBg"] != "transparent"
+      if root_ok && inner_ok
+        puts "  PASS: Background on inner (#{bg["innerBg"]}), root transparent"
+      else
+        puts "  FAIL: root=#{bg["rootBg"]}, inner=#{bg["innerBg"]}"
+        errors << "Select background wrong"
+      end
+    end
+  end
+
+  def check_site_menu(jsx, errors)
+    puts "\n=== SiteMenu structure ==="
+    menu_jsx = jsx.to_s[/<SiteMenu>[\s\S]*?<\/SiteMenu>/m] || ""
+    items = menu_jsx.scan(/<SiteMenuItem\s+([^\/]*)\/>/).map do |match|
+      props = {}
+      match[0].scan(/(\w+)=(?:"([^"]*)"|(\{[^}]*\}))/).each { |k, s, e| props[k] = s || e }
+      props
+    end
+
+    menu_errors = []
+    menu_errors << "Expected >= 10 SiteMenuItems, got #{items.size}" if items.size < 10
+
+    svodka = items.find { |p| p["title"] == "Сводка" }
+    if svodka
+      menu_errors << "Сводка should be selected" unless svodka["selected"] == "{true}"
+      menu_errors << "Сводка should NOT have hasChildren" if svodka["hasChildren"]
+    else
+      menu_errors << "Missing SiteMenuItem title=\"Сводка\""
+    end
+
+    others = items.reject { |p| p["title"] == "Сводка" }
+    missing = others.reject { |p| p["hasChildren"] == "{true}" }
+    menu_errors << "#{missing.size} items missing hasChildren: #{missing.map { |p| p["title"] }.join(", ")}" if missing.any?
+
+    if menu_errors.empty?
+      puts "  PASS: #{items.size} items, Сводка selected, others have hasChildren"
+    else
+      menu_errors.each { |e| puts "  FAIL: #{e}" }
+      errors << "SiteMenu: #{menu_errors.join("; ")}"
+    end
+  end
+
+  # ========================================================================
+  # Diff analysis
+  # ========================================================================
   def generate_diff_analysis(figma_path, react_path, diff_path, output_dir)
     require "chunky_png"
 
@@ -434,17 +417,13 @@ namespace :e2e do
     w = [diff.width, react.width, figma.width].min
     h = [diff.height, react.height, figma.height].min
 
-    # Grid analysis: find problem regions
-    grid_cols = 6
-    grid_rows = 8
-    cell_w = w / grid_cols
-    cell_h = h / grid_rows
+    grid_cols, grid_rows = 6, 8
+    cell_w, cell_h = w / grid_cols, h / grid_rows
 
     regions = []
     grid_rows.times do |row|
       grid_cols.times do |col|
-        x0 = col * cell_w
-        y0 = row * cell_h
+        x0, y0 = col * cell_w, row * cell_h
         count = 0
         cell_h.times do |dy|
           cell_w.times do |dx|
@@ -453,7 +432,7 @@ namespace :e2e do
           end
         end
         pct = (count * 100.0 / (cell_w * cell_h)).round(1)
-        regions << { row: row, col: col, x: x0, y: y0, pct: pct, count: count } if pct > 0.5
+        regions << { x: x0, y: y0, pct: pct, count: count } if pct > 0.5
       end
     end
 
@@ -464,7 +443,6 @@ namespace :e2e do
       end
     end
 
-    # Side-by-side comparison: figma | react | diff
     comparison = ChunkyPNG::Image.new(w * 3, h, ChunkyPNG::Color::WHITE)
     h.times do |y|
       w.times do |x|
@@ -475,9 +453,10 @@ namespace :e2e do
     end
     comp_path = File.join(output_dir, "comparison.png")
     comparison.save(comp_path)
-    puts "  Comparison (figma|react|diff): #{comp_path}"
-    # AI visual inspection
-    ai_inspect_diff(comp_path, diff_pct: (regions.sum { |r| r[:count] } * 100.0 / (w * h)).round(2))
+    puts "  Comparison: #{comp_path}"
+
+    diff_pct = regions.any? ? (regions.sum { |r| r[:count] } * 100.0 / (w * h)).round(2) : 0
+    ai_inspect_diff(comp_path, diff_pct: diff_pct)
   rescue => e
     puts "  Warning: diff analysis failed: #{e.message}"
   end
@@ -486,35 +465,22 @@ namespace :e2e do
     return if diff_pct < 0.1
 
     image_data = Base64.strict_encode64(File.binread(comparison_path))
-
     ctx = OpenSSL::SSL::SSLContext.new
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     payload = {
       model: "gpt-4o",
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: "This is a side-by-side comparison of a web page: LEFT = Figma design (reference), MIDDLE = React render (our code), RIGHT = pixel diff (red = different pixels).\n\nList every visual difference between LEFT and MIDDLE. Be specific: name the element, describe what's wrong (missing, wrong color, wrong size, wrong position, extra element, etc.). Keep each issue to one line. Focus on real rendering bugs, ignore anti-aliasing or sub-pixel differences."
-            },
-            {
-              type: "input_image",
-              image_url: "data:image/png;base64,#{image_data}"
-            }
-          ]
-        }
-      ],
+      input: [{
+        role: "user",
+        content: [
+          { type: "input_text", text: "This is a side-by-side comparison: LEFT = Figma design (reference), MIDDLE = React render (our code), RIGHT = pixel diff (red = different).\n\nList every visual difference between LEFT and MIDDLE. Be specific: name the element, describe what's wrong. One line per issue. Ignore anti-aliasing." },
+          { type: "input_image", image_url: "data:image/png;base64,#{image_data}" }
+        ]
+      }],
       max_output_tokens: 1000
     }
 
-    raw = HTTP
-      .auth("Bearer #{ENV.fetch('OPENAI_API_KEY')}")
-      .post("https://api.openai.com/v1/responses", json: payload, ssl_context: ctx)
-      .body.to_s
-
+    raw = HTTP.auth("Bearer #{ENV.fetch('OPENAI_API_KEY')}").post("https://api.openai.com/v1/responses", json: payload, ssl_context: ctx).body.to_s
     parsed = JSON.parse(raw)
     text = parsed.dig("output", 0, "content", 0, "text") || parsed.dig("choices", 0, "message", "content")
 
@@ -523,6 +489,6 @@ namespace :e2e do
       text.strip.lines.each { |l| puts "  #{l.rstrip}" }
     end
   rescue => e
-    puts "  Warning: AI visual inspection failed: #{e.message}"
+    puts "  Warning: AI inspection failed: #{e.message}"
   end
 end
