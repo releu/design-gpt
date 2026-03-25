@@ -1187,7 +1187,7 @@ module Figma
       return [nil, nil] unless component_id
 
       ref = @components_by_node_id[component_id]
-      return [to_component_name(ref.name), nil] if ref  # standalone component, no component_set
+      return [to_component_name(ref.name), ref] if ref  # standalone component — pass it for prop extraction
 
       ref_set = @component_sets_by_node_id[component_id]
       return [to_component_name(ref_set.name), ref_set] if ref_set
@@ -1239,12 +1239,14 @@ module Figma
         case prop_type
         when "VARIANT"
           overrides[prop_name] = "\"#{value}\""
+        when "TEXT"
+          overrides[prop_name] = "\"#{value}\""
         when "BOOLEAN"
           overrides[prop_name] = "{#{value}}"
         when "INSTANCE_SWAP"
           preferred = definition&.dig("preferredValues") || []
-          if preferred.empty?
-            # No preferredValues — resolve as component reference
+          if preferred.empty? || preferred.all? { |pv| pv["type"] == "COMPONENT_SET" }
+            # No preferredValues or icon library — resolve as component reference
             child_node = children_by_swap_ref[key]
             next unless child_node
             comp_name = resolve_instance_component_name(child_node)
@@ -1253,9 +1255,8 @@ module Figma
             overrides[component_prop_name] = comp_name
             extra_imports << comp_name
           end
-          # INSTANCE_SWAP with preferredValues (slot content) is complex —
-          # requires JSX rendering of child nodes. Skip for now; the slot
-          # content is rendered by the parent component's slot mechanism.
+          # INSTANCE_SWAP with mixed preferredValues (slot content) is complex —
+          # rendered by the parent component's slot mechanism.
         end
       end
 
