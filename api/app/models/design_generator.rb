@@ -124,6 +124,12 @@ class DesignGenerator
         if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
           props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
+        elsif preferred.any?
+          names = preferred.filter_map { |pv| key_to_name_map[pv["key"]] }.uniq.map { |n| to_component_name(n) }.sort
+          if names.any?
+            props[camel_name] = { type: "string", enum: names }
+            required << camel_name
+          end
         end
       end
     end
@@ -134,6 +140,8 @@ class DesignGenerator
 
     slots.each do |slot|
       slot_name = slot["name"]
+      next if props.key?(slot_name)
+
       children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
 
       if children.length == 1
@@ -189,6 +197,13 @@ class DesignGenerator
         if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
           props[camel_name] = { type: "string", description: "Short image search prompt describing the desired image, e.g. 'modern office workspace'" }
           required << camel_name
+        elsif preferred.any?
+          # Non-image icon/component swap — expose as enum of component names
+          names = preferred.filter_map { |pv| key_to_name_map[pv["key"]] }.uniq.map { |n| to_component_name(n) }.sort
+          if names.any?
+            props[camel_name] = { type: "string", enum: names }
+            required << camel_name
+          end
         end
       end
     end
@@ -198,6 +213,9 @@ class DesignGenerator
 
     slots.each do |slot|
       slot_name = slot["name"]
+      # Skip slots already handled as INSTANCE_SWAP enum props
+      next if props.key?(slot_name)
+
       children = (slot["allowed_children"] || []).map { |c| normalize_child_name(c) }.select { |c| component_name_index.key?(c) }
 
       if children.length == 1
@@ -230,6 +248,20 @@ class DesignGenerator
     component_set.variants.map { |v|
       v.variant_properties[prop_name.downcase]
     }.compact.uniq
+  end
+
+  def key_to_name_map
+    @key_to_name_map ||= begin
+      map = {}
+      @libraries.each do |ff|
+        ff.component_sets.each { |cs| map[cs.component_key] = cs.name if cs.component_key }
+        ff.components.each { |c| map[c.component_key] = c.name if c.component_key }
+        ff.component_sets.includes(:variants).each do |cs|
+          cs.variants.each { |v| map[v.component_key] = cs.name if v.component_key }
+        end
+      end
+      map
+    end
   end
 
   def image_component_keys

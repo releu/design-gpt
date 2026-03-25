@@ -88,6 +88,7 @@ namespace :e2e do
           check_plus_icon(page, errors)
           check_select_width(page, errors)
           check_select_background(page, errors)
+          check_menu_item_icons(page, errors)
         end
       }
     )
@@ -137,6 +138,7 @@ namespace :e2e do
           check_plus_icon(page, errors)
           check_plus_svg(page, errors)
           check_select_width(page, errors)
+          check_menu_item_icons(page, errors)
           check_select_background(page, errors)
         end
       }
@@ -401,6 +403,35 @@ namespace :e2e do
     else
       menu_errors.each { |e| puts "  FAIL: #{e}" }
       errors << "SiteMenu: #{menu_errors.join("; ")}"
+    end
+  end
+
+  def check_menu_item_icons(page, errors)
+    puts "\n=== Menu item icons ==="
+    result = page.evaluate(<<~JS)
+      (() => {
+        const items = document.querySelectorAll('[data-component="SiteMenuItem"]');
+        return Array.from(items).map((el, i) => {
+          const svg = el.querySelector('svg');
+          const icon = el.querySelector('[data-component]');
+          const iconName = icon ? icon.getAttribute('data-component') : null;
+          return { index: i, hasSvg: !!svg, iconName: iconName };
+        });
+      })()
+    JS
+
+    if result.nil? || result.empty?
+      puts "  SKIP: No SiteMenuItems in DOM"
+      return
+    end
+
+    missing_svg = result.select { |r| !r["hasSvg"] }
+    if missing_svg.empty?
+      puts "  PASS: All #{result.size} menu items have SVG icons"
+    else
+      puts "  FAIL: #{missing_svg.size}/#{result.size} menu items missing SVG icon"
+      missing_svg.each { |r| puts "    item #{r["index"]}: icon=#{r["iconName"] || "none"}" }
+      errors << "#{missing_svg.size} menu items missing SVG icons"
     end
   end
 
