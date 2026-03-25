@@ -381,7 +381,7 @@ module Figma
 
       children_jsx = ir[:children].each_with_index.map do |child, idx|
         child_jsx = emit_node(child, depth + 1)
-        if child_jsx.present? && uses_absolute
+        if child_jsx.present?
           pos = child_positions[child[:node_id]]
           if pos
             wrapper_class = "#{class_name}-pos-#{pos[:index]}"

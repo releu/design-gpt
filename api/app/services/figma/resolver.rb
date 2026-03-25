@@ -328,10 +328,19 @@ module Figma
       child_positions = {}
       children = raw_children.each_with_index.filter_map do |child, idx|
         ir_child = resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm)
-        if ir_child && uses_absolute
-          pos_styles = extract_absolute_position(child, node)
-          if pos_styles.any?
-            child_positions[ir_child[:node_id]] = { index: idx, styles: pos_styles.merge("position" => "absolute") }
+        if ir_child
+          # Handle absolute positioning: either parent has no layout (all children absolute)
+          # or child explicitly opts out of flex with layoutPositioning: ABSOLUTE
+          is_abs = uses_absolute || child["layoutPositioning"] == "ABSOLUTE"
+          if is_abs
+            pos_styles = extract_absolute_position(child, node)
+            pos_styles["position"] = "absolute"
+            # For LEFT_RIGHT + TOP_BOTTOM constraints, stretch to parent
+            constraints = child["constraints"] || {}
+            if constraints["horizontal"] == "LEFT_RIGHT" && constraints["vertical"] == "TOP_BOTTOM"
+              pos_styles = { "position" => "absolute", "top" => "0", "left" => "0", "right" => "0", "bottom" => "0" }
+            end
+            child_positions[ir_child[:node_id]] = { index: idx, styles: pos_styles }
           end
         end
         ir_child
