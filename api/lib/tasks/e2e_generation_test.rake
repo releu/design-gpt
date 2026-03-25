@@ -381,8 +381,9 @@ namespace :e2e do
       puts "  Diff: #{diff_px}/#{total_px} pixels (#{diff_pct}%)"
       puts "  Diff image: #{diff_path}"
 
-      # The side column (SiteSelector with Select) should match closely.
-      # The main content area is empty (no slot in Page) so expect some diff.
+      # Generate side-by-side comparison for problem areas
+      generate_diff_analysis(figma_path, react_path, diff_path, OUTPUT_DIR)
+
       # Threshold: 5% of total pixels — catches major rendering breaks.
       threshold_pct = 5.0
       if diff_pct < threshold_pct
@@ -421,5 +422,61 @@ namespace :e2e do
       ds.destroy
       puts "\nCleaned up test DS ##{ds.id}"
     end
+  end
+
+  def generate_diff_analysis(figma_path, react_path, diff_path, output_dir)
+    require "chunky_png"
+
+    diff = ChunkyPNG::Image.from_file(diff_path)
+    react = ChunkyPNG::Image.from_file(react_path)
+    figma = ChunkyPNG::Image.from_file(figma_path)
+
+    w = [diff.width, react.width, figma.width].min
+    h = [diff.height, react.height, figma.height].min
+
+    # Grid analysis: find problem regions
+    grid_cols = 6
+    grid_rows = 8
+    cell_w = w / grid_cols
+    cell_h = h / grid_rows
+
+    regions = []
+    grid_rows.times do |row|
+      grid_cols.times do |col|
+        x0 = col * cell_w
+        y0 = row * cell_h
+        count = 0
+        cell_h.times do |dy|
+          cell_w.times do |dx|
+            px = diff[x0 + dx, y0 + dy]
+            count += 1 if ChunkyPNG::Color.r(px) > 100 && ChunkyPNG::Color.a(px) > 0
+          end
+        end
+        pct = (count * 100.0 / (cell_w * cell_h)).round(1)
+        regions << { row: row, col: col, x: x0, y: y0, pct: pct, count: count } if pct > 0.5
+      end
+    end
+
+    if regions.any?
+      puts "  Problem regions (>0.5% diff):"
+      regions.sort_by { |r| -r[:pct] }.first(5).each do |r|
+        puts "    (#{r[:x]},#{r[:y]})–(#{r[:x] + cell_w},#{r[:y] + cell_h}): #{r[:pct]}% (#{r[:count]} px)"
+      end
+    end
+
+    # Side-by-side comparison: figma | react | diff
+    comparison = ChunkyPNG::Image.new(w * 3, h, ChunkyPNG::Color::WHITE)
+    h.times do |y|
+      w.times do |x|
+        comparison[x, y] = figma[x, y]
+        comparison[x + w, y] = react[x, y]
+        comparison[x + w * 2, y] = diff[x, y]
+      end
+    end
+    comp_path = File.join(output_dir, "comparison.png")
+    comparison.save(comp_path)
+    puts "  Comparison (figma|react|diff): #{comp_path}"
+  rescue => e
+    puts "  Warning: diff analysis failed: #{e.message}"
   end
 end
