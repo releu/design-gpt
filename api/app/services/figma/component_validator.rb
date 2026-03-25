@@ -25,6 +25,7 @@ module Figma
       warnings.concat(check_skewed_transforms)
       warnings.concat(check_scrolling_content)
       warnings.concat(check_fixed_position_elements)
+      warnings.concat(check_instance_style_overrides)
       warnings.concat(check_image_convention) if @is_image
 
       warnings.uniq
@@ -91,6 +92,41 @@ module Figma
       warnings << "#image component has child nodes — must be a plain frame" if children.any?
       warnings << "#image component has corner radius — must be a plain rectangle" if @json["cornerRadius"].to_f > 0
       warnings
+    end
+
+    # Detect direct style overrides on instance children (fills/strokes on FRAME/TEXT
+    # nodes inside an INSTANCE). These bypass the component's prop API and won't render
+    # correctly — the designer should use component props instead.
+    OVERRIDE_TYPES = %w[FRAME TEXT GROUP].freeze
+
+    def check_instance_style_overrides
+      warnings = []
+      find_instance_overrides(@json, warnings)
+      warnings
+    end
+
+    def find_instance_overrides(node, warnings)
+      return unless node.is_a?(Hash)
+      return if node["visible"] == false
+
+      if node["type"] == "INSTANCE"
+        instance_name = node["name"] || "unknown"
+        (node["children"] || []).each do |child|
+          next unless OVERRIDE_TYPES.include?(child["type"])
+          next if child["visible"] == false
+
+          has_fill = (child["fills"] || []).any? { |f| f["visible"] != false }
+          has_stroke = (child["strokes"] || []).any? { |f| f["visible"] != false }
+          next unless has_fill || has_stroke
+
+          parts = []
+          parts << "fill" if has_fill
+          parts << "stroke" if has_stroke
+          warnings << "Instance \"#{instance_name}\" has direct #{parts.join("/")} override on child \"#{child["name"]}\" — use component props instead"
+        end
+      end
+
+      (node["children"] || []).each { |child| find_instance_overrides(child, warnings) }
     end
 
     # Recursive node finder — yields each node, collects those where block returns true

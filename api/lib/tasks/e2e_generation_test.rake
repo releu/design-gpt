@@ -97,6 +97,37 @@ namespace :e2e do
     end
 
     # ========================================
+    # CHECK 1b: All used components are valid (no warnings)
+    # ========================================
+    puts "\n=== Check 1b: Component validation warnings ==="
+    # Extract component names from JSX tags
+    used_components = jsx.to_s.scan(/<([A-Z]\w+)/).flatten.uniq
+    warned_components = []
+
+    ds.figma_files.where(version: ds.version).each do |ff|
+      used_components.each do |comp_name|
+        cs = ff.component_sets.detect { |c| c.name == comp_name || c.name.tr(" ", "") == comp_name }
+        c = ff.components.detect { |c| c.name == comp_name || c.name.tr(" ", "") == comp_name } unless cs
+        record = cs || c
+        next unless record
+
+        warnings = record.validation_warnings || []
+        if warnings.any?
+          warned_components << { name: comp_name, warnings: warnings }
+        end
+      end
+    end
+
+    if warned_components.empty?
+      puts "  PASS: All #{used_components.size} components (#{used_components.join(", ")}) have no warnings"
+    else
+      warned_components.each do |wc|
+        wc[:warnings].each { |w| puts "  FAIL: #{wc[:name]}: #{w}" }
+      end
+      errors << "#{warned_components.size} component(s) have validation warnings: #{warned_components.map { |w| w[:name] }.join(", ")}"
+    end
+
+    # ========================================
     # CHECK 2: Main page visual diff vs Figma
     # ========================================
     puts "\n=== Check 2: Main page diff ==="
