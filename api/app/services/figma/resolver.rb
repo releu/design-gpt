@@ -62,7 +62,7 @@ module Figma
 
     def build_node_id_cache
       files = if @figma_file.design_system
-        @figma_file.design_system.current_figma_files
+        @figma_file.design_system.figma_files_for_version(@figma_file.version)
       else
         [@figma_file]
       end
@@ -1299,7 +1299,7 @@ module Figma
 
     def build_lookup_tables
       sibling_files = if @figma_file.design_system
-        @figma_file.design_system.current_figma_files
+        @figma_file.design_system.figma_files_for_version(@figma_file.version)
       else
         [@figma_file]
       end
