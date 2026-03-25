@@ -75,18 +75,37 @@ module Renderable
       matched << default_variant if default_variant.react_code_compiled.present?
 
       usages.each do |usage_props|
+        best_score = 0
+        best_variant = nil
+
         all_variants.each do |v|
           next unless v.react_code_compiled.present?
           vprops = v.variant_properties
-          match = variant_prop_names.all? do |prop_key|
+          score = 0
+          mismatch = false
+
+          variant_prop_names.each do |prop_key|
             clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
             camel_name = to_prop_name(clean_key)
             usage_val = usage_props[camel_name]
-            next true unless usage_val
-            vprops[clean_key.downcase]&.downcase == usage_val.downcase
+            next unless usage_val
+            if vprops[clean_key.downcase]&.downcase == usage_val.downcase
+              score += 1
+            else
+              mismatch = true
+            end
           end
-          matched << v if match
+
+          matched << v if !mismatch && score > 0
+          # Track best partial match as fallback
+          if score > best_score
+            best_score = score
+            best_variant = v
+          end
         end
+
+        # Fallback: if no exact match, use the best partial match
+        matched << best_variant if matched.size <= 1 && best_variant && best_score > 0
       end
     end
 
@@ -120,6 +139,14 @@ module Renderable
       end
     end
 
+    # Build default values map for comparison
+    default_values = {}
+    variant_prop_names.each do |prop_key|
+      clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
+      default_values[clean_key.downcase] = (cs.prop_definitions || {})[prop_key]&.dig("defaultValue")&.downcase
+    end
+
+    # Sort non-default variants first (most specific), default last
     dispatch_lines = matched.sort_by { |v| [v.is_default ? 1 : 0, v.id] }.map do |v|
       idx = variant_index[v.id]
       func_name = "#{react_name}_#{component_id}__v#{idx}"
@@ -128,6 +155,9 @@ module Renderable
         prop_name = to_prop_name(clean_key)
         value = v.variant_properties[clean_key.downcase]
         next nil unless value
+        # Only include condition for props that differ from default —
+        # this allows partial matching when the AI omits or changes other props
+        next nil if value.downcase == default_values[clean_key.downcase]
         var_name = reserved_props.include?(prop_name) ? "__v_#{prop_name}" : prop_name
         "#{var_name} === \"#{value}\""
       end.compact
