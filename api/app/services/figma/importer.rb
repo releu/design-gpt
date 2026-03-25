@@ -48,10 +48,20 @@ module Figma
       log "After filtering: #{component_sets_data.size} component sets, #{standalone_data.size} standalone components"
 
       # 6. Build variant JSON lookup for validation (detect instance overrides vs variant-inherited styles)
+      # Include variants from sibling files so cross-file instance overrides can be detected
       variant_json_by_id = {}
       component_sets_data.each_value do |data|
         (data[:variants] || {}).each do |vid, vdata|
           variant_json_by_id[vid] = vdata[:figma_json] if vdata[:figma_json]
+        end
+      end
+      if @figma_file.design_system
+        @figma_file.design_system.figma_files_for_version(@figma_file.version).where.not(id: @figma_file.id).each do |sibling|
+          sibling.component_sets.includes(:variants).each do |cs|
+            cs.variants.each do |v|
+              variant_json_by_id[v.node_id] = v.figma_json if v.figma_json.present?
+            end
+          end
         end
       end
 

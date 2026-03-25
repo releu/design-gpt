@@ -93,7 +93,7 @@ module Figma
     # Detect direct style overrides on instance children (fills/strokes on FRAME/TEXT
     # nodes inside an INSTANCE). These bypass the component's prop API and won't render
     # correctly — the designer should use component props instead.
-    OVERRIDE_TYPES = %w[FRAME TEXT GROUP].freeze
+    OVERRIDE_TYPES = %w[FRAME TEXT GROUP VECTOR BOOLEAN_OPERATION].freeze
 
     def check_instance_style_overrides
       warnings = []
@@ -144,7 +144,19 @@ module Figma
       child_fills = (child["fills"] || []).select { |f| f["visible"] != false }
       source_fills = (source_child["fills"] || []).select { |f| f["visible"] != false }
       return true if child_fills.empty? && source_fills.empty?
-      child_fills.size == source_fills.size
+      return false if child_fills.size != source_fills.size
+
+      # Compare actual fill colors
+      child_fills.zip(source_fills).all? do |cf, sf|
+        cf["type"] == sf["type"] && fill_color_match?(cf, sf)
+      end
+    end
+
+    def fill_color_match?(fill_a, fill_b)
+      ca = fill_a["color"]
+      cb = fill_b["color"]
+      return ca == cb if ca && cb
+      true # non-SOLID fills — treat as same if type matches
     end
 
     # Recursive node finder — yields each node, collects those where block returns true
