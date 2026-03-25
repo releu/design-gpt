@@ -100,12 +100,24 @@ module Renderable
     end
 
     # Generate a minimal dispatcher function
-    dispatcher_props = variant_prop_names.map do |prop_key|
+    # Avoid destructuring variant props that collide with reserved React prop names
+    # (e.g. Figma "style" variant prop vs React's CSS style prop).
+    reserved_props = %w[style className key ref children].to_set
+
+    safe_props = []
+    collision_preamble = []
+    variant_prop_names.each do |prop_key|
       clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
       prop_name = to_prop_name(clean_key)
       default_val = (cs.prop_definitions || {})[prop_key]&.dig("defaultValue") ||
                     default_variant.variant_properties[clean_key.downcase]
-      "#{prop_name} = \"#{default_val}\""
+      if reserved_props.include?(prop_name)
+        # Don't destructure — read from props without removing it
+        safe_var = "__v_#{prop_name}"
+        collision_preamble << "  var #{safe_var} = typeof props.#{prop_name} === \"string\" ? props.#{prop_name} : \"#{default_val}\";"
+      else
+        safe_props << "#{prop_name} = \"#{default_val}\""
+      end
     end
 
     dispatch_lines = matched.sort_by { |v| [v.is_default ? 1 : 0, v.id] }.map do |v|
@@ -116,7 +128,8 @@ module Renderable
         prop_name = to_prop_name(clean_key)
         value = v.variant_properties[clean_key.downcase]
         next nil unless value
-        "#{prop_name} === \"#{value}\""
+        var_name = reserved_props.include?(prop_name) ? "__v_#{prop_name}" : prop_name
+        "#{var_name} === \"#{value}\""
       end.compact
       next nil if conditions.empty?
       "  if (#{conditions.join(' && ')}) return #{func_name}(props);"
@@ -126,7 +139,9 @@ module Renderable
     default_func = "#{react_name}_#{component_id}__v#{default_idx}"
     dispatch_lines << "  return #{default_func}(props);"
 
-    dispatcher = "var #{react_name} = function({ #{dispatcher_props.join(', ')}, ...props }) {\n#{dispatch_lines.join("\n")}\n};"
+    body_lines = collision_preamble + dispatch_lines
+    destructuring = safe_props.any? ? "{ #{safe_props.join(', ')}, ...props }" : "props"
+    dispatcher = "var #{react_name} = function(#{destructuring}) {\n#{body_lines.join("\n")}\n};"
     browser_code_parts << dispatcher
     true
   end

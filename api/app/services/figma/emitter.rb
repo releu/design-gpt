@@ -192,9 +192,9 @@ module Figma
 
         const svg = `#{clean_svg.gsub('`', '\\`')}`;
 
-        export function #{component_name}(props) {
+        export function #{component_name}({ style: __passedStyle, ...props }) {
           return (
-            <div data-component="#{component_name}" style={#{style_obj}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
+            <div data-component="#{component_name}" style={{...__passedStyle, ...#{style_obj}}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
           );
         }
 
@@ -444,7 +444,11 @@ module Figma
       prop = ir[:prop_name]
       if ir[:style_overrides].any?
         style_pairs = ir[:style_overrides].map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
-        "{#{prop} && <#{prop} style={{#{style_pairs}}} />}"
+        # Wrap icon in a styled span so color/size overrides work regardless of
+        # whether the icon is an SVG component (spreads props) or a regular
+        # multi-variant component (does not spread props). SVG icons use
+        # fill="currentColor" and inherit the CSS color from the wrapper.
+        "{#{prop} && <span style={{#{style_pairs}}}><#{prop} /></span>}"
       else
         "{#{prop} && <#{prop} />}"
       end
