@@ -175,6 +175,26 @@ namespace :e2e do
           errors << "White Plus icon missing or wrong styles"
         end
 
+        # ========================================
+        # CHECK 4: Plus icon contains inlined SVG
+        # ========================================
+        # The Plus component should render an actual <svg> element via
+        # dangerouslySetInnerHTML, not an <img> tag or empty placeholder.
+        puts "\n=== Check 4: Plus icon contains inlined SVG ==="
+        plus_html = page.evaluate(<<~JS)
+          (() => {
+            const el = document.querySelector('[data-component="Plus"]');
+            return el ? el.innerHTML : '';
+          })()
+        JS
+        if plus_html.to_s.include?("<svg")
+          puts "  PASS: Plus icon contains inlined <svg> element"
+        else
+          puts "  FAIL: Plus icon does not contain inlined <svg> element"
+          puts "  innerHTML: #{plus_html.to_s.first(300)}"
+          errors << "Plus icon missing inlined SVG"
+        end
+
       ensure
         browser.quit
       end
