@@ -342,7 +342,12 @@ module Renderable
 
                 kids.forEach(function(child) {
                   if (child && child.type === Slot && child.props && child.props.name) {
-                    slotProps[child.props.name] = child.props.children;
+                    var slotName = child.props.name;
+                    // Store under original, camelCase, and lowercase for prop matching
+                    slotProps[slotName] = child.props.children;
+                    slotProps[slotName.toLowerCase()] = child.props.children;
+                    var camelName = slotName.charAt(0).toLowerCase() + slotName.slice(1);
+                    if (camelName !== slotName) slotProps[camelName] = child.props.children;
                   } else {
                     defaultChildren.push(child);
                   }
