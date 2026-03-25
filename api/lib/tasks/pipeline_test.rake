@@ -34,6 +34,11 @@ namespace :pipeline do
     run_pipeline_test(use_frozen: true)
   end
 
+  desc "Structural diff: hide text/shadows, compare layout only"
+  task structural: :environment do
+    run_structural_test
+  end
+
   desc "Freeze current Figma screenshots as test fixtures"
   task freeze: :environment do
     freeze_figma_screenshots
@@ -728,5 +733,258 @@ namespace :pipeline do
       .join
       .gsub(/^(\d)/, 'C\1')
       .then { |n| n.empty? ? "Component" : n }
+  end
+
+  # ==========================================================================
+  # Structural Test: hide text/shadows, compare layout only
+  # ==========================================================================
+
+  STRUCTURAL_DIR = OUTPUT_DIR.join("structural")
+
+  STRUCTURAL_CSS = <<~CSS.freeze
+    * {
+      color: transparent !important;
+      -webkit-text-fill-color: transparent !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    svg { opacity: 0 !important; }
+  CSS
+
+  def run_structural_test
+    FileUtils.mkdir_p(STRUCTURAL_DIR)
+
+    ds = DesignSystem.find_by(name: "WM") || DesignSystem.first
+    abort "No design system found" unless ds
+
+    ff_main = ds.current_figma_files.find_by(figma_file_key: "oL5zKzFeTuZRd2rFMbUJWa")
+    abort "WM FigmaFile not found" unless ff_main
+
+    # Collect components
+    components = []
+    ff_main.component_sets.order(:name).each do |cs|
+      v = cs.default_variant
+      compiled = v&.react_code_compiled
+      next unless compiled.present?
+      react_name = compiled.match(/var\s+([A-Z][a-zA-Z0-9_]*)\s*=\s*function/)&.captures&.first
+      react_name = react_name&.sub(/_cs_\d+__v\d+$/, "")
+      next unless react_name
+      components << { name: cs.name, react_name: react_name, safe: safe_name(cs.name) }
+    end
+    ff_main.components.where.not(react_code_compiled: [nil, ""]).order(:name).each do |c|
+      react_name = c.react_code_compiled.match(/var\s+([A-Z][a-zA-Z0-9_]*)\s*=\s*function/)&.captures&.first
+      next unless react_name
+      components << { name: c.name, react_name: react_name, safe: safe_name(c.name) }
+    end
+
+    puts "=" * 70
+    puts "STRUCTURAL DIFF (text/shadows hidden)"
+    puts "=" * 70
+    puts "Components: #{components.size}"
+    puts ""
+
+    # Step 1: Export Figma screenshots (reuse if exist)
+    figma_dir = OUTPUT_DIR
+    unless Dir.glob(figma_dir.join("figma_*.png")).size > 50
+      puts "Exporting Figma screenshots..."
+      figma = Figma::TokenPool.instance.primary_client
+      export_figma_screenshots(figma, components.map { |c|
+        ff = ff_main
+        v = ff.component_sets.find_by(name: c[:name])&.default_variant || ff.components.find_by(name: c[:name])
+        { name: c[:name], node_id: v&.node_id || "", file_key: ff.figma_file_key, type: "any" }
+      }.select { |c| c[:node_id].present? })
+    end
+
+    # Step 2: Render with structural CSS (text hidden, no shadows)
+    puts "Rendering structural screenshots..."
+    render_structural_screenshots(ds, components)
+
+    # Step 3: Compare with downscaled images (4x smaller = text noise disappears)
+    puts "Comparing (downscaled 2x)..."
+    results = []
+    components.each do |comp|
+      figma_path = figma_dir.join("figma_#{comp[:safe]}.png")
+      render_path = STRUCTURAL_DIR.join("render_#{comp[:safe]}.png")
+
+      unless File.exist?(figma_path) && File.exist?(render_path)
+        results << { name: comp[:name], diff: nil, status: "missing" }
+        next
+      end
+
+      diff = structural_pixel_diff(
+        figma_path.to_s, render_path.to_s,
+        STRUCTURAL_DIR.join("diff_#{comp[:safe]}.png").to_s
+      )
+      results << { name: comp[:name], diff: diff, status: diff < 50 ? "pass" : "fail" }
+    end
+
+    # Report
+    results.sort_by! { |r| r[:diff] || 999999 }
+    compared = results.select { |r| r[:diff] }
+    pass = compared.count { |r| r[:status] == "pass" }
+
+    puts ""
+    puts "PASS (<50px structural diff): #{pass}/#{compared.size}"
+    puts "FAIL: #{compared.size - pass}"
+    puts ""
+
+    # Show worst structural issues (these are REAL layout bugs, not font diffs)
+    puts "Structural issues (layout/color/size bugs):"
+    compared.select { |r| r[:diff] >= 50 }.last(20).reverse.each do |r|
+      puts "  #{r[:diff]}px  #{r[:name]}"
+    end
+
+    puts ""
+    puts "Perfect structural match:"
+    compared.select { |r| r[:diff] < 50 }.first(20).each do |r|
+      puts "  #{r[:diff]}px  #{r[:name]}"
+    end
+
+    File.write(STRUCTURAL_DIR.join("report.json"), JSON.pretty_generate({
+      timestamp: Time.now.iso8601,
+      total: components.size,
+      compared: compared.size,
+      pass: pass,
+      results: results
+    }))
+    puts "\nReport: #{STRUCTURAL_DIR.join("report.json")}"
+  end
+
+  def render_structural_screenshots(ds, components)
+    items_json = components.map { |c| { react_name: c[:react_name], safe_name: c[:safe] } }.to_json
+    qa_dir = Rails.root.join("..", ".hats", "qa").to_s
+
+    script = <<~JS
+      process.chdir('#{qa_dir}');
+      module.paths.unshift('#{qa_dir}/node_modules');
+      const { chromium } = require('playwright');
+      const fs = require('fs');
+      (async () => {
+        const browser = await chromium.launch();
+        const page = await browser.newPage({ viewport: { width: 1200, height: 800 }, ignoreHTTPSErrors: true });
+        await page.goto('https://design-gpt.localtest.me/api/design-systems/#{ds.id}/renderer', { waitUntil: 'networkidle' });
+        await page.waitForTimeout(3000);
+
+        // Inject structural CSS: hide text and shadows
+        await page.addStyleTag({ content: `#{STRUCTURAL_CSS.gsub("\n", " ")}` });
+
+        const items = #{items_json};
+        let done = 0;
+
+        for (const { react_name, safe_name } of items) {
+          await page.evaluate((rn) => {
+            const root = document.getElementById('root');
+            try { ReactDOM.unmountComponentAtNode(root); } catch(e) {}
+            root.innerHTML = '';
+            root.style.padding = '0';
+            root.style.background = 'white';
+            root.style.display = 'inline-block';
+            try {
+              if (typeof window[rn] === 'function') {
+                ReactDOM.render(React.createElement(window[rn]), root);
+              }
+            } catch(e) {}
+          }, react_name);
+          await page.waitForTimeout(100);
+
+          try {
+            let el = page.locator('[data-component]').first();
+            let found = false;
+            try { await el.waitFor({ timeout: 500 }); found = true; } catch(e) {}
+            if (!found) {
+              el = page.locator('#root div').first();
+              try { await el.waitFor({ timeout: 300 }); found = true; } catch(e) {}
+            }
+            if (found) {
+              const box = await el.boundingBox();
+              if (box && box.width > 0 && box.height > 0) {
+                await page.screenshot({ path: '#{STRUCTURAL_DIR}/' + 'render_' + safe_name + '.png', clip: { x: box.x, y: box.y, width: box.width, height: box.height } });
+                done++;
+              }
+            }
+          } catch(e) {}
+        }
+
+        console.log('Done: ' + done + '/' + items.length);
+        await browser.close();
+      })();
+    JS
+
+    script_path = STRUCTURAL_DIR.join("structural_test.js")
+    File.write(script_path, script)
+    output = `node #{script_path} 2>&1`.strip
+    puts "  #{output.lines.last&.strip}"
+  end
+
+  # Structural pixel diff: downscale 2x before comparing to blur away text noise
+  def structural_pixel_diff(path_a, path_b, diff_path)
+    FileUtils.mkdir_p(File.dirname(diff_path))
+
+    img1 = ChunkyPNG::Image.from_file(path_a)
+    img2 = ChunkyPNG::Image.from_file(path_b)
+
+    # Center-crop larger image
+    w = [img1.width, img2.width].min
+    h = [img1.height, img2.height].min
+    if img1.width > w || img1.height > h
+      img1 = img1.crop((img1.width - w) / 2, (img1.height - h) / 2, w, h)
+    end
+    if img2.width > w || img2.height > h
+      img2 = img2.crop((img2.width - w) / 2, (img2.height - h) / 2, w, h)
+    end
+
+    # Downscale 2x (averages 2x2 blocks, blurs text)
+    sw = w / 2
+    sh = h / 2
+    return 0 if sw == 0 || sh == 0
+
+    white_blend = ->(c) {
+      a = ChunkyPNG::Color.a(c)
+      return [255, 255, 255] if a == 0
+      return [ChunkyPNG::Color.r(c), ChunkyPNG::Color.g(c), ChunkyPNG::Color.b(c)] if a == 255
+      af = a / 255.0
+      [(ChunkyPNG::Color.r(c) * af + 255 * (1 - af)).round,
+       (ChunkyPNG::Color.g(c) * af + 255 * (1 - af)).round,
+       (ChunkyPNG::Color.b(c) * af + 255 * (1 - af)).round]
+    }
+
+    avg_pixel = ->(img, x, y) {
+      r = g = b = 0
+      count = 0
+      [0, 1].each { |dy| [0, 1].each { |dx|
+        px = x * 2 + dx; py = y * 2 + dy
+        next if px >= img.width || py >= img.height
+        cr, cg, cb = white_blend.call(img[px, py])
+        r += cr; g += cg; b += cb; count += 1
+      }}
+      count > 0 ? [r / count, g / count, b / count] : [255, 255, 255]
+    }
+
+    diff_image = ChunkyPNG::Image.new(sw, sh)
+    diff_pixels = 0
+    threshold = 40  # Higher threshold for structural (ignores subtle color shifts)
+
+    sh.times do |y|
+      sw.times do |x|
+        r1, g1, b1 = avg_pixel.call(img1, x, y)
+        r2, g2, b2 = avg_pixel.call(img2, x, y)
+        dr = (r1 - r2).abs
+        dg = (g1 - g2).abs
+        db = (b1 - b2).abs
+
+        if dr > threshold || dg > threshold || db > threshold
+          diff_pixels += 1
+          diff_image[x, y] = ChunkyPNG::Color.rgba(255, 0, 0, 200)
+        else
+          diff_image[x, y] = ChunkyPNG::Color.rgba((r1 * 0.4).to_i, (g1 * 0.4).to_i, (b1 * 0.4).to_i, 255)
+        end
+      end
+    end
+
+    diff_image.save(diff_path)
+    diff_pixels
+  rescue => e
+    puts "    WARN: structural diff failed for #{File.basename(path_a)}: #{e.message}"
+    999999
   end
 end
