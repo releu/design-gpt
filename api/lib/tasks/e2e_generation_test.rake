@@ -476,7 +476,53 @@ namespace :e2e do
     comp_path = File.join(output_dir, "comparison.png")
     comparison.save(comp_path)
     puts "  Comparison (figma|react|diff): #{comp_path}"
+    # AI visual inspection
+    ai_inspect_diff(comp_path, diff_pct: (regions.sum { |r| r[:count] } * 100.0 / (w * h)).round(2))
   rescue => e
     puts "  Warning: diff analysis failed: #{e.message}"
+  end
+
+  def ai_inspect_diff(comparison_path, diff_pct: 0)
+    return if diff_pct < 0.1
+
+    image_data = Base64.strict_encode64(File.binread(comparison_path))
+
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    payload = {
+      model: "gpt-4o",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "This is a side-by-side comparison of a web page: LEFT = Figma design (reference), MIDDLE = React render (our code), RIGHT = pixel diff (red = different pixels).\n\nList every visual difference between LEFT and MIDDLE. Be specific: name the element, describe what's wrong (missing, wrong color, wrong size, wrong position, extra element, etc.). Keep each issue to one line. Focus on real rendering bugs, ignore anti-aliasing or sub-pixel differences."
+            },
+            {
+              type: "input_image",
+              image_url: "data:image/png;base64,#{image_data}"
+            }
+          ]
+        }
+      ],
+      max_output_tokens: 1000
+    }
+
+    raw = HTTP
+      .auth("Bearer #{ENV.fetch('OPENAI_API_KEY')}")
+      .post("https://api.openai.com/v1/responses", json: payload, ssl_context: ctx)
+      .body.to_s
+
+    parsed = JSON.parse(raw)
+    text = parsed.dig("output", 0, "content", 0, "text") || parsed.dig("choices", 0, "message", "content")
+
+    if text
+      puts "\n  === AI Visual Inspection ==="
+      text.strip.lines.each { |l| puts "  #{l.rstrip}" }
+    end
+  rescue => e
+    puts "  Warning: AI visual inspection failed: #{e.message}"
   end
 end
