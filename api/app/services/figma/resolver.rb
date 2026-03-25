@@ -173,7 +173,13 @@ module Figma
         .select { |v| v.figma_json.present? }
         .sort_by { |v| [v.is_default ? 0 : 1, v.id] }
 
-      if variant_prop_names.any? && all_variants.size > 1
+      # SVG icon component sets: use single_variant path so is_svg kicks in.
+      # These are pure vector components where variant differences are just fill styles.
+      default_node = default_variant.figma_json
+      is_svg_component = vector_frame?(default_node) &&
+        (@inline_svgs_by_node_id[default_node["id"]] || @inline_svgs_by_node_id[component_set.node_id])
+
+      if variant_prop_names.any? && all_variants.size > 1 && !is_svg_component
         resolve_multi_variant(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
       else
         resolve_single_variant(component_name, default_variant, prop_definitions, component_set)

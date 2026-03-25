@@ -453,13 +453,17 @@ namespace :e2e do
         const footer = document.querySelector('[data-component="MenuFooter"]');
         if (!footer) return null;
         const svgs = footer.querySelectorAll('svg');
-        const bbox = footer.getBoundingClientRect();
-        const bg = getComputedStyle(footer).backgroundColor;
+        const children = Array.from(footer.children);
+        const childInfo = children.map(c => ({
+          tag: c.tagName,
+          dataComponent: c.getAttribute('data-component'),
+          hasSvg: !!c.querySelector('svg'),
+          html: c.innerHTML.substring(0, 100)
+        }));
         return {
           svgCount: svgs.length,
-          width: bbox.width,
-          height: bbox.height,
-          bg: bg
+          childCount: children.length,
+          children: childInfo
         };
       })()
     JS
@@ -468,7 +472,10 @@ namespace :e2e do
     elsif result["svgCount"] >= 3
       puts "  PASS: Footer has #{result["svgCount"]} SVG icons"
     else
-      puts "  FAIL: Footer has #{result["svgCount"]} SVG icons (expected >= 3), bg=#{result["bg"]}"
+      puts "  FAIL: Footer has #{result["svgCount"]} SVG icons (expected >= 3)"
+      result["children"]&.each_with_index do |c, i|
+        puts "    child #{i}: <#{c["tag"]}> data-component=#{c["dataComponent"]} hasSvg=#{c["hasSvg"]} html=#{c["html"]&.first(80)}"
+      end
       errors << "Footer missing icons (#{result["svgCount"]} SVGs, expected >= 3)"
     end
   end
