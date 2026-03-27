@@ -365,7 +365,12 @@ class PipelineGrind
         raw = File.read(fonts_css_path)
         raw = raw.gsub(/url\("([^"]+)"\)/) do |match|
           url = $1
-          url.start_with?("http", "file://") ? match : "url(\"file://#{File.join(family_dir, url)}\")"
+          if url.start_with?("http", "file://")
+            match
+          else
+            encoded_path = File.join(family_dir, url).gsub(" ", "%20")
+            "url(\"file://#{encoded_path}\")"
+          end
         end
         # Replace font-family names like "YS Text Web" with the directory name
         # so they match the font-family used in component CSS (e.g. "YS Text")
@@ -384,7 +389,8 @@ class PipelineGrind
                  when ".woff" then "woff"
                  when ".ttf" then "truetype"
                  end
-        css += "@font-face { font-family: \"#{family_name}\"; src: url(\"file://#{font_file}\") format(\"#{format}\"); font-weight: #{weight}; font-style: #{style}; }\n"
+        encoded = font_file.gsub(" ", "%20")
+        css += "@font-face { font-family: \"#{family_name}\"; src: url(\"file://#{encoded}\") format(\"#{format}\"); font-weight: #{weight}; font-style: #{style}; }\n"
       end
     end
     css
@@ -594,7 +600,8 @@ class PipelineGrind
       return false
     end
 
-    sleep 0.15 # wait for render (React renders synchronously, just need a frame for layout)
+    sleep 0.15 # wait for render
+    @browser_page.evaluate("document.fonts.ready.then(() => true)") rescue nil
 
     # Set exact Figma dimensions on root container with padding for shadow overflow.
     # Figma exports include effect overflow (shadows), so we calculate padding from effects.
@@ -657,7 +664,10 @@ class PipelineGrind
     @browser_page.command("Emulation.setDeviceMetricsOverride",
       width: 800, height: 600, deviceScaleFactor: 2, mobile: false)
     @browser_page.go_to("file://#{@current_renderer_path}")
-    sleep 2 # wait for React + components to load
+    sleep 1 # wait for page to start loading
+    # Wait for all fonts to load before rendering any components
+    @browser_page.evaluate("document.fonts.ready.then(() => true)")
+    sleep 0.5
   end
 
   def close_browser
