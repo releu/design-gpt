@@ -97,7 +97,7 @@ class PipelineGrind
           scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
           vdata = v.figma_json.is_a?(String) ? JSON.parse(v.figma_json) : v.figma_json rescue {}
           figma_bbox = vdata["absoluteBoundingBox"] || {}
-          ok = render_via_renderer(scoped, {}, react_path, figma_width: figma_bbox["width"], figma_height: figma_bbox["height"])
+          ok = render_via_renderer(scoped, {}, react_path, figma_width: figma_bbox["width"], figma_height: figma_bbox["height"], figma_node_data: vdata)
           next unless ok
 
           # Diff
@@ -518,7 +518,7 @@ class PipelineGrind
 
       node_data = record.respond_to?(:figma_json) ? (record.figma_json.is_a?(String) ? JSON.parse(record.figma_json) : record.figma_json) : {} rescue {}
       fbbox = node_data["absoluteBoundingBox"] || {}
-      rendered = render_via_renderer(render_name, {}, react_path, figma_width: fbbox["width"], figma_height: fbbox["height"])
+      rendered = render_via_renderer(render_name, {}, react_path, figma_width: fbbox["width"], figma_height: fbbox["height"], figma_node_data: node_data)
       render_failed = !rendered
     rescue => e
       log "  [error] React render for #{label}: #{e.message}"
@@ -584,7 +584,7 @@ class PipelineGrind
     }
   end
 
-  def render_via_renderer(react_name, variant_props, output_path, figma_width: nil, figma_height: nil)
+  def render_via_renderer(react_name, variant_props, output_path, figma_width: nil, figma_height: nil, figma_node_data: nil)
     ensure_browser_open
 
     props_json = variant_props.to_json
@@ -596,10 +596,18 @@ class PipelineGrind
 
     sleep 0.15 # wait for render (React renders synchronously, just need a frame for layout)
 
-    # Force the rendered component to match Figma's exact dimensions
+    # Set exact Figma dimensions on root container with padding for shadow overflow.
+    # Figma exports include effect overflow (shadows), so we calculate padding from effects.
     if figma_width && figma_height
+      shadow_pad = compute_shadow_padding(figma_node_data) if figma_node_data
+      pad = shadow_pad || 0
       @browser_page.evaluate(<<~JS)
         (function() {
+          var root = document.getElementById('root');
+          if (root) {
+            root.style.display = 'inline-block';
+            root.style.padding = '#{pad}px';
+          }
           var el = document.querySelector('[data-component]') || document.querySelector('#root > *:first-child');
           if (el) {
             el.style.width = '#{figma_width}px';
@@ -734,6 +742,22 @@ class PipelineGrind
       ir[:variants].each { |v| count = count_unresolved(v, count) }
     end
     count
+  end
+
+  # Calculate padding needed to capture shadow overflow, matching Figma's export behavior.
+  # Figma expands exports by radius + abs(offset) on each side for drop/inner shadows.
+  def compute_shadow_padding(node_data)
+    effects = node_data["effects"] || []
+    max_pad = 0
+    effects.each do |e|
+      next unless e["visible"] != false
+      next unless %w[DROP_SHADOW INNER_SHADOW].include?(e["type"])
+      radius = e["radius"] || 0
+      spread = e["spread"] || 0
+      pad = radius + spread
+      max_pad = pad if pad > max_pad
+    end
+    max_pad.ceil
   end
 
   def flatten_alpha(png_path)
