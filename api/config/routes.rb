@@ -49,10 +49,14 @@ Rails.application.routes.draw do
       post :save_code, :on => :member, :path => "save-code"
       post :duplicate, :on => :member
       post :reset, :on => :member
+      post :render_to_figma, :on => :member, :path => "render-to-figma"
       get :export_image, :on => :member, :path => "export-image"
       get :export_react, :on => :member, :path => "export-react"
       get :export_figma, :on => :member, :path => "export-figma"
     end
+
+    get "figma-oauth/authorize", to: "figma_oauth#authorize"
+    get "figma-oauth/callback", to: "figma_oauth#callback"
 
     get "up" => "application#health_check", :as => :rails_health_check
   end

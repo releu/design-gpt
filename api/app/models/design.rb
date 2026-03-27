@@ -106,6 +106,7 @@ class Design < ApplicationRecord
       prompt: prompt,
       status: status,
       design_system_id: design_system_id,
+      figma_render_status: figma_render_status,
       created_at: created_at,
       updated_at: updated_at,
       iterations: iterations.order(:id).map do |i|

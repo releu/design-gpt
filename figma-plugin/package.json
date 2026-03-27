@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2015",
+    "build:mcp": "esbuild src/mcp-entry.ts --bundle --outfile=dist/mcp-renderer.js --target=es2015 --format=iife",
     "watch": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2015 --watch"
   },
   "devDependencies": {

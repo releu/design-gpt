@@ -130,6 +130,25 @@ class DesignsController < ApplicationController
       filename: "#{design.name.parameterize}-react.zip"
   end
 
+  def render_to_figma
+    design = find_user_design(params[:id])
+    file_key = params[:file_key].presence || design.figma_files.first&.figma_file_key
+
+    if file_key.blank?
+      return render json: { error: "file_key is required (no Figma files linked to design system)" }, status: :unprocessable_entity
+    end
+
+    iteration = design.iterations.order(:id).last
+    unless iteration&.tree
+      return render json: { error: "No design tree to render" }, status: :unprocessable_entity
+    end
+
+    design.update!(figma_render_status: "queued", figma_render_result: nil)
+    FigmaRenderJob.perform_later(design.id, file_key)
+
+    render json: { id: design.id, figma_render_status: "queued" }
+  end
+
   def export_figma
     design = find_accessible_design(params[:id])
     iteration = design.iterations.order(:id).last

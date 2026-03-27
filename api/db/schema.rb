@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_23_172454) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_27_113055) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -128,6 +128,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_172454) do
     t.datetime "updated_at"
     t.bigint "user_id"
     t.bigint "design_system_id"
+    t.string "figma_render_status"
+    t.jsonb "figma_render_result"
     t.index ["design_system_id"], name: "index_designs_on_design_system_id"
     t.index ["user_id"], name: "index_designs_on_user_id"
   end
@@ -173,6 +175,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_23_172454) do
     t.index ["design_system_id"], name: "index_figma_files_on_design_system_id"
     t.index ["user_id", "figma_file_key"], name: "index_figma_files_on_user_id_and_figma_file_key"
     t.index ["user_id"], name: "index_figma_files_on_user_id"
+  end
+
+  create_table "figma_mcp_credentials", force: :cascade do |t|
+    t.string "access_token"
+    t.string "refresh_token"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "image_caches", force: :cascade do |t|

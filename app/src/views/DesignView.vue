@@ -22,6 +22,7 @@
           <a v-if="design && design.design_system_id" class="DesignView__export-item" :href="`/design-systems/${design.design_system_id}`" target="_blank" @click="showExportMenu = false">design system</a>
           <a v-if="code" class="DesignView__export-item" qa="export-react" @click="exportReact">download react project</a>
           <a v-if="code" class="DesignView__export-item" qa="export-figma" @click="exportFigma">export to figma</a>
+          <a v-if="code && design && design.design_system_id" class="DesignView__export-item" qa="render-to-figma" @click="renderToFigma">render to figma canvas</a>
           <a v-if="code" class="DesignView__export-item" qa="share-link" @click="openShareLink">share link</a>
         </div>
       </MoreButton>
@@ -157,6 +158,7 @@ export default {
       pollTimer: null,
       showExportMenu: false,
       saving: false,
+      figmaRendering: false,
     };
   },
   computed: {
@@ -301,6 +303,31 @@ export default {
       this.showExportMenu = false;
       if (this.shareCode) {
         window.open(`/share/${this.shareCode}`, '_blank');
+      }
+    },
+    async renderToFigma() {
+      this.showExportMenu = false;
+      if (this.figmaRendering) return;
+      this.figmaRendering = true;
+      try {
+        const token = await this.getAccessTokenSilently({
+          authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
+        });
+        const res = await fetch(`/api/designs/${this.id}/render-to-figma`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          alert(data.error || "Failed to render to Figma");
+        }
+      } finally {
+        this.figmaRendering = false;
       }
     },
     exportFigma() {
