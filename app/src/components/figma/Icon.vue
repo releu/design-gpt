@@ -14,6 +14,8 @@ import iconRefresh from "../../assets/icons/type=refresh.png";
 import iconNew from "../../assets/icons/type=new.png";
 import iconXmark from "../../assets/icons/type=xmark.png";
 import iconAdult from "../../assets/icons/type=adult.png";
+import iconChat from "../../assets/icons/type=chat.png";
+import iconMecha from "../../assets/icons/type=mecha.png";
 
 const icons = {
   down: iconDown,
@@ -27,6 +29,8 @@ const icons = {
   new: iconNew,
   xmark: iconXmark,
   adult: iconAdult,
+  chat: iconChat,
+  mecha: iconMecha,
 };
 
 export default {

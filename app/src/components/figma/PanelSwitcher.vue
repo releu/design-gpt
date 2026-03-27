@@ -1,35 +1,45 @@
 <template>
-  <div class="PreviewSelector" qa="preview-switcher">
+  <div class="PanelSwitcher" qa="panel-switcher">
     <div
       :class="[
-        'PreviewSelector__item',
-        { PreviewSelector__item_active: modelValue === 'phone' },
+        'PanelSwitcher__item',
+        { PanelSwitcher__item_active: modelValue === 'chat' },
       ]"
-      qa="switcher-mobile"
-      @click="$emit('update:modelValue', 'phone')"
+      qa="panel-chat"
+      @click="$emit('update:modelValue', 'chat')"
     >
-      <Icon type="phone" />
+      <Icon type="chat" />
     </div>
     <div
       :class="[
-        'PreviewSelector__item',
-        { PreviewSelector__item_active: modelValue === 'desktop' },
+        'PanelSwitcher__item',
+        { PanelSwitcher__item_active: modelValue === 'mecha' },
       ]"
-      qa="switcher-desktop"
-      @click="$emit('update:modelValue', 'desktop')"
+      qa="panel-mecha"
+      @click="$emit('update:modelValue', 'mecha')"
     >
-      <Icon type="desktop" />
+      <Icon type="mecha" />
+    </div>
+    <div
+      :class="[
+        'PanelSwitcher__item',
+        { PanelSwitcher__item_active: modelValue === 'code' },
+      ]"
+      qa="panel-code"
+      @click="$emit('update:modelValue', 'code')"
+    >
+      <Icon type="code" />
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: "PreviewSelector",
+  name: "PanelSwitcher",
   props: {
     modelValue: {
       type: String,
-      default: "phone",
+      default: "chat",
     },
   },
   emits: ["update:modelValue"],
@@ -37,7 +47,7 @@ export default {
 </script>
 
 <style lang="scss">
-.PreviewSelector {
+.PanelSwitcher {
   background: var(--white);
   border-radius: var(--radius-pill);
   display: flex;

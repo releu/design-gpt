@@ -113,6 +113,7 @@ class Design < ApplicationRecord
           id: i.id,
           text: i.comment,
           jsx: i.jsx,
+          tree: i.tree,
           completed: i.jsx?,
           has_screenshot: i.render_id.present?,
           share_code: i.share_code

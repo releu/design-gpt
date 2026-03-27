@@ -5,6 +5,7 @@
       <template #design-selector><slot name="design-selector" /></template>
       <template #top-bar-left><slot name="top-bar-left" /></template>
       <template #mode-selector><slot name="mode-selector" /></template>
+      <template #panel-switcher><slot name="panel-switcher" /></template>
       <template #more-button><slot name="more-button" /></template>
       <template #preview-selector><slot name="preview-selector" /></template>
       <template #top-bar-right><slot name="top-bar-right" /></template>
@@ -49,19 +50,7 @@
       </div>
     </template>
 
-    <!-- Layout 4: Code (three columns) -->
-    <template v-else-if="layout === 'code'">
-      <div class="Layout__col Layout__col_code-chat Layout__connector_right Layout__prompt">
-        <slot name="left-panel" />
-        <slot name="prompt" />
-      </div>
-      <div class="Layout__col Layout__col_code-editor Layout__connector_right">
-        <slot name="code-editor" />
-      </div>
-      <div class="Layout__col Layout__col_code-preview Layout__preview">
-        <slot name="preview" />
-      </div>
-    </template>
+    <!-- Layout 4: Code — removed, code editor now lives in the left panel -->
 
     <!-- Layout 5: Overlay (centered content + close button) -->
     <template v-if="effectiveLayout === 'overlay'">
@@ -280,25 +269,7 @@ export default {
     .Layout__col_desktop-preview { grid-area: preview; }
   }
 
-  /* ===== LAYOUT 4: CODE (Three columns) ===== */
-  &_layout-code {
-    grid-template-columns: 320px 1fr 320px;
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      "header header header"
-      "chat   code   preview";
-    column-gap: var(--sp-3);
-    row-gap: var(--sp-3);
-
-    .Layout__col_code-chat { grid-area: chat; }
-    .Layout__col_code-editor { grid-area: code; }
-    .Layout__col_code-preview {
-      grid-area: preview;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
+  /* Layout 4: Code — removed, code editor now lives in the left panel */
 
   /* ----- Preview panel styles ----- */
   &__preview-panel {

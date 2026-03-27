@@ -27,14 +27,20 @@
       </MoreButton>
     </template>
 
-    <!-- Preview selector -->
+    <!-- Panel switcher (chat / mecha / code) -->
+    <template #panel-switcher>
+      <PanelSwitcher v-model="panelMode" />
+    </template>
+
+    <!-- Preview selector (mobile / desktop) -->
     <template #preview-selector>
       <PreviewSelector :modelValue="viewMode === 'mobile' ? 'phone' : viewMode" @update:modelValue="viewMode = $event === 'phone' ? 'mobile' : $event" />
     </template>
 
-    <!-- Left panel (always chat now) -->
+    <!-- Left panel: chat / mecha / code -->
     <template #left-panel>
       <ModuleChat
+        v-if="panelMode === 'chat'"
         :messages="design ? design.chat : []"
         :designId="id"
         :generating="design && design.status === 'generating'"
@@ -42,22 +48,29 @@
         @sent="fetchDesign"
         @reset="resetToIteration"
       />
+      <MechaPanel
+        v-else-if="panelMode === 'mecha'"
+        :designSystemId="design ? design.design_system_id : null"
+        :iterationTree="iterationTree"
+        :saving="saving"
+        @update:code="onMechaCode"
+        @save="saveCode"
+      />
+      <div v-else-if="panelMode === 'code'" class="DesignView__code-panel">
+        <ModuleCode v-model="code" language="javascript" @change="onCodeChange" />
+        <div class="DesignView__code-save">
+          <div class="DesignView__save-btn" :class="{ 'DesignView__save-btn_disabled': saving || !code }" @click="saveCode">save</div>
+        </div>
+      </div>
     </template>
 
     <!-- Legacy prompt slot (used by home layout; provide empty) -->
     <template #prompt><span /></template>
 
-    <!-- Code editor (for code layout) -->
-    <template #code-editor>
-      <div class="Layout__preview-panel" style="height: 100%;">
-        <ModuleCode v-model="code" language="javascript" @change="onCodeChange" />
-      </div>
-    </template>
-
     <!-- Preview -->
     <template #preview>
       <div
-        v-if="viewMode === 'mobile' || viewMode === 'code'"
+        v-if="viewMode === 'mobile'"
         class="Layout__preview-panel Layout__preview-panel_mobile"
         qa="preview-panel-mobile"
       >
@@ -128,16 +141,16 @@ export default {
       code: "",
       lastSavedCode: "",
       viewMode: "mobile",
+      panelMode: "chat",
       currentIterationId: null,
       pollTimer: null,
       showExportMenu: false,
+      saving: false,
     };
   },
   computed: {
     effectiveLayout() {
-      if (this.viewMode === "mobile") return "phone";
       if (this.viewMode === "desktop") return "desktop";
-      if (this.viewMode === "code") return "code";
       return "phone";
     },
     shareCode() {
@@ -153,6 +166,14 @@ export default {
         return `/api/iterations/${this.currentIterationId}/renderer`;
       }
       return "about:blank";
+    },
+    iterationTree() {
+      if (!this.design) return null;
+      const iters = this.design.iterations || [];
+      for (let i = iters.length - 1; i >= 0; i--) {
+        if (iters[i].tree) return iters[i].tree;
+      }
+      return null;
     },
   },
   methods: {
@@ -223,6 +244,30 @@ export default {
     onCodeChange() {
       // auto-save could go here
     },
+    onMechaCode(jsx) {
+      this.code = jsx;
+    },
+    async saveCode() {
+      if (this.saving || !this.code) return;
+      this.saving = true;
+      try {
+        const token = await this.getAccessTokenSilently({
+          authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE },
+        });
+        await fetch(`/api/designs/${this.id}/save-code`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jsx: this.code }),
+        });
+        await this.fetchDesign();
+      } finally {
+        this.saving = false;
+      }
+    },
     async exportReact() {
       this.showExportMenu = false;
       const token = await this.getAccessTokenSilently({
@@ -292,6 +337,40 @@ export default {
 </script>
 
 <style lang="scss">
+.DesignView__code-panel {
+  height: 100%;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.DesignView__code-save {
+  padding: 12px;
+  border-top: 1px solid var(--fill);
+}
+
+.DesignView__save-btn {
+  font: var(--font-basic);
+  color: var(--white);
+  background: var(--black);
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  text-align: center;
+  transition: transform 100ms ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &_disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+}
+
 .DesignView__export-dropdown {
   position: absolute;
   top: 100%;

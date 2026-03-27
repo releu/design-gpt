@@ -46,6 +46,7 @@ Rails.application.routes.draw do
 
     resources :designs, :only => [:show, :create, :index, :update, :destroy] do
       post :improve
+      post :save_code, :on => :member, :path => "save-code"
       post :duplicate, :on => :member
       post :reset, :on => :member
       get :export_image, :on => :member, :path => "export-image"

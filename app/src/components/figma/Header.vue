@@ -8,6 +8,7 @@
     <div class="Header__spacer" />
     <div class="Header__group Header__group_right">
       <slot name="more-button" />
+      <slot name="panel-switcher" />
       <slot name="preview-selector" />
       <slot name="top-bar-right" />
     </div>
@@ -25,7 +26,7 @@ export default {
   grid-area: header;
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
   height: 48px;
   min-height: 48px;
 
@@ -35,11 +36,11 @@ export default {
     flex-shrink: 0;
 
     &_left {
-      gap: 20px;
+      gap: 16px;
     }
 
     &_right {
-      gap: 10px;
+      gap: 16px;
     }
   }
 

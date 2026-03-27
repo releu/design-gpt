@@ -71,6 +71,18 @@ class DesignsController < ApplicationController
     render json: { id: design.id }
   end
 
+  def save_code
+    design = find_user_design(params[:id])
+    iteration = design.iterations.create!(
+      jsx: params[:jsx],
+      tree: params[:tree],
+      comment: params[:comment] || "Manual edit",
+      design_system: design.design_system
+    )
+    design.update!(status: "ready")
+    render json: { id: design.id, iteration_id: iteration.id }
+  end
+
   def reset
     design = find_user_design(params[:id])
     iterations = design.iterations.order(:id)
