@@ -321,7 +321,7 @@ class PipelineGrind
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
         <style>
           #{font_css}
-          body { margin: 0; padding: 16px; background: white; }
+          body { margin: 0; padding: 16px; background: white; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         </style>
       </head><body>
         <div id="root"></div>

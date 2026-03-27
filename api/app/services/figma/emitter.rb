@@ -195,6 +195,7 @@ module Figma
       scalable_svg = clean_svg
         .gsub(/(<svg[^>]*)\bwidth="[\d.]+"/, '\\1width="100%"')
         .gsub(/(<svg[^>]*)\bheight="[\d.]+"/, '\\1height="100%"')
+        .sub(/<svg/, '<svg style="display:block"')
 
       <<~CODE
         import React from 'react';
