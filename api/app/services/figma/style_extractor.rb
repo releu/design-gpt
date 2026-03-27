@@ -488,7 +488,7 @@ module Figma
         styles["border-radius"] = "#{node["cornerRadius"]}px"
       elsif node["rectangleCornerRadii"]
         radii = node["rectangleCornerRadii"]
-        if radii.is_a?(Array) && radii.size == 4
+        if radii.is_a?(Array) && radii.size == 4 && radii.any? { |r| r > 0 }
           styles["border-radius"] = radii.map { |r| "#{r}px" }.join(" ")
         end
       end
