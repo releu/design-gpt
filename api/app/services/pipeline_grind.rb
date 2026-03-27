@@ -286,17 +286,44 @@ class PipelineGrind
         react_name = to_component_name(cs.name)
         next if loaded.include?(react_name)
         default_var_name = nil
+        variant_map = [] # [{func_name:, props: {size: "M", state: "Default"}}]
         cs.variants.each do |v|
           next unless v.react_code_compiled.present?
           browser_code_parts << v.react_code_compiled
-          # Track the default variant's scoped function name for aliasing
-          if v.is_default || default_var_name.nil?
-            scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
-            default_var_name = scoped if scoped
+          scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
+          if scoped
+            # Parse variant properties from name like "Size=M, State=Default, Checked=Off"
+            props = v.name.split(",").map(&:strip).each_with_object({}) do |pair, h|
+              k, val = pair.split("=", 2)
+              h[k.strip.downcase] = val&.strip if k && val
+            end
+            variant_map << { func: scoped, props: props, is_default: v.is_default }
+            default_var_name = scoped if v.is_default || default_var_name.nil?
           end
         end
-        # Create alias: window.Button = window.Button_cs_123__v0
-        if default_var_name && default_var_name != react_name
+
+        if variant_map.size > 1
+          # Build dispatch wrapper for multi-variant components
+          prop_keys = variant_map.flat_map { |v| v[:props].keys }.uniq
+          default_entry = variant_map.find { |v| v[:is_default] } || variant_map.first
+          default_props = default_entry[:props]
+
+          params = prop_keys.map { |k|
+            pname = k.gsub(/[^a-zA-Z0-9\s]/, "").split(/[\s_-]+/).map.with_index { |w, i| i == 0 ? w.downcase : w.capitalize }.join
+            "#{pname} = \"#{default_props[k]}\""
+          }.join(", ")
+
+          conditions = variant_map.map { |v|
+            cond = prop_keys.map { |k|
+              pname = k.gsub(/[^a-zA-Z0-9\s]/, "").split(/[\s_-]+/).map.with_index { |w, i| i == 0 ? w.downcase : w.capitalize }.join
+              "#{pname} === \"#{v[:props][k]}\""
+            }.join(" && ")
+            "  if (#{cond}) return React.createElement(#{v[:func]}, props);"
+          }.join("\n")
+
+          dispatcher = "var #{react_name} = function({ #{params}, ...props }) {\n#{conditions}\n  return React.createElement(#{default_entry[:func]}, props);\n};"
+          browser_code_parts << dispatcher
+        elsif default_var_name && default_var_name != react_name
           aliases << "if(typeof #{default_var_name}!=='undefined')window.#{react_name}=#{default_var_name};"
         end
         loaded << react_name
