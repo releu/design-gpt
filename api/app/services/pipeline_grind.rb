@@ -34,6 +34,106 @@ class PipelineGrind
     print_summary
   end
 
+  # Quick test: regenerate + test up to 10 variants per component set.
+  # If component_name given, test just that one. Otherwise test ALL component sets.
+  def quick_test(component_name = nil)
+    setup_output_dir
+    @skip_ai = component_name.nil? # skip AI for full sweep, enable for single component
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    @ds.current_figma_files.each do |ff|
+      @current_lookup_data ||= {}
+      @current_lookup_data[ff.id] ||= Figma::ReactFactory.build_lookup_data(ff)
+
+      # Regenerate
+      factory = Figma::ReactFactory.new(ff)
+      component_sets = if component_name
+        cs = ff.component_sets.find_by(name: component_name)
+        cs ? [cs] : []
+      else
+        ff.component_sets.includes(:variants).reject(&:vector?)
+      end
+
+      next if component_sets.empty?
+
+      component_sets.each do |cs|
+        factory.generate_component_set(cs)
+      end
+      factory.send(:batch_compile_and_persist)
+
+      # Build renderer + open browser
+      html = build_renderer_html(ff)
+      renderer_path = OUTPUT_DIR.join("renderer_quick.html")
+      File.write(renderer_path, html)
+      @current_renderer_path = renderer_path
+      close_browser # force reload with new compiled code
+
+      results = []
+
+      component_sets.each do |cs|
+        safe_cs = cs.name.gsub(/[^a-zA-Z0-9_-]/, "_")
+
+        # Pick up to 10 variants
+        variants = cs.variants.reload.select { |v| v.react_code_compiled.present? }
+        if variants.size > 10
+          default = variants.find(&:is_default) || variants.first
+          step = [variants.size / 9, 1].max
+          sampled = (0...variants.size).step(step).map { |i| variants[i] }
+          sampled.unshift(default) unless sampled.include?(default)
+          variants = sampled.first(10).uniq
+        end
+
+        variants.each do |v|
+          variant_label = v.name.gsub(/[^a-zA-Z0-9=,_-]/, "_")
+          dir = OUTPUT_DIR.join("components", safe_cs, variant_label)
+          FileUtils.mkdir_p(dir)
+          figma_path = dir.join("figma.png").to_s
+          react_path = dir.join("react.png").to_s
+          diff_path = dir.join("diff.png").to_s
+
+          next unless File.exist?(figma_path)
+
+          # Render
+          scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
+          ok = render_via_renderer(scoped, {}, react_path)
+          next unless ok
+
+          # Diff
+          flatten_alpha(figma_path)
+          diff_result = Figma::VisualDiff.new(nil, output_dir: dir.to_s)
+            .send(:pixel_diff, figma_path, react_path, diff_path)
+          match = (100 - diff_result[:diff_percent]).round(2)
+
+          # AI inspect if failing (skip for full sweep to save time)
+          ai_issues = nil
+          if match < PASS_THRESHOLD && !@skip_ai
+            comp_path = build_comparison_image(figma_path, react_path, diff_path, dir.to_s)
+            ai_issues = ai_inspect(comp_path, match)
+          end
+
+          status = match >= PASS_THRESHOLD ? "PASS" : "FAIL"
+          results << { cs: cs.name, variant: v.name, match: match, status: status, ai_issues: ai_issues }
+          log "  #{status} #{match}% #{cs.name} / #{v.name}"
+          if ai_issues&.any?
+            ai_issues.first(3).each { |i| log "    → #{i}" }
+          end
+        end
+      end
+
+      close_browser
+      elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start).round(1)
+      pass = results.count { |r| r[:status] == "PASS" }
+      log ""
+      log "=" * 50
+      log "QUICK: #{pass}/#{results.size} pass in #{elapsed}s"
+      if results.any?
+        avg = (results.sum { |r| r[:match] } / results.size).round(1)
+        log "Average match: #{avg}%"
+      end
+      log "=" * 50
+    end
+  end
+
   # Pre-download all Figma screenshots with retry/backoff.
   # Run this first: rake pipeline:cache_figma[DS_name]
   def cache_figma_screenshots
@@ -450,7 +550,7 @@ class PipelineGrind
     ai_issues = nil
     if match_pct && match_pct < PASS_THRESHOLD
       comparison_path = build_comparison_image(figma_path, react_path, diff_path, dir)
-      ai_issues = nil # ai_inspect(comparison_path, match_pct) # disabled for speed
+      ai_issues = ai_inspect(comparison_path, match_pct)
       if ai_issues
         File.write(ai_path, ai_issues.join("\n"))
       end
@@ -487,7 +587,7 @@ class PipelineGrind
       return false
     end
 
-    sleep 0.5 # wait for render
+    sleep 0.15 # wait for render (React renders synchronously, just need a frame for layout)
 
     # Try to screenshot the component element (has data-component attr), fall back to #root
     selector = @browser_page.evaluate(<<~JS)
