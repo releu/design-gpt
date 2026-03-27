@@ -102,7 +102,9 @@ module Figma
         end
         styles["max-width"] = "#{width}px" if width
       elsif layout_sizing_h == "HUG" && !own_width_fixed
-        styles["width"] = "fit-content"
+        # Empty frames with HUG collapse to 0 — use fixed dimensions instead
+        has_children = (node["children"] || []).any?
+        styles["width"] = has_children ? "fit-content" : "#{width}px"
       elsif layout_sizing_h == "FIXED"
         styles["width"] = "#{width}px"
       end
@@ -111,8 +113,13 @@ module Figma
         styles["height"] = "100%"
         styles["max-height"] = "#{height}px" if height
       elsif layout_sizing_v == "HUG" && !own_height_fixed
-        styles["height"] = "fit-content"
-        styles["max-height"] = "#{height}px" if height && node["clipsContent"]
+        has_children = (node["children"] || []).any? unless defined?(has_children)
+        if has_children
+          styles["height"] = "fit-content"
+          styles["max-height"] = "#{height}px" if height && node["clipsContent"]
+        else
+          styles["height"] = "#{height}px"
+        end
       elsif layout_sizing_v == "FIXED"
         styles["height"] = "#{height}px"
       end
