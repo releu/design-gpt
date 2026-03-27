@@ -3,7 +3,7 @@ require "json"
 require "base64"
 
 class PipelineGrind
-  PASS_THRESHOLD = 95.0
+  PASS_THRESHOLD = 99.5
   OUTPUT_DIR = Rails.root.join("tmp", "pipeline_grind")
 
   def initialize(ds_name = nil, force: false)
@@ -93,9 +93,11 @@ class PipelineGrind
 
           next unless File.exist?(figma_path)
 
-          # Render
+          # Render at exact Figma dimensions
           scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
-          ok = render_via_renderer(scoped, {}, react_path)
+          vdata = v.figma_json.is_a?(String) ? JSON.parse(v.figma_json) : v.figma_json rescue {}
+          figma_bbox = vdata["absoluteBoundingBox"] || {}
+          ok = render_via_renderer(scoped, {}, react_path, figma_width: figma_bbox["width"], figma_height: figma_bbox["height"])
           next unless ok
 
           # Diff
@@ -514,7 +516,9 @@ class PipelineGrind
         render_name = to_component_name(label)
       end
 
-      rendered = render_via_renderer(render_name, {}, react_path)
+      node_data = record.respond_to?(:figma_json) ? (record.figma_json.is_a?(String) ? JSON.parse(record.figma_json) : record.figma_json) : {} rescue {}
+      fbbox = node_data["absoluteBoundingBox"] || {}
+      rendered = render_via_renderer(render_name, {}, react_path, figma_width: fbbox["width"], figma_height: fbbox["height"])
       render_failed = !rendered
     rescue => e
       log "  [error] React render for #{label}: #{e.message}"
@@ -580,7 +584,7 @@ class PipelineGrind
     }
   end
 
-  def render_via_renderer(react_name, variant_props, output_path)
+  def render_via_renderer(react_name, variant_props, output_path, figma_width: nil, figma_height: nil)
     ensure_browser_open
 
     props_json = variant_props.to_json
@@ -591,6 +595,20 @@ class PipelineGrind
     end
 
     sleep 0.15 # wait for render (React renders synchronously, just need a frame for layout)
+
+    # Force the rendered component to match Figma's exact dimensions
+    if figma_width && figma_height
+      @browser_page.evaluate(<<~JS)
+        (function() {
+          var el = document.querySelector('[data-component]') || document.querySelector('#root > *:first-child');
+          if (el) {
+            el.style.width = '#{figma_width}px';
+            el.style.height = '#{figma_height}px';
+            el.style.overflow = 'hidden';
+          }
+        })()
+      JS
+    end
 
     # Try to screenshot the component element (has data-component attr), fall back to #root
     selector = @browser_page.evaluate(<<~JS)
@@ -734,13 +752,33 @@ class PipelineGrind
     react = ChunkyPNG::Image.from_file(react_path)
     diff = ChunkyPNG::Image.from_file(diff_path)
 
-    w = [figma.width, react.width, diff.width].max
-    h = [figma.height, react.height, diff.height].max
+    border = 1
+    pad = 2
+    spacing = 2
+    magenta = ChunkyPNG::Color.rgb(255, 0, 255)
 
-    comparison = ChunkyPNG::Image.new(w * 3, h, ChunkyPNG::Color::WHITE)
-    comparison.compose!(figma, 0, 0)
-    comparison.compose!(react, w, 0)
-    comparison.compose!(diff, w * 2, 0)
+    # Each cell: border + pad + image + pad + border
+    cell_w = [figma.width, react.width, diff.width].max + (border + pad) * 2
+    cell_h = [figma.height, react.height, diff.height].max + (border + pad) * 2
+    total_w = cell_w * 3 + spacing * 2
+    total_h = cell_h
+
+    comparison = ChunkyPNG::Image.new(total_w, total_h, ChunkyPNG::Color::WHITE)
+
+    [figma, react, diff].each_with_index do |img, i|
+      x_off = i * (cell_w + spacing)
+      # Draw magenta border
+      (0...cell_w).each do |x|
+        border.times { |b| comparison[x_off + x, b] = magenta }
+        border.times { |b| comparison[x_off + x, cell_h - 1 - b] = magenta }
+      end
+      (0...cell_h).each do |y|
+        border.times { |b| comparison[x_off + b, y] = magenta }
+        border.times { |b| comparison[x_off + cell_w - 1 - b, y] = magenta }
+      end
+      # Compose image inside border+padding
+      comparison.compose!(img, x_off + border + pad, border + pad)
+    end
 
     comp_path = File.join(dir, "comparison.png")
     comparison.save(comp_path)
