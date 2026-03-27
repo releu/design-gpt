@@ -244,7 +244,10 @@ module Figma
       layout_sizing_v = node["layoutSizingVertical"]
 
       if layout_sizing_h == "FILL"
-        styles["width"] = "100%"
+        # flex-grow handles FILL in flex parents — width: 100% breaks layout
+        unless node["layoutGrow"] && node["layoutGrow"] > 0
+          styles["width"] = "100%"
+        end
       elsif layout_sizing_h == "FIXED"
         bbox = node["absoluteBoundingBox"] || {}
         styles["width"] = "#{bbox["width"]}px" if bbox["width"]
@@ -257,7 +260,13 @@ module Figma
         styles["height"] = "#{bbox["height"]}px" if bbox["height"]
       end
 
-      styles["flex-shrink"] = "0"
+      if node["layoutGrow"] && node["layoutGrow"] > 0
+        styles["flex-grow"] = node["layoutGrow"].to_s
+        styles["flex-basis"] = "0"
+        styles["flex-shrink"] = "1"
+      else
+        styles["flex-shrink"] = "0"
+      end
       styles["position"] = "relative"
       styles["margin"] = "0"
       styles["word-wrap"] = "break-word"
@@ -279,7 +288,9 @@ module Figma
       layout_sizing_v = node["layoutSizingVertical"]
 
       if layout_sizing_h == "FILL"
-        styles["width"] = "100%"
+        unless node["layoutGrow"] && node["layoutGrow"] > 0
+          styles["width"] = "100%"
+        end
       else
         styles["width"] = "#{width}px" if width
       end
@@ -292,6 +303,7 @@ module Figma
 
       if node["layoutGrow"] && node["layoutGrow"] > 0
         styles["flex-grow"] = node["layoutGrow"].to_s
+        styles["flex-basis"] = "0"
       end
 
       unless node["layoutGrow"] && node["layoutGrow"] > 0
