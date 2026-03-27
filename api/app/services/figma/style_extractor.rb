@@ -96,7 +96,10 @@ module Figma
                          (layout_mode == "HORIZONTAL" && counter_sizing == "FIXED")
 
       if layout_sizing_h == "FILL"
-        styles["width"] = "100%"
+        # When flex-grow is set, it handles FILL — width: 100% would break flex layout
+        unless node["layoutGrow"] && node["layoutGrow"] > 0
+          styles["width"] = "100%"
+        end
         styles["max-width"] = "#{width}px" if width
       elsif layout_sizing_h == "HUG" && !own_width_fixed
         styles["width"] = "fit-content"

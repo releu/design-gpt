@@ -365,6 +365,9 @@ class PipelineGrind
           url = $1
           url.start_with?("http", "file://") ? match : "url(\"file://#{File.join(family_dir, url)}\")"
         end
+        # Replace font-family names like "YS Text Web" with the directory name
+        # so they match the font-family used in component CSS (e.g. "YS Text")
+        raw = raw.gsub(/font-family:\s*"[^"]+"/) { "font-family: \"#{family_name}\"" }
         css += raw + "\n"
         next
       end
