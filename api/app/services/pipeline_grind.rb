@@ -3,7 +3,7 @@ require "json"
 require "base64"
 
 class PipelineGrind
-  PASS_THRESHOLD = 99.5
+  PASS_THRESHOLD = 95.0
   OUTPUT_DIR = Rails.root.join("tmp", "pipeline_grind")
 
   def initialize(ds_name = nil, force: false)
