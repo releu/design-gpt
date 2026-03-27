@@ -335,11 +335,15 @@ module Figma
 
       if node["type"] == "LINE"
         styles["height"] = "0"
-        styles["border-top"] = "1px solid"
       end
 
       add_fills(styles, node["fills"])
       add_strokes(styles, node)
+
+      # For LINE nodes, convert full border to border-top since lines are horizontal
+      if node["type"] == "LINE" && styles["border"]
+        styles["border-top"] = styles.delete("border")
+      end
       add_border_radius(styles, node) unless node["type"] == "ELLIPSE"
       add_effects(styles, node["effects"])
 
