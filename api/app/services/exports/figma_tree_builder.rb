@@ -23,6 +23,7 @@ module Exports
         case record
         when ComponentSet
           default_variant = record.default_variant
+          enriched["componentSetKey"] = record.component_key
           if default_variant
             enriched["componentKey"] = default_variant.component_key
             enriched["nodeId"] = default_variant.node_id

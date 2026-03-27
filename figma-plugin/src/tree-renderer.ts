@@ -1,6 +1,7 @@
 interface TreeNode {
   component?: string;
   componentKey?: string;
+  componentSetKey?: string;
   nodeId?: string;
   isImage?: boolean;
   variantProperties?: Record<string, string>;
@@ -51,7 +52,7 @@ const LAYOUT_COMPONENTS: Record<string, "VERTICAL" | "HORIZONTAL"> = {
 const _componentCache: Map<string, ComponentNode> = (globalThis as any).__componentCache || new Map();
 (globalThis as any).__componentCache = _componentCache;
 
-async function findComponent(key: string, nodeId?: string): Promise<ComponentNode> {
+async function findComponent(key: string, nodeId?: string, componentSetKey?: string): Promise<ComponentNode> {
   // Check cache first
   const cached = _componentCache.get(key);
   if (cached) return cached;
@@ -68,13 +69,30 @@ async function findComponent(key: string, nodeId?: string): Promise<ComponentNod
     } catch (_) {}
   }
 
-  // Try importing (works for published library components)
-  try {
-    const imported = await figma.importComponentByKeyAsync(key);
-    console.log("[find] Imported: " + imported.name + " (key=" + key.substring(0, 8) + ")");
-    _componentCache.set(key, imported);
-    return imported;
-  } catch (_) {}
+  // Try importing the component set (works for published libraries — variant keys hang)
+  if (componentSetKey) {
+    try {
+      const cs = await figma.importComponentSetByKeyAsync(componentSetKey);
+      console.log("[find] Imported set: " + cs.name + " (" + cs.children.length + " variants)");
+      // Cache all variants from this set
+      for (const variant of cs.children) {
+        if (variant.type === "COMPONENT") {
+          _componentCache.set(variant.key, variant as ComponentNode);
+        }
+      }
+      const found = _componentCache.get(key);
+      if (found) return found;
+      // Fallback: return default variant (first child)
+      const defaultVariant = cs.defaultVariant || cs.children[0];
+      if (defaultVariant && defaultVariant.type === "COMPONENT") {
+        _componentCache.set(key, defaultVariant as ComponentNode);
+        return defaultVariant as ComponentNode;
+      }
+    } catch (_) {}
+  }
+
+  // Skip importComponentByKeyAsync — it hangs forever for some components
+  // in the MCP sandbox. nodeId + importComponentSetByKeyAsync cover all cases.
 
   // Fallback: search current page only (fast, no loadAllPagesAsync)
   const local = figma.currentPage.findOne(
@@ -86,30 +104,7 @@ async function findComponent(key: string, nodeId?: string): Promise<ComponentNod
     return local;
   }
 
-  // Try loading pages individually — cap at 5 to avoid hanging on large files
-  const MAX_PAGE_SEARCH = 5;
-  let pagesSearched = 0;
-  for (const page of figma.root.children) {
-    if (page === figma.currentPage) continue;
-    if (pagesSearched >= MAX_PAGE_SEARCH) {
-      console.warn("[find] Hit page search limit (" + MAX_PAGE_SEARCH + "), stopping: key=" + key.substring(0, 8));
-      break;
-    }
-    pagesSearched++;
-    try {
-      await page.loadAsync();
-      const found = page.findOne(
-        (n) => n.type === "COMPONENT" && n.key === key
-      ) as ComponentNode | null;
-      if (found) {
-        console.log("[find] Found on page '" + page.name + "': " + found.name + " (key=" + key.substring(0, 8) + ")");
-        _componentCache.set(key, found);
-        return found;
-      }
-    } catch (_) {}
-  }
-
-  console.warn("[find] Not found anywhere: key=" + key.substring(0, 8));
+  console.warn("[find] Not found: key=" + key.substring(0, 8));
   throw new Error("Component not found: " + key);
 }
 
@@ -137,7 +132,7 @@ async function renderComponentInstance(
   node: TreeNode
 ): Promise<SceneNode> {
   try {
-    var component = await findComponent(node.componentKey!, node.nodeId);
+    var component = await findComponent(node.componentKey!, node.nodeId, node.componentSetKey);
   } catch (e) {
     console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
     return await renderFallbackFrame(node, node.component || "");
