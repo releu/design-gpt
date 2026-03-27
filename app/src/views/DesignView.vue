@@ -123,6 +123,17 @@
 <script>
 import { useAuth0 } from "@auth0/auth0-vue";
 
+const VALID_PANELS = ["chat", "mecha", "code"];
+const VALID_VIEWS = ["mobile", "desktop"];
+
+function parseDesignHash() {
+  const hash = window.location.hash.replace("#", "");
+  const parts = hash.split("-");
+  const panelMode = VALID_PANELS.includes(parts[0]) ? parts[0] : "chat";
+  const viewMode = VALID_VIEWS.includes(parts[1]) ? parts[1] : "mobile";
+  return { panelMode, viewMode };
+}
+
 export default {
   setup() {
     const { getAccessTokenSilently } = useAuth0();
@@ -140,8 +151,8 @@ export default {
       allDesigns: [],
       code: "",
       lastSavedCode: "",
-      viewMode: "mobile",
-      panelMode: "chat",
+      viewMode: parseDesignHash().viewMode,
+      panelMode: parseDesignHash().panelMode,
       currentIterationId: null,
       pollTimer: null,
       showExportMenu: false,
@@ -244,6 +255,10 @@ export default {
     onCodeChange() {
       // auto-save could go here
     },
+    syncHash() {
+      const hash = `${this.panelMode}-${this.viewMode}`;
+      history.replaceState(null, "", `#${hash}`);
+    },
     onMechaCode(jsx) {
       this.code = jsx;
     },
@@ -317,6 +332,8 @@ export default {
       this.currentIterationId = null;
       this.fetchDesign();
     },
+    panelMode() { this.syncHash(); },
+    viewMode() { this.syncHash(); },
   },
   mounted() {
     this.fetchDesign();

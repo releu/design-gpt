@@ -32,7 +32,7 @@
 
     <template #preview>
       <div
-        v-if="viewMode === 'mobile' || viewMode === 'code'"
+        v-if="viewMode === 'mobile'"
         class="Layout__preview-panel Layout__preview-panel_mobile"
         qa="preview-panel-mobile"
       >
@@ -78,6 +78,11 @@
 <script>
 import logoSrc from "@/assets/logo.png";
 
+function parseShareHash() {
+  const hash = window.location.hash.replace("#", "");
+  return (hash === "desktop") ? "desktop" : "mobile";
+}
+
 export default {
   name: "SharedDesignView",
   props: {
@@ -91,15 +96,13 @@ export default {
       iterationId: null,
       designId: null,
       designName: "",
-      viewMode: "mobile",
+      viewMode: parseShareHash(),
       showMenu: false,
     };
   },
   computed: {
     effectiveLayout() {
-      if (this.viewMode === "mobile") return "phone";
       if (this.viewMode === "desktop") return "desktop";
-      if (this.viewMode === "code") return "code";
       return "phone";
     },
     previewRenderer() {
@@ -133,6 +136,11 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+  },
+  watch: {
+    viewMode(v) {
+      history.replaceState(null, "", `#${v}`);
     },
   },
   mounted() {
