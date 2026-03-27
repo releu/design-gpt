@@ -339,8 +339,10 @@ module Figma
         prop_overrides, extra_imports = extract_instance_override_props_for_ir(node, component_set)
         # Track extra imports from INSTANCE_SWAP overrides (e.g. StartIconComponent=Plus)
         extra_imports.each { |name| @extra_instance_imports << name } if extra_imports.any?
+        style_overrides = extract_instance_style_overrides(node)
         return Figma::IR.component_ref(node_id: node["id"], name: node["name"] || "element",
                                         component_name: comp_name, prop_overrides: prop_overrides,
+                                        style_overrides: style_overrides,
                                         visibility_prop: visibility_prop)
       end
 

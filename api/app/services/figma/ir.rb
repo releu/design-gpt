@@ -22,9 +22,10 @@ module Figma
         visible: visible, visibility_prop: visibility_prop }
     end
 
-    def self.component_ref(node_id:, name:, component_name:, prop_overrides: {}, visible: true, visibility_prop: nil)
+    def self.component_ref(node_id:, name:, component_name:, prop_overrides: {}, style_overrides: {}, visible: true, visibility_prop: nil)
       { kind: :component_ref, node_id: node_id, name: name,
         component_name: component_name, prop_overrides: prop_overrides,
+        style_overrides: style_overrides,
         visible: visible, visibility_prop: visibility_prop }
     end
 

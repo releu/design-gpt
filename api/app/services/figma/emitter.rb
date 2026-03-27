@@ -448,20 +448,29 @@ module Figma
     end
 
     def emit_component_ref(ir)
-      if ir[:prop_overrides].any?
-        props_string = ir[:prop_overrides].map { |k, v|
-          # Values already wrapped in quotes/braces (e.g. "\"Action\"", "{true}")
-          # are emitted as-is. Bare identifiers (component refs like Plus)
-          # need curly braces for valid JSX.
+      props_string = if ir[:prop_overrides].any?
+        " " + ir[:prop_overrides].map { |k, v|
           if v.start_with?('"') || v.start_with?("{")
             "#{k}=#{v}"
           else
             "#{k}={#{v}}"
           end
         }.join(" ")
-        "<#{ir[:component_name]} #{props_string} />"
       else
-        "<#{ir[:component_name]} />"
+        ""
+      end
+
+      component_jsx = "<#{ir[:component_name]}#{props_string} />"
+
+      # Wrap in styled span if style overrides exist (e.g. color/size for icon instances)
+      if ir[:style_overrides]&.any?
+        style_pairs = ir[:style_overrides].map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+        size_pairs = ir[:style_overrides].select { |k, _| %w[width height].include?(k) }
+          .map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+        icon_style = size_pairs.empty? ? "" : " style={{#{size_pairs}}}"
+        "<span style={{display: \"inline-flex\", #{style_pairs}}}>#{component_jsx.sub(' />', "#{icon_style} />")}</span>"
+      else
+        component_jsx
       end
     end
 
