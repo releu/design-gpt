@@ -1,10 +1,7 @@
 require "rails_helper"
 
 RSpec.describe Figma::Emitter do
-  fixtures :figma_files
-  let(:library) { figma_files(:example_lib) }
-  let(:resolver) { Figma::Resolver.new(library) }
-  let(:emitter) { described_class.new("TestComponent", resolver: resolver) }
+  let(:emitter) { described_class.new("TestComponent") }
 
   describe "#emit_node" do
     it "emits frame with children" do

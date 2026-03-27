@@ -352,7 +352,7 @@ export default {
 
         if (variant.name === "view-new") {
           // Pre-populate URLs to match Figma
-          comp.pendingUrls = [
+          comp.urlFields = [
             "https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?...",
             "https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?...",
           ];
@@ -371,7 +371,7 @@ export default {
       if (this.type !== "frame" || this.name !== "home-new-design-system") return;
       const comp = this.$refs.dsOverlay;
       if (!comp) return;
-      comp.pendingUrls = [
+      comp.urlFields = [
         "https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?...",
         "https://www.figma.com/design/9UzId8cZXBggKGCxV7JJdY/Service?...",
       ];

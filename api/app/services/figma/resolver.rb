@@ -1,6 +1,6 @@
 # Figma JSON → IR resolution logic.
-# Builds lookup tables from the design system's FigmaFile records and resolves
-# Figma nodes into IR hashes (see Figma::IR).
+# Accepts pre-built lookup tables and resolves Figma nodes into IR hashes (see Figma::IR).
+# Does not query ActiveRecord — all DB access is done by ReactFactory.build_lookup_data.
 module Figma
   class Resolver
     include Figma::StyleExtractor
@@ -8,143 +8,38 @@ module Figma
     attr_reader :components_by_node_id, :component_sets_by_node_id,
                 :variants_by_node_id, :node_id_to_component_set,
                 :component_key_by_node_id, :variants_by_component_key,
-                :svg_assets_by_name, :inline_svgs_by_node_id, :inline_pngs_by_node_id
+                :svg_assets_by_name, :inline_svgs_by_node_id, :inline_pngs_by_node_id,
+                :unresolved_instances
 
-    def initialize(figma_file)
-      @figma_file = figma_file
-      @figma = Figma::TokenPool.instance.primary_client
-      @components_by_node_id = {}
-      @component_sets_by_node_id = {}
-      @variants_by_node_id = {}
-      @node_id_to_component_set = {}
-      @component_key_by_node_id = {}
-      @variants_by_component_key = {}
-      @svg_assets_by_name = {}
-      @inline_svgs_by_node_id = {}
-      @inline_pngs_by_node_id = {}
+    def initialize(lookup_data, figma_client: nil)
+      @figma = figma_client
+      @components_by_node_id      = lookup_data[:components_by_node_id]      || {}
+      @component_sets_by_node_id  = lookup_data[:component_sets_by_node_id]  || {}
+      @variants_by_node_id        = lookup_data[:variants_by_node_id]        || {}
+      @node_id_to_component_set   = lookup_data[:node_id_to_component_set]   || {}
+      @component_key_by_node_id   = lookup_data[:component_key_by_node_id]   || {}
+      @variants_by_component_key  = lookup_data[:variants_by_component_key]  || {}
+      @svg_assets_by_name         = lookup_data[:svg_assets_by_name]         || {}
+      @inline_svgs_by_node_id     = lookup_data[:inline_svgs_by_node_id]     || {}
+      @inline_pngs_by_node_id     = lookup_data[:inline_pngs_by_node_id]    || {}
+      @image_component_keys       = lookup_data[:image_component_keys]       || Set.new
+      @figma_file_keys            = lookup_data[:figma_file_keys]            || Set.new
       @unresolved_instances = Hash.new { |h, k| h[k] = Set.new }
       @current_owner_node_id = nil
       @image_refs = nil
       @slot_map = {}
       @has_slot_during_resolve = false
-
-      build_lookup_tables
-      build_svg_asset_cache
-      build_inline_svg_cache
     end
 
     attr_accessor :current_owner_node_id
-
-    def save_unresolved_warnings
-      return if @unresolved_instances.empty?
-
-      @unresolved_instances.each do |owner_node_id, instance_names|
-        names = instance_names.to_a.sort
-        warning = "Unresolved external components: #{names.join(', ')}. Add their source Figma file to the design system."
-
-        cs = @figma_file.component_sets.find_by(node_id: owner_node_id)
-        if cs
-          cs.update!(validation_warnings: (cs.validation_warnings || []) + [warning])
-          next
-        end
-
-        comp = @figma_file.components.find_by(node_id: owner_node_id)
-        comp&.update!(validation_warnings: (comp.validation_warnings || []) + [warning])
-      end
-
-      log "Added unresolved instance warnings to #{@unresolved_instances.size} components"
-    end
 
     def track_unresolved_instance(component_id, instance_name)
       return unless @current_owner_node_id
       @unresolved_instances[@current_owner_node_id] << instance_name
     end
 
-    def build_node_id_cache
-      files = if @figma_file.design_system
-        @figma_file.design_system.figma_files_for_version(@figma_file.version)
-      else
-        [@figma_file]
-      end
-
-      files.each do |ff|
-        ff.component_sets.includes(:variants).each do |component_set|
-          @component_sets_by_node_id[component_set.node_id] = component_set
-          component_set.variants.each do |variant|
-            @variants_by_node_id[variant.node_id] = variant
-            @variants_by_component_key[variant.component_key] = variant if variant.component_key.present?
-            if variant.figma_json.present?
-              collect_all_node_ids(variant.figma_json).each do |node_id|
-                @node_id_to_component_set[node_id] = component_set
-              end
-            end
-          end
-        end
-
-        ff.components.each do |component|
-          @components_by_node_id[component.node_id] = component
-        end
-      end
-    end
-
-    def collect_all_node_ids(node)
-      return [] unless node.is_a?(Hash)
-      ids = [node["id"]].compact
-      (node["children"] || []).each do |child|
-        ids += collect_all_node_ids(child)
-      end
-      ids
-    end
-
     def image_component_keys
-      @image_component_keys ||= begin
-        keys = Set.new
-        @figma_file.component_sets.select(&:is_image).each do |cs|
-          keys << cs.component_key if cs.component_key
-          cs.variants.each { |v| keys << v.component_key if v.component_key }
-        end
-        @figma_file.components.select(&:is_image).each do |c|
-          keys << c.component_key if c.component_key
-        end
-        keys
-      end
-    end
-
-    def build_svg_asset_cache
-      FigmaAsset.joins(:component)
-        .where(components: { figma_file_id: @figma_file.id })
-        .where(asset_type: "svg")
-        .each do |asset|
-          name = normalize_icon_name(asset.component.name)
-          @svg_assets_by_name[name] = asset.content if name.present?
-        end
-
-      FigmaAsset.joins(:component_set)
-        .where(component_sets: { figma_file_id: @figma_file.id })
-        .where(asset_type: "svg")
-        .each do |asset|
-          name = normalize_icon_name(asset.component_set.name)
-          @svg_assets_by_name[name] = asset.content if name.present?
-        end
-    end
-
-    def build_inline_svg_cache
-      component_ids = @figma_file.components.pluck(:id)
-      component_set_ids = @figma_file.component_sets.pluck(:id)
-
-      FigmaAsset.where(asset_type: %w[svg png])
-        .where("node_id IS NOT NULL")
-        .where(
-          "component_id IN (?) OR component_set_id IN (?) OR (component_id IS NULL AND component_set_id IS NULL)",
-          component_ids, component_set_ids
-        )
-        .find_each do |asset|
-          if asset.asset_type == "png"
-            @inline_pngs_by_node_id[asset.node_id] = asset.content
-          else
-            @inline_svgs_by_node_id[asset.node_id] = asset.content
-          end
-        end
+      @image_component_keys
     end
 
     # Mutable state set by the caller (ReactFactory) before resolution
@@ -1102,7 +997,7 @@ module Figma
     def lookup_component_set_name_for_variant(variant_node_id)
       @figma_components_cache ||= {}
 
-      @figma_file.component_sets.select(:figma_file_key).distinct.pluck(:figma_file_key).each do |file_key|
+      @figma_file_keys.each do |file_key|
         next if file_key.blank?
 
         unless @figma_components_cache[file_key]
@@ -1320,35 +1215,5 @@ module Figma
       puts "[Figma::Resolver] #{message}"
     end
 
-    def build_lookup_tables
-      sibling_files = if @figma_file.design_system
-        @figma_file.design_system.figma_files_for_version(@figma_file.version)
-      else
-        [@figma_file]
-      end
-
-      @variants_by_component_key = {}
-
-      sibling_files.each do |ff|
-        ff.components.each do |component|
-          @components_by_node_id[component.node_id] = component
-        end
-
-        ff.component_sets.includes(:variants).each do |component_set|
-          @component_sets_by_node_id[component_set.node_id] = component_set
-          component_set.variants.each do |variant|
-            @variants_by_node_id[variant.node_id] = variant
-            @variants_by_component_key[variant.component_key] = variant if variant.component_key.present?
-            if variant.figma_json.present?
-              collect_all_node_ids(variant.figma_json).each do |node_id|
-                @node_id_to_component_set[node_id] = component_set
-              end
-            end
-          end
-        end
-      end
-
-      @component_key_by_node_id = @figma_file.component_key_map || {}
-    end
   end
 end

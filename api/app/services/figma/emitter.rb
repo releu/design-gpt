@@ -8,9 +8,8 @@ module Figma
     attr_reader :css_rules
     attr_accessor :has_slot
 
-    def initialize(component_name, resolver:)
+    def initialize(component_name)
       @component_name = component_name
-      @resolver = resolver
       @class_index = 0
       @css_rules = {}
       @has_slot = false
@@ -178,6 +177,11 @@ module Figma
       clean_svg = clean_svg
         .gsub(/fill="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'fill="currentColor"')
         .gsub(/stroke="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'stroke="currentColor"')
+      # Add fill="currentColor" to <path> elements that lack an explicit fill,
+      # so CSS color inheritance works for icon coloring.
+      clean_svg = clean_svg.gsub(/<path(?![^>]*\bfill=)([^>]*?)(\s*\/?>)/) do
+        "<path fill=\"currentColor\"#{$1}#{$2}"
+      end
 
       w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
       h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
@@ -326,7 +330,7 @@ module Figma
 
       variant_entries.each do |entry|
         conditions = variant_prop_names.map do |prop_key|
-          prop_name = @resolver.to_prop_name(prop_key.gsub(/#[\d:]+$/, "").strip)
+          prop_name = to_prop_name(prop_key.gsub(/#[\d:]+$/, "").strip)
           value = entry[:variant_properties][prop_key.gsub(/#[\d:]+$/, "").strip.downcase]
           next nil unless value
           "#{prop_name} === \"#{value}\""
@@ -344,7 +348,7 @@ module Figma
     def generate_variant_props_destructuring(variant_prop_names, prop_definitions, variant_entries)
       defaults = variant_prop_names.map do |prop_key|
         clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
-        prop_name = @resolver.to_prop_name(clean_key)
+        prop_name = to_prop_name(clean_key)
         default_value = prop_definitions[prop_key]&.dig("defaultValue") || variant_entries.first[:variant_properties][clean_key.downcase]
         "#{prop_name} = \"#{default_value}\""
       end
@@ -353,6 +357,21 @@ module Figma
     end
 
     private
+
+    def to_prop_name(name)
+      clean_name = name.to_s.gsub(/[^\w\s-]/i, "").strip
+      return clean_name if clean_name.match?(/\A[a-z][a-zA-Z0-9]*\z/)
+
+      words = clean_name.split(/[\s_-]+/).reject(&:empty?)
+      return "prop" if words.empty?
+
+      first = words.first.downcase.gsub(/[^a-z0-9]/i, "")
+      rest = words[1..].map { |w| w.gsub(/[^a-z0-9]/i, "").capitalize }.join
+
+      result = first + rest
+      result = "prop#{result}" if result.match?(/^\d/)
+      result.empty? ? "prop" : result
+    end
 
     def next_class_index
       @class_index += 1

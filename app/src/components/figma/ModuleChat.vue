@@ -27,7 +27,7 @@
         class="ModuleChat__input"
         qa="chat-input"
         v-model="inputText"
-        placeholder="enter text..."
+        placeholder="Enter text..."
         :disabled="sending || generating || readonly"
         @keydown="onKeydown"
       />
@@ -262,7 +262,7 @@ export default {
 
   &__message-body {
     font: var(--font-basic);
-    line-height: normal;
+    line-height: normal; word-spacing: -0.5px; font-kerning: none;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
@@ -333,7 +333,7 @@ export default {
     }
 
     &:disabled {
-      opacity: 0.3;
+      
       cursor: default;
       pointer-events: none;
     }

@@ -8,11 +8,114 @@ module Figma
 
     def initialize(figma_file)
       @figma_file = figma_file
-      @resolver = Figma::Resolver.new(figma_file)
+      lookup_data = self.class.build_lookup_data(figma_file)
+      @resolver = Figma::Resolver.new(lookup_data, figma_client: Figma::TokenPool.instance.primary_client)
       @generated = {}
       @pending_compilations = []
       @pending_variant_compilations = []
       @batch_mode = false
+    end
+
+    def self.normalize_icon_name(name)
+      name.to_s.downcase
+        .gsub(/\s+/, "-")
+        .gsub(/[^a-z0-9-]/, "")
+        .gsub(/-+/, "-")
+        .gsub(/^-|-$/, "")
+    end
+
+    def self.build_lookup_data(figma_file)
+      data = {
+        components_by_node_id: {},
+        component_sets_by_node_id: {},
+        variants_by_node_id: {},
+        node_id_to_component_set: {},
+        component_key_by_node_id: figma_file.component_key_map || {},
+        variants_by_component_key: {},
+        svg_assets_by_name: {},
+        inline_svgs_by_node_id: {},
+        inline_pngs_by_node_id: {},
+        image_component_keys: Set.new,
+        figma_file_keys: Set.new,
+      }
+
+      sibling_files = if figma_file.design_system
+        figma_file.design_system.figma_files_for_version(figma_file.version)
+      else
+        [figma_file]
+      end
+
+      sibling_files.each do |ff|
+        ff.components.each do |component|
+          data[:components_by_node_id][component.node_id] = component
+        end
+
+        ff.component_sets.includes(:variants).each do |cs|
+          data[:component_sets_by_node_id][cs.node_id] = cs
+          data[:figma_file_keys] << cs.figma_file_key if cs.figma_file_key.present?
+
+          cs.variants.each do |v|
+            data[:variants_by_node_id][v.node_id] = v
+            data[:variants_by_component_key][v.component_key] = v if v.component_key.present?
+            if v.figma_json.present?
+              collect_all_node_ids(v.figma_json).each do |nid|
+                data[:node_id_to_component_set][nid] = cs
+              end
+            end
+          end
+        end
+      end
+
+      # image_component_keys
+      figma_file.component_sets.select(&:is_image).each do |cs|
+        data[:image_component_keys] << cs.component_key if cs.component_key
+        cs.variants.each { |v| data[:image_component_keys] << v.component_key if v.component_key }
+      end
+      figma_file.components.select(&:is_image).each do |c|
+        data[:image_component_keys] << c.component_key if c.component_key
+      end
+
+      # svg_assets_by_name
+      FigmaAsset.joins(:component)
+        .where(components: { figma_file_id: figma_file.id })
+        .where(asset_type: "svg")
+        .each do |asset|
+          name = normalize_icon_name(asset.component.name)
+          data[:svg_assets_by_name][name] = asset.content if name.present?
+        end
+      FigmaAsset.joins(:component_set)
+        .where(component_sets: { figma_file_id: figma_file.id })
+        .where(asset_type: "svg")
+        .each do |asset|
+          name = normalize_icon_name(asset.component_set.name)
+          data[:svg_assets_by_name][name] = asset.content if name.present?
+        end
+
+      # inline svgs/pngs
+      component_ids = figma_file.components.pluck(:id)
+      component_set_ids = figma_file.component_sets.pluck(:id)
+      FigmaAsset.where(asset_type: %w[svg png])
+        .where("node_id IS NOT NULL")
+        .where(
+          "component_id IN (?) OR component_set_id IN (?) OR (component_id IS NULL AND component_set_id IS NULL)",
+          component_ids, component_set_ids
+        )
+        .find_each do |asset|
+          if asset.asset_type == "png"
+            data[:inline_pngs_by_node_id][asset.node_id] = asset.content
+          else
+            data[:inline_svgs_by_node_id][asset.node_id] = asset.content
+          end
+        end
+
+      data
+    end
+
+    def self.collect_all_node_ids(node)
+      return [] unless node.is_a?(Hash)
+      ids = [node["id"]].compact
+      (node["children"] || []).each { |child| ids += collect_all_node_ids(child) }
+      ids
     end
 
     def generate_all
@@ -40,7 +143,7 @@ module Figma
       end
 
       batch_compile_and_persist
-      @resolver.save_unresolved_warnings
+      save_unresolved_warnings
 
       log "React code generation complete! Generated #{@generated.size} components"
       @generated
@@ -61,7 +164,7 @@ module Figma
       ir = @resolver.resolve_component_set(component_set)
       return nil unless ir
 
-      emitter = Figma::Emitter.new(component_name, resolver: @resolver)
+      emitter = Figma::Emitter.new(component_name)
 
       if ir[:kind] == :multi_variant
         result = emitter.emit_multi_variant(ir)
@@ -97,7 +200,7 @@ module Figma
       ir = @resolver.resolve_component(component)
       return nil unless ir
 
-      emitter = Figma::Emitter.new(component_name, resolver: @resolver)
+      emitter = Figma::Emitter.new(component_name)
       code = emitter.emit(ir)
 
       compiled_code = defer_or_compile(code, component_name, "c_#{component.id}", component)
@@ -113,6 +216,26 @@ module Figma
     end
 
     private
+
+    def save_unresolved_warnings
+      return if @resolver.unresolved_instances.empty?
+
+      @resolver.unresolved_instances.each do |owner_node_id, instance_names|
+        names = instance_names.to_a.sort
+        warning = "Unresolved external components: #{names.join(', ')}. Add their source Figma file to the design system."
+
+        cs = @figma_file.component_sets.find_by(node_id: owner_node_id)
+        if cs
+          cs.update!(validation_warnings: (cs.validation_warnings || []) + [warning])
+          next
+        end
+
+        comp = @figma_file.components.find_by(node_id: owner_node_id)
+        comp&.update!(validation_warnings: (comp.validation_warnings || []) + [warning])
+      end
+
+      log "Added unresolved instance warnings to #{@resolver.unresolved_instances.size} components"
+    end
 
     # Compile multi-variant entries and produce the combined component code
     def emit_and_compile_multi_variant(component_set, component_name, emitter, ir, variant_entries, all_imports)

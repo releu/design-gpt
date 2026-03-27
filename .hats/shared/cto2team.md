@@ -1028,3 +1028,553 @@ Migrated content from the bloated CLAUDE.md (490 lines) into the existing `.hats
 **Recommended cleanup** (for Manager): Remove the legacy `e2e/` directory -- it is fully superseded by `.hats/qa/`.
 
 ---
+
+## [16] 2026-03-26T12:00 -- CTO
+
+Re: **Developer** — Decouple Resolver from ActiveRecord for pipeline unit testability
+
+### Problem
+
+`Resolver.new(figma_file)` takes an AR model and immediately queries the DB in `build_lookup_tables`, `build_svg_asset_cache`, `build_inline_svg_cache`. This forces every test that touches Resolver (and Emitter, which takes a Resolver) to set up DB fixtures and boot Rails.
+
+StyleExtractor, HtmlConverter, JsxCompiler, JsonToJsx are already pure and test cleanly. **Resolver and Emitter are the blockers.**
+
+### Decision
+
+Resolver accepts pre-built lookup hashes instead of a FigmaFile. ReactFactory becomes the only class that touches ActiveRecord. Every conversion step becomes testable with plain data — no DB, no Rails boot.
+
+### What Developer does
+
+Six commits, each leaves `make test-api` green.
+
+**Commit 1: Decouple Emitter from Resolver.**
+Emitter uses `@resolver` only for `to_prop_name` (emitter.rb lines 329, 347) — a pure 15-line string function. Copy `to_prop_name` into Emitter (or into the `ComponentNaming` concern both can include). Remove `resolver:` from Emitter's constructor. Update all Emitter instantiations in ReactFactory and specs.
+
+**Commit 2: Add `ReactFactory.build_lookup_data` class method.**
+Copy these methods from Resolver into `ReactFactory.build_lookup_data`:
+- `build_lookup_tables` (resolver.rb:1323-1352)
+- `build_svg_asset_cache` (resolver.rb:113-129)
+- `build_inline_svg_cache` (resolver.rb:131-148)
+- `image_component_keys` (resolver.rb:99-111)
+- `collect_all_node_ids` (resolver.rb:90-97)
+
+The method returns a single hash:
+```ruby
+{
+  components_by_node_id:     { "node_id" => Component-like, ... },
+  component_sets_by_node_id: { "node_id" => ComponentSet-like, ... },
+  variants_by_node_id:       { "node_id" => Variant-like, ... },
+  node_id_to_component_set:  { "any_node_id" => ComponentSet-like, ... },
+  component_key_by_node_id:  { "node_id" => "key_string", ... },
+  variants_by_component_key: { "key" => Variant-like, ... },
+  svg_assets_by_name:        { "normalized_name" => "svg_string", ... },
+  inline_svgs_by_node_id:    { "node_id" => "svg_string", ... },
+  inline_pngs_by_node_id:    { "node_id" => "base64_png", ... },
+  image_component_keys:      Set<component_key>,
+}
+```
+Wire `ReactFactory#initialize` to call it and pass result to Resolver. Keep old Resolver constructor working temporarily (accept both signatures).
+
+**Commit 3: Change Resolver constructor to accept `lookup_data` hash.**
+```ruby
+def initialize(lookup_data, figma_client: nil)
+  @figma = figma_client
+  @components_by_node_id      = lookup_data[:components_by_node_id]      || {}
+  @component_sets_by_node_id  = lookup_data[:component_sets_by_node_id]  || {}
+  # ... same for all 10 lookup keys
+end
+```
+Delete old constructor, `build_lookup_tables`, `build_svg_asset_cache`, `build_inline_svg_cache`, `image_component_keys` from Resolver. Delete `@figma_file` from Resolver.
+
+**Commit 4: Move `save_unresolved_warnings` to ReactFactory.**
+This method (resolver.rb:38-56) does `cs.update!` / `comp.update!` — DB writes. Move it to ReactFactory. Expose `Resolver#unresolved_instances` as `attr_reader`. Resolver becomes fully read-only.
+
+**Commit 5: Run full suite.** `make test-api` + `make test-e2e` green. Existing resolver_spec and emitter_spec still work because duck typing — AR objects respond to the same methods as before.
+
+**Commit 6: Add `spec/services/figma/resolver_pure_spec.rb`.**
+This is the payoff. Use `spec_helper` only (NOT `rails_helper`). Build lookup hashes with Structs:
+```ruby
+ComponentData = Struct.new(:node_id, :name, :figma_json, :component_key,
+                           :prop_definitions, :slots, :is_root, :is_image,
+                           :is_list, :figma_file_key, :figma_file_name,
+                           :validation_warnings, keyword_init: true)
+
+VariantData = Struct.new(:node_id, :name, :figma_json, :is_default,
+                         :component_key, keyword_init: true)
+```
+Test each `resolve_*` method with hand-built Figma JSON hashes and Struct lookup data. These tests run in <1s without a database.
+
+### What NOT to change
+
+- StyleExtractor, JsxCompiler, HtmlConverter, JsonToJsx — already pure
+- Importer, AssetExtractor — write to DB by design, not part of this
+- VisualDiff — needs Chrome + DB, not part of this
+- Jobs, controllers, models — unchanged
+
+### Success criteria
+
+- `make test-api` green
+- `make test-e2e` green
+- `resolver_pure_spec.rb` exists and runs without Rails/DB
+- Emitter specs run without a Resolver instance
+- Resolver constructor takes a plain hash, not a FigmaFile
+- ReactFactory is the only pipeline file that queries ActiveRecord
+
+---
+
+## [17] 2026-03-26T13:00 -- CTO
+
+Re: **Designer** — Delete all design specs. They're stale — we'll recreate from the live app when needed.
+
+### What Designer does
+
+Delete all files in `.hats/shared/designs/`. The specs were written early and have drifted far enough from the implementation that patching them is more work than starting fresh.
+
+When we next need a design spec (new feature, redesign), the Designer creates it from scratch by reading the current code.
+
+---
+
+## [18] 2026-03-26T13:00 -- CTO
+
+Re: **QA** — Delete all E2E tests. They're stale — we'll recreate from scratch.
+
+### Context
+
+81 tests, 47% failing. 27 blocked by external APIs, 11 broken by stale selectors/seed data. The test suite has accumulated enough drift that fixing it piecemeal costs more than rewriting.
+
+### What QA does
+
+1. Delete all feature files in `.hats/qa/features/`.
+2. Delete all step definitions in `.hats/qa/steps/`.
+3. Clean up any test fixtures/seed data tied to the old tests.
+4. Update `.hats/qa/STATUS.md` to reflect empty state: "Test suite reset. Rebuilding from scratch."
+
+When we next need E2E coverage (before a release, after a feature ships), QA writes tests fresh against the live app — correct selectors, correct seed data, correct expectations.
+
+---
+
+## [19] 2026-03-26T14:00 -- CTO
+
+Re: **Developer** — Build automated pipeline quality loop: `rake pipeline:grind`
+
+### What this is
+
+A fully automated, long-running (up to 40 hours) loop that tests every component in every design system, finds visual mismatches, diagnoses them with AI, fixes the codegen, and re-checks. Runs unattended inside Claude Code.
+
+### How it works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  rake pipeline:grind[design_system_name]                │
+│                                                         │
+│  For each FigmaFile in the DS:                          │
+│    1. Import (skip if already imported)                 │
+│    2. Generate React code                               │
+│    3. For each Component / ComponentVariant:             │
+│       a. Render React screenshot (headless Chrome)      │
+│       b. Fetch Figma screenshot (API or cached)         │
+│       c. Pixel diff → match_percent                     │
+│       d. If match < 95%:                                │
+│          - AI vision inspection (GPT-4o)                │
+│          - Log issues to report                         │
+│    4. Write report.json + summary                       │
+│                                                         │
+│  Output:                                                │
+│    tmp/pipeline_grind/                                   │
+│      report.json          — machine-readable results    │
+│      components/                                         │
+│        Button/                                           │
+│          figma.png        — Figma reference              │
+│          react.png        — React render                 │
+│          diff.png         — pixel diff overlay           │
+│          comparison.png   — side-by-side (for AI)        │
+│          ai_issues.txt    — GPT-4o findings              │
+│        Button__Size=L/                                   │
+│          ...per variant                                  │
+│      summary.md           — human-readable report        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### The report.json schema
+
+```json
+{
+  "design_system": "WM",
+  "started_at": "2026-03-26T14:00:00Z",
+  "finished_at": "2026-03-26T16:30:00Z",
+  "figma_files": [
+    {
+      "name": "Component Library",
+      "figma_file_key": "oL5zKz...",
+      "components_total": 42,
+      "components_passing": 35,
+      "components_failing": 7
+    }
+  ],
+  "components": [
+    {
+      "name": "Button",
+      "type": "component_set",
+      "node_id": "1:234",
+      "figma_file": "Component Library",
+      "variants_total": 6,
+      "variants_tested": 6,
+      "variants": [
+        {
+          "name": "Size=M, State=Default",
+          "match_percent": 97.2,
+          "status": "pass",
+          "screenshots": {
+            "figma": "components/Button/Size=M_State=Default/figma.png",
+            "react": "components/Button/Size=M_State=Default/react.png",
+            "diff": "components/Button/Size=M_State=Default/diff.png"
+          },
+          "ai_issues": null
+        },
+        {
+          "name": "Size=L, State=Hover",
+          "match_percent": 82.1,
+          "status": "fail",
+          "screenshots": { ... },
+          "ai_issues": [
+            "Border radius is 8px in React but 12px in Figma",
+            "Drop shadow is missing entirely",
+            "Text color is #333 instead of #000"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_components": 42,
+    "total_variants": 128,
+    "passing": 105,
+    "failing": 23,
+    "pass_rate": 82.0,
+    "avg_match": 93.4,
+    "worst": [
+      { "name": "Card / Size=L", "match_percent": 61.2 },
+      { "name": "Dropdown / State=Open", "match_percent": 68.5 }
+    ]
+  }
+}
+```
+
+### Step-by-step implementation
+
+#### Step 1: Create `api/lib/tasks/pipeline_grind.rake`
+
+Single rake task: `pipeline:grind[ds_name]`. Takes an optional design system name (defaults to first DS).
+
+```ruby
+namespace :pipeline do
+  desc "Full component quality grind: screenshot every variant, pixel diff, AI inspect"
+  task :grind, [:ds_name] => :environment do |_t, args|
+    PipelineGrind.new(args[:ds_name]).run
+  end
+end
+```
+
+#### Step 2: Create `api/app/services/pipeline_grind.rb`
+
+This is the orchestrator. It does NOT fix code — it only **diagnoses and reports**.
+
+```ruby
+class PipelineGrind
+  PASS_THRESHOLD = 95.0
+  OUTPUT_DIR = Rails.root.join("tmp", "pipeline_grind")
+
+  def initialize(ds_name = nil)
+    @ds = ds_name ? DesignSystem.find_by!(name: ds_name) : DesignSystem.first
+    @report = { design_system: @ds.name, started_at: Time.now.iso8601,
+                figma_files: [], components: [], summary: {} }
+  end
+
+  def run
+    setup_output_dir
+    log "Pipeline Grind: #{@ds.name}"
+    log "FigmaFiles: #{@ds.current_figma_files.count}"
+
+    @ds.current_figma_files.each do |ff|
+      process_figma_file(ff)
+    end
+
+    write_summary
+    write_report
+    print_summary
+  end
+
+  private
+
+  def process_figma_file(ff)
+    ff_report = { name: ff.figma_file_name, figma_file_key: ff.figma_file_key,
+                  components_total: 0, components_passing: 0, components_failing: 0 }
+
+    # Component sets: test every variant
+    ff.component_sets.includes(:variants).each do |cs|
+      next if cs.vector?
+      results = test_component_set(ff, cs)
+      @report[:components] << results
+      ff_report[:components_total] += 1
+      ff_report[results[:status] == "pass" ? :components_passing : :components_failing] += 1
+    end
+
+    # Standalone components
+    ff.components.each do |comp|
+      next if comp.vector?
+      results = test_component(ff, comp)
+      @report[:components] << results
+      ff_report[:components_total] += 1
+      ff_report[results[:status] == "pass" ? :components_passing : :components_failing] += 1
+    end
+
+    @report[:figma_files] << ff_report
+  end
+
+  def test_component_set(ff, cs)
+    component_name = cs.name.gsub(/[^a-zA-Z0-9]/, "_")
+    result = { name: cs.name, type: "component_set", node_id: cs.node_id,
+               figma_file: ff.figma_file_name, variants_total: 0,
+               variants_tested: 0, variants: [] }
+
+    cs.variants.each do |variant|
+      next unless variant.react_code_compiled.present?
+      vr = test_variant(ff, cs, variant, component_name)
+      result[:variants] << vr
+      result[:variants_total] += 1
+      result[:variants_tested] += 1
+    end
+
+    worst = result[:variants].min_by { |v| v[:match_percent] || 100 }
+    result[:status] = (worst.nil? || (worst[:match_percent] || 100) >= PASS_THRESHOLD) ? "pass" : "fail"
+    result
+  end
+
+  def test_variant(ff, cs, variant, component_name)
+    variant_label = variant.name.gsub(/[^a-zA-Z0-9=,]/, "_")
+    dir = OUTPUT_DIR.join("components", component_name, variant_label)
+    FileUtils.mkdir_p(dir)
+
+    # 1. Fetch Figma screenshot
+    figma_path = fetch_figma_screenshot(ff.figma_file_key, variant.node_id, dir)
+
+    # 2. Render React screenshot
+    react_path = render_react_screenshot(variant, dir)
+
+    # 3. Pixel diff
+    diff_result = pixel_diff(figma_path, react_path, dir)
+    match_pct = diff_result[:match_percent]
+
+    # 4. AI inspection if below threshold
+    ai_issues = nil
+    if match_pct && match_pct < PASS_THRESHOLD
+      comparison_path = build_comparison_image(figma_path, react_path, diff_result[:diff_path], dir)
+      ai_issues = ai_inspect(comparison_path, match_pct)
+    end
+
+    # 5. Update DB
+    variant.update!(match_percent: match_pct) if match_pct
+
+    {
+      name: variant.name,
+      match_percent: match_pct,
+      status: (match_pct && match_pct >= PASS_THRESHOLD) ? "pass" : "fail",
+      screenshots: {
+        figma: figma_path&.to_s,
+        react: react_path&.to_s,
+        diff: diff_result[:diff_path]&.to_s
+      },
+      ai_issues: ai_issues
+    }
+  end
+end
+```
+
+Key methods to implement (reuse existing code from `visual_diff.rb` and `e2e_generation_test.rake`):
+
+- `fetch_figma_screenshot(file_key, node_id, dir)` — reuse `Figma::VisualDiff.fetch_figma_screenshot`
+- `render_react_screenshot(variant, dir)` — reuse `Figma::VisualDiff.render_react_screenshot`
+- `pixel_diff(figma_path, react_path, dir)` — reuse `Figma::VisualDiff` pixel diff logic
+- `build_comparison_image(figma, react, diff, dir)` — side-by-side PNG for AI (reuse from e2e_generation_test.rake lines 604-619)
+- `ai_inspect(comparison_path, match_pct)` — GPT-4o vision call (reuse from e2e_generation_test.rake lines 627-656). Return array of issue strings.
+- `write_report` — dump `@report` as JSON to `tmp/pipeline_grind/report.json`
+- `write_summary` — generate `summary.md` with pass rate, worst components, and aggregated AI issues
+
+#### Step 3: Test variant rendering
+
+For component sets with multiple variants, we need to render **each variant individually**. The renderer currently renders the default variant. To render a specific variant:
+
+Build an HTML page that:
+1. Loads React + all compiled component code (reuse `Renderable` logic)
+2. Renders `<ComponentName variant_prop="value" ... />` with the variant's specific prop values
+3. Screenshots the result
+
+The variant's props come from `variant.variant_properties` (e.g. `{"size" => "M", "state" => "hover"}`). The renderer already supports this via `postMessage({type: "render", jsx: "<Button size=\"M\" state=\"hover\" />"})`.
+
+#### Step 4: `summary.md` output
+
+Human-readable report for reviewing results:
+
+```markdown
+# Pipeline Grind Report — WM
+**Date:** 2026-03-26
+**Duration:** 2h 30m
+**Pass rate:** 82% (105/128 variants)
+**Average match:** 93.4%
+
+## Failing components (23)
+
+### Card / Size=L — 61.2%
+- Border radius is 8px in React but 16px in Figma
+- Padding bottom is missing
+- Shadow uses wrong blur radius
+
+### Dropdown / State=Open — 68.5%
+- Dropdown menu has no background
+- List items are missing left padding
+- Separator lines are missing
+
+... (sorted worst first)
+
+## Passing components (105)
+Button, Title, Text, Icon, ... (list)
+```
+
+#### Step 5: Make it resumable
+
+The grind can take hours. If it crashes mid-run:
+- Check if `figma.png` exists in the component dir → skip Figma screenshot fetch
+- Check if `react.png` exists → skip React render
+- Check if `ai_issues.txt` exists → skip AI inspection
+- Always regenerate `report.json` and `summary.md` from collected data
+
+Add a `--force` flag to re-run everything: `rake pipeline:grind[WM,force]`.
+
+### How Claude Code uses this
+
+The automated loop inside Claude Code:
+
+1. **Run:** `rake pipeline:grind[WM]` — generates report
+2. **Read:** `tmp/pipeline_grind/summary.md` — identify worst components
+3. **Diagnose:** Read AI issues for the worst component. Read its `react_code` and the Resolver/Emitter output.
+4. **Fix:** Patch the codegen (Resolver, Emitter, StyleExtractor) to fix the identified issue class
+5. **Re-run:** `rake pipeline:grind[WM]` — check if fix improved scores
+6. **Repeat** until pass rate target is hit or no more actionable fixes
+
+Claude Code drives steps 2-6 in a loop. The rake task is the measurement tool; Claude Code is the fixing agent.
+
+### What NOT to build
+
+- Don't auto-fix inside the rake task. The task only measures and reports.
+- Don't build a web UI for results. `summary.md` + `report.json` + screenshot files are enough.
+- Don't test vector-only components (SVG icons). They're rendered as raw SVG, not React.
+
+### Dependencies
+
+- Existing: Ferrum, ChunkyPNG, HTTP gem, OpenAI API key, Figma API token
+- No new gems needed
+
+### Success criteria
+
+- `rake pipeline:grind[WM]` runs unattended, processes all components
+- Produces `report.json`, `summary.md`, and per-component screenshot directories
+- AI inspection runs on every failing component (match < 95%)
+- Resumable on crash (skips already-processed components)
+- Summary clearly shows what's broken and why
+
+---
+
+## [20] 2026-03-26T15:00 -- CTO
+
+Re: **Developer** — Add stage-level diagnostics to pipeline:grind
+
+### Problem
+
+The grind only checks the final screenshot. When a component fails, you don't know which pipeline stage broke — import, resolution, emission, compilation, or rendering. Debugging by reading code backwards from a bad screenshot wastes time.
+
+### What Developer does
+
+Add **per-component stage checks** to `PipelineGrind` that run before the pixel diff. Each stage either passes or logs a specific failure. The variant result in `report.json` gets a new `diagnostics` field.
+
+#### Stage checks to add
+
+For each component/variant, before pixel diffing:
+
+**1. Import check** — Does the component have `figma_json` populated?
+```ruby
+unless variant.figma_json.present?
+  diagnostics << { stage: "import", status: "fail", message: "No figma_json — import incomplete" }
+end
+```
+
+**2. Resolution check** — Does `Resolver.resolve_node` produce valid IR without :unresolved nodes?
+```ruby
+lookup_data = Figma::ReactFactory.build_lookup_data(figma_file)
+resolver = Figma::Resolver.new(lookup_data)
+ir = resolver.resolve_component_set(component_set)  # or resolve_component
+unresolved = count_unresolved(ir)  # walk IR tree, count :unresolved nodes
+if unresolved > 0
+  diagnostics << { stage: "resolution", status: "warn", message: "#{unresolved} unresolved instance(s)" }
+end
+```
+
+**3. Emission check** — Does `Emitter.emit(ir)` produce non-empty JSX with `data-component`?
+```ruby
+emitter = Figma::Emitter.new(component_name)
+code = emitter.emit(ir)
+unless code.include?("data-component")
+  diagnostics << { stage: "emission", status: "fail", message: "No data-component in emitted JSX" }
+end
+if code.include?("#FF69B4")
+  diagnostics << { stage: "emission", status: "warn", message: "Pink placeholder in emitted JSX" }
+end
+```
+
+**4. Compilation check** — Does `react_code_compiled` exist and look like valid JS?
+```ruby
+unless variant.react_code_compiled.present?
+  diagnostics << { stage: "compilation", status: "fail", message: "No compiled code" }
+end
+```
+
+**5. Render check** — Does the headless Chrome render produce a non-zero-height element? (Already partially handled — `render_react_screenshot` returns nil if #root is 0 height. Log this explicitly.)
+
+#### Report format
+
+Add `diagnostics` to each variant in `report.json`:
+```json
+{
+  "name": "Size=L, State=Hover",
+  "match_percent": 82.1,
+  "status": "fail",
+  "diagnostics": [
+    { "stage": "resolution", "status": "warn", "message": "2 unresolved instance(s)" }
+  ],
+  "ai_issues": [...]
+}
+```
+
+In `summary.md`, group failures by stage:
+```markdown
+## Stage breakdown
+- Import failures: 0
+- Resolution warnings: 3 (2 unresolved instances in Card, 1 in Dropdown)
+- Emission failures: 0
+- Compilation failures: 1 (TabBar — esbuild error)
+- Render failures: 2 (Modal — 0 height, Tooltip — 0 height)
+- Visual diff failures: 23 (below 95% match)
+```
+
+This tells you immediately: "3 components have unresolved instances → fix cross-file resolution first, then re-grind."
+
+#### Implementation note
+
+The resolution/emission checks require creating a Resolver and Emitter per component. This adds time but only for failing components (run diagnostics only when `match_percent < PASS_THRESHOLD` or when compilation/rendering failed). For passing components, skip diagnostics.
+
+### What NOT to do
+
+- Don't fix the issues found by diagnostics in this task — just add the reporting
+- Don't run diagnostics on passing components — waste of time
+- Don't add new gems or dependencies
+
+---

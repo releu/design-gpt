@@ -4,7 +4,8 @@ RSpec.describe Figma::Resolver do
   fixtures :figma_files, :component_sets, :component_variants
 
   let(:library) { figma_files(:example_lib) }
-  let(:resolver) { described_class.new(library) }
+  let(:lookup_data) { Figma::ReactFactory.build_lookup_data(library) }
+  let(:resolver) { described_class.new(lookup_data) }
 
   describe "#resolve_node" do
     it "resolves FRAME to :frame with children" do
@@ -43,7 +44,7 @@ RSpec.describe Figma::Resolver do
       cs.variants.create!(node_id: "target:2", name: "Default",
                           is_default: true, figma_json: { "id" => "target:2", "type" => "COMPONENT" })
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       node = { "id" => "1:4", "type" => "INSTANCE", "name" => "button instance",
                "componentId" => "target:2" }
@@ -122,7 +123,7 @@ RSpec.describe Figma::Resolver do
         component_key: "imgkey123"
       )
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       node = { "id" => "1:12", "type" => "INSTANCE", "name" => "hero image",
                "componentId" => "img:inst:1",
@@ -167,7 +168,7 @@ RSpec.describe Figma::Resolver do
       # Set up component_key_map on the main library
       library.update!(component_key_map: { "foreign:123" => "chevron_key_abc" })
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       node = { "id" => "inst:1", "type" => "INSTANCE", "name" => "chevron",
                "componentId" => "foreign:123" }
@@ -279,7 +280,7 @@ RSpec.describe Figma::Resolver do
         figma_json: { "id" => "ovr:v:1", "type" => "COMPONENT", "children" => [] }
       )
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       node = {
         "id" => "ovr:inst:1", "type" => "INSTANCE", "name" => "button instance",
@@ -311,7 +312,7 @@ RSpec.describe Figma::Resolver do
         figma_json: { "id" => "ovr:v:2", "type" => "COMPONENT", "children" => [] }
       )
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       node = {
         "id" => "ovr:inst:2", "type" => "INSTANCE", "name" => "tag instance",
@@ -364,7 +365,7 @@ RSpec.describe Figma::Resolver do
         }
       )
 
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
 
       resolved = fresh_resolver.find_component_set_for_detached({
         "children" => [
@@ -430,7 +431,7 @@ RSpec.describe Figma::Resolver do
       )
 
       # Re-create resolver so it picks up the new asset
-      fresh_resolver = described_class.new(library)
+      fresh_resolver = described_class.new(Figma::ReactFactory.build_lookup_data(library))
       fresh_resolver.current_owner_node_id = icon_set.node_id
       ir = fresh_resolver.resolve_component_set(icon_set)
 

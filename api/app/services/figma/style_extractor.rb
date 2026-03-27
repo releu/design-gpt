@@ -136,8 +136,12 @@ module Figma
       add_border_radius(styles, node)
       add_effects(styles, node["effects"])
 
-      # Treat all scrolling frames as static clipped content — no scroll in our renderer
-      styles["overflow"] = "hidden" if node["clipsContent"]
+      # Treat all scrolling frames as static clipped content — no scroll in our renderer.
+      # Skip overflow:hidden when the node has drop shadows, since CSS overflow clips shadows too.
+      if node["clipsContent"]
+        has_shadow = (node["effects"] || []).any? { |e| e["type"] == "DROP_SHADOW" && e["visible"] != false }
+        styles["overflow"] = "hidden" unless has_shadow
+      end
 
       if node["opacity"] && node["opacity"] < 1
         styles["opacity"] = node["opacity"].round(2).to_s

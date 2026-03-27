@@ -4,7 +4,6 @@ RSpec.describe Figma::ReactFactory, "image components" do
   fixtures :figma_files
 
   let(:library) { figma_files(:example_lib) }
-  let(:factory) { described_class.new(library) }
 
   describe "is_image component (standalone)" do
     let(:image_component_set) do
@@ -31,6 +30,8 @@ RSpec.describe Figma::ReactFactory, "image components" do
     end
 
     it "generates a <div> with backgroundSize: 'cover'" do
+      image_component_set # ensure created before factory
+      factory = described_class.new(library)
       result = factory.generate_component_set(image_component_set)
       code = result[:code]
 
@@ -118,6 +119,8 @@ RSpec.describe Figma::ReactFactory, "image components" do
     end
 
     it "renders a <div> with background-image instead of <img>" do
+      card_with_image_swap # ensure created before factory
+      factory = described_class.new(library)
       result = factory.generate_component_set(card_with_image_swap)
       code = result[:code]
 
@@ -129,6 +132,8 @@ RSpec.describe Figma::ReactFactory, "image components" do
     end
 
     it "detects the node as an image_swap_instance" do
+      card_with_image_swap # ensure created before factory
+      factory = described_class.new(library)
       # Verify the detection works by checking the generated code uses prop interpolation
       result = factory.generate_component_set(card_with_image_swap)
       code = result[:code]
