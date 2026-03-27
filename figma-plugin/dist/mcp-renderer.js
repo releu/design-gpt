@@ -42,10 +42,21 @@
     }
     _pendingImageSwaps.length = 0;
   }
-  function findComponentByKey(key) {
+  function findComponent(key, nodeId) {
     return __async(this, null, function* () {
       const cached = _componentCache.get(key);
       if (cached) return cached;
+      if (nodeId) {
+        try {
+          const node = yield figma.getNodeByIdAsync(nodeId);
+          if (node && node.type === "COMPONENT") {
+            console.log("[find] By nodeId: " + node.name + " (" + nodeId + ")");
+            _componentCache.set(key, node);
+            return node;
+          }
+        } catch (_) {
+        }
+      }
       try {
         const imported = yield figma.importComponentByKeyAsync(key);
         console.log("[find] Imported: " + imported.name + " (key=" + key.substring(0, 8) + ")");
@@ -103,7 +114,7 @@
   function renderComponentInstance(node) {
     return __async(this, null, function* () {
       try {
-        var component = yield findComponentByKey(node.componentKey);
+        var component = yield findComponent(node.componentKey, node.nodeId);
       } catch (e) {
         console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
         return yield renderFallbackFrame(node, node.component || "");
@@ -252,7 +263,7 @@
       if (!child.componentKey) return false;
       try {
         const keysBefore = new Set(Object.keys(instance.componentProperties));
-        const swapComponent = yield findComponentByKey(child.componentKey);
+        const swapComponent = yield findComponent(child.componentKey, child.nodeId);
         instance.setProperties({ [figmaKey]: swapComponent.id });
         const propsAfter = instance.componentProperties;
         const toSet = {};

@@ -1,6 +1,7 @@
 interface TreeNode {
   component?: string;
   componentKey?: string;
+  nodeId?: string;
   isImage?: boolean;
   variantProperties?: Record<string, string>;
   textProperties?: Record<string, string | boolean>;
@@ -50,10 +51,22 @@ const LAYOUT_COMPONENTS: Record<string, "VERTICAL" | "HORIZONTAL"> = {
 const _componentCache: Map<string, ComponentNode> = (globalThis as any).__componentCache || new Map();
 (globalThis as any).__componentCache = _componentCache;
 
-async function findComponentByKey(key: string): Promise<ComponentNode> {
+async function findComponent(key: string, nodeId?: string): Promise<ComponentNode> {
   // Check cache first
   const cached = _componentCache.get(key);
   if (cached) return cached;
+
+  // Try by node ID (instant, works within the same file without publishing)
+  if (nodeId) {
+    try {
+      const node = await figma.getNodeByIdAsync(nodeId);
+      if (node && node.type === "COMPONENT") {
+        console.log("[find] By nodeId: " + node.name + " (" + nodeId + ")");
+        _componentCache.set(key, node as ComponentNode);
+        return node as ComponentNode;
+      }
+    } catch (_) {}
+  }
 
   // Try importing (works for published library components)
   try {
@@ -124,7 +137,7 @@ async function renderComponentInstance(
   node: TreeNode
 ): Promise<SceneNode> {
   try {
-    var component = await findComponentByKey(node.componentKey!);
+    var component = await findComponent(node.componentKey!, node.nodeId);
   } catch (e) {
     console.warn("Could not find component " + node.component + " (" + node.componentKey + "), using fallback frame");
     return await renderFallbackFrame(node, node.component || "");
@@ -316,7 +329,7 @@ async function swapAndApplyProperties(
     // Snapshot property keys before the swap
     const keysBefore = new Set(Object.keys(instance.componentProperties));
 
-    const swapComponent = await findComponentByKey(child.componentKey);
+    const swapComponent = await findComponent(child.componentKey, child.nodeId);
     instance.setProperties({ [figmaKey]: swapComponent.id });
 
     // Diff to find newly appeared properties from the swapped component

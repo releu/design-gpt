@@ -25,6 +25,7 @@ module Exports
           default_variant = record.default_variant
           if default_variant
             enriched["componentKey"] = default_variant.component_key
+            enriched["nodeId"] = default_variant.node_id
             enriched["variantProperties"] = build_variant_properties(node, record)
           end
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
@@ -32,6 +33,7 @@ module Exports
           enriched["isImage"] = true if record.is_image
         when Component
           enriched["componentKey"] = record.component_key
+          enriched["nodeId"] = record.node_id
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
           enriched["isImage"] = true if record.is_image
