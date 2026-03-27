@@ -7,7 +7,6 @@ module Figma
     end
 
     # Render a design's current iteration to Figma canvas.
-    # Returns the MCP response (frame ID, dimensions, etc.)
     def render(design, file_key:)
       iteration = design.iterations.order(:id).last
       raise "No iteration to render" unless iteration&.tree
@@ -15,14 +14,44 @@ module Figma
       tree = enrich_tree(design, iteration.tree)
       code = build_code(tree, design.name)
 
+      # Render (may timeout but frame still gets created)
       @mcp_client.use_figma(
         file_key: file_key,
         code: code,
-        description: "Render design '#{design.name}' from Design GPT"
+        description: "Render design '#{design.name}'"
       )
+
+      # Get frame info in a separate fast call
+      frame_info = get_frame_info(file_key, design.name)
+
+      if frame_info
+        iteration.update!(
+          figma_frame_id: frame_info["id"],
+          figma_file_key: file_key
+        )
+      end
+
+      {
+        file_key: file_key,
+        frame_id: frame_info&.dig("id"),
+        embed_url: iteration.reload.figma_embed_url,
+        width: frame_info&.dig("w"),
+        height: frame_info&.dig("h")
+      }
     end
 
     private
+
+    def get_frame_info(file_key, name)
+      escaped = name.gsub('"', '\\"')
+      result = @mcp_client.use_figma(
+        file_key: file_key,
+        code: "const f = figma.currentPage.children.find(n => n.name === \"#{escaped}\"); return f ? JSON.stringify({id: f.id, w: Math.round(f.width), h: Math.round(f.height)}) : 'null';",
+        description: "Get frame info"
+      )
+      text = result.dig("content", 0, "text")
+      text ? (JSON.parse(text) rescue nil) : nil
+    end
 
     def enrich_tree(design, tree)
       return tree unless design.design_system
@@ -30,19 +59,13 @@ module Figma
     end
 
     def build_code(tree, name)
-      renderer_js = self.class.renderer_js
-      tree_json = tree.to_json
-      name_json = name.to_json
-
-      # Inject tree and name as globals before the IIFE executes
-      "var __TREE__ = #{tree_json};\nvar __NAME__ = #{name_json};\n#{renderer_js}"
+      "var __TREE__ = #{tree.to_json};\nvar __NAME__ = #{name.to_json};\n#{self.class.renderer_js}"
     end
 
     def self.renderer_js
       @renderer_js ||= File.read(RENDERER_JS_PATH)
     end
 
-    # Clear cached JS (useful after rebuilding the bundle)
     def self.clear_cache!
       @renderer_js = nil
     end

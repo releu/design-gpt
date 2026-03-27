@@ -8,6 +8,13 @@ declare const __NAME__: string;
 const tree = __TREE__;
 const name = __NAME__ || "Design GPT Import";
 
+// Remove previous frame with the same name on current page
+for (const child of [...figma.currentPage.children]) {
+  if (child.name === name) {
+    try { child.remove(); } catch (_) {}
+  }
+}
+
 const rootFrame = figma.createFrame();
 rootFrame.name = name;
 rootFrame.layoutMode = "VERTICAL";
@@ -21,12 +28,9 @@ rootFrame.fills = [
 const rendered = await renderNode(tree);
 rootFrame.appendChild(rendered);
 
-const viewport = figma.viewport.center;
-rootFrame.x = Math.round(viewport.x - rootFrame.width / 2);
-rootFrame.y = Math.round(viewport.y - rootFrame.height / 2);
-
+rootFrame.x = 0;
+rootFrame.y = 0;
 figma.currentPage.appendChild(rootFrame);
-figma.viewport.scrollAndZoomIntoView([rootFrame]);
 
 collectImageSwapFills(rootFrame);
 

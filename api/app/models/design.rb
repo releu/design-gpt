@@ -117,7 +117,8 @@ class Design < ApplicationRecord
           tree: i.tree,
           completed: i.jsx?,
           has_screenshot: i.render_id.present?,
-          share_code: i.share_code
+          share_code: i.share_code,
+          figma_embed_url: i.figma_embed_url
         }
       end,
       chat: chat_messages.order(:id).map(&:as_frontend_json)

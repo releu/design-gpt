@@ -132,7 +132,7 @@ class DesignsController < ApplicationController
 
   def render_to_figma
     design = find_user_design(params[:id])
-    file_key = params[:file_key].presence || design.figma_files.first&.figma_file_key
+    file_key = params[:file_key].presence || design.design_system&.figma_working_file_key || design.figma_files.first&.figma_file_key
 
     if file_key.blank?
       return render json: { error: "file_key is required (no Figma files linked to design system)" }, status: :unprocessable_entity

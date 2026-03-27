@@ -130,9 +130,9 @@ class DesignSystemsController < ApplicationController
 
   def ds_params
     if params[:design_system].present?
-      params.require(:design_system).permit(:name, :is_public, figma_file_ids: [], figma_urls: [])
+      params.require(:design_system).permit(:name, :is_public, :figma_working_file_key, figma_file_ids: [], figma_urls: [])
     else
-      params.permit(:name, :is_public, figma_file_ids: [], figma_urls: [])
+      params.permit(:name, :is_public, :figma_working_file_key, figma_file_ids: [], figma_urls: [])
     end
   end
 end

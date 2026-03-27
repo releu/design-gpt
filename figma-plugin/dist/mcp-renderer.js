@@ -417,6 +417,14 @@ function collectChildNodes(node) {
 // src/mcp-entry.ts
 var tree = __TREE__;
 var name = __NAME__ || "Design GPT Import";
+for (const child of [...figma.currentPage.children]) {
+  if (child.name === name) {
+    try {
+      child.remove();
+    } catch (_) {
+    }
+  }
+}
 var rootFrame = figma.createFrame();
 rootFrame.name = name;
 rootFrame.layoutMode = "VERTICAL";
@@ -428,10 +436,8 @@ rootFrame.fills = [
 ];
 var rendered = await renderNode(tree);
 rootFrame.appendChild(rendered);
-var viewport = figma.viewport.center;
-rootFrame.x = Math.round(viewport.x - rootFrame.width / 2);
-rootFrame.y = Math.round(viewport.y - rootFrame.height / 2);
+rootFrame.x = 0;
+rootFrame.y = 0;
 figma.currentPage.appendChild(rootFrame);
-figma.viewport.scrollAndZoomIntoView([rootFrame]);
 collectImageSwapFills(rootFrame);
 figma.notify(`\u2713 Rendered "${name}" (${Math.round(rootFrame.width)}\xD7${Math.round(rootFrame.height)})`);

@@ -5,6 +5,12 @@ class Iteration < ApplicationRecord
 
   before_create :generate_share_code
 
+  def figma_embed_url
+    return nil unless figma_frame_id && figma_file_key
+    node_id = figma_frame_id.gsub(":", "-")
+    "https://embed.figma.com/design/#{figma_file_key}/?embed-host=design-gpt&node-id=#{node_id}"
+  end
+
   private
 
   def generate_share_code
