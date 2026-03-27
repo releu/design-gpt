@@ -40,6 +40,7 @@ class PipelineGrind
     setup_output_dir
     @skip_ai = component_name.nil? # skip AI for full sweep, enable for single component
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    all_results = []
 
     @ds.current_figma_files.each do |ff|
       @current_lookup_data ||= {}
@@ -51,7 +52,7 @@ class PipelineGrind
         cs = ff.component_sets.find_by(name: component_name)
         cs ? [cs] : []
       else
-        ff.component_sets.includes(:variants).reject(&:vector?)
+        ff.component_sets.without_warnings.includes(:variants).reject(&:vector?)
       end
 
       next if component_sets.empty?
@@ -106,15 +107,17 @@ class PipelineGrind
             .send(:pixel_diff, figma_path, react_path, diff_path)
           match = (100 - diff_result[:diff_percent]).round(2)
 
+          # Always build comparison image for review
+          comp_path = build_comparison_image(figma_path, react_path, diff_path, dir.to_s)
+
           # AI inspect if failing (skip for full sweep to save time)
           ai_issues = nil
           if match < PASS_THRESHOLD && !@skip_ai
-            comp_path = build_comparison_image(figma_path, react_path, diff_path, dir.to_s)
             ai_issues = ai_inspect(comp_path, match)
           end
 
           status = match >= PASS_THRESHOLD ? "PASS" : "FAIL"
-          results << { cs: cs.name, variant: v.name, match: match, status: status, ai_issues: ai_issues }
+          results << { cs: cs.name, variant: v.name, match: match, status: status, ai_issues: ai_issues, comparison: comp_path, dir: dir.to_s }
           log "  #{status} #{match}% #{cs.name} / #{v.name}"
           if ai_issues&.any?
             ai_issues.first(3).each { |i| log "    → #{i}" }
@@ -123,16 +126,32 @@ class PipelineGrind
       end
 
       close_browser
+      all_results.concat(results)
       elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start).round(1)
-      pass = results.count { |r| r[:status] == "PASS" }
+      pass = all_results.count { |r| r[:status] == "PASS" }
       log ""
       log "=" * 50
-      log "QUICK: #{pass}/#{results.size} pass in #{elapsed}s"
-      if results.any?
-        avg = (results.sum { |r| r[:match] } / results.size).round(1)
+      log "QUICK: #{pass}/#{all_results.size} pass in #{elapsed}s"
+      if all_results.any?
+        avg = (all_results.sum { |r| r[:match] } / all_results.size).round(1)
         log "Average match: #{avg}%"
       end
       log "=" * 50
+    end
+    all_results
+  end
+
+  # Review: run quick sweep, then open comparison images for variants below threshold
+  def review(threshold: 99.5, component_name: nil)
+    results = quick_test(component_name)
+    return unless results&.any?
+
+    failures = results.select { |r| r[:match] < threshold && r[:comparison] }
+    log ""
+    log "Review: #{failures.size} variants below #{threshold}% (out of #{results.size} total)"
+    failures.sort_by { |r| r[:match] }.each do |r|
+      log "  #{r[:match]}% #{r[:cs]} / #{r[:variant]}"
+      system("open", r[:comparison]) if r[:comparison] && File.exist?(r[:comparison])
     end
   end
 
@@ -284,12 +303,20 @@ class PipelineGrind
     libraries.each do |lib|
       lib.component_sets.includes(:variants).each do |cs|
         react_name = to_component_name(cs.name)
+
+        # Always include variant scripts so scoped var names are available globally
+        cs.variants.each do |v|
+          next unless v.react_code_compiled.present?
+          browser_code_parts << v.react_code_compiled
+        end
+
+        # Only build dispatcher/alias for the first component set per name
         next if loaded.include?(react_name)
+
         default_var_name = nil
         variant_map = [] # [{func_name:, props: {size: "M", state: "Default"}}]
         cs.variants.each do |v|
           next unless v.react_code_compiled.present?
-          browser_code_parts << v.react_code_compiled
           scoped = v.react_code_compiled[/^var (\w+)\s*=/, 1]
           if scoped
             # Parse variant properties from name like "Size=M, State=Default, Checked=Off"
@@ -632,37 +659,42 @@ class PipelineGrind
 
     # Set exact Figma dimensions on root container with padding for shadow overflow.
     # Figma exports include effect overflow (shadows), so we calculate padding from effects.
+    shadow_pad = 0
     if figma_width && figma_height
-      shadow_pad = compute_shadow_padding(figma_node_data) if figma_node_data
-      pad = shadow_pad || 0
+      shadow_pad = figma_node_data ? compute_shadow_padding(figma_node_data) : 0
       @browser_page.evaluate(<<~JS)
         (function() {
           var root = document.getElementById('root');
           if (root) {
             root.style.display = 'inline-block';
-            root.style.padding = '#{pad}px';
+            root.style.padding = '#{shadow_pad}px';
           }
           var el = document.querySelector('[data-component]') || document.querySelector('#root > *:first-child');
           if (el) {
             el.style.width = '#{figma_width}px';
             el.style.height = '#{figma_height}px';
-            el.style.overflow = 'hidden';
+            el.style.overflow = '#{shadow_pad > 0 ? "visible" : "hidden"}';
           }
         })()
       JS
     end
 
-    # Try to screenshot the component element (has data-component attr), fall back to #root
-    selector = @browser_page.evaluate(<<~JS)
-      (function() {
-        var el = document.querySelector('[data-component]');
-        if (el && el.getBoundingClientRect().height > 0) return '[data-component]';
-        var root = document.getElementById('root');
-        if (root && root.firstElementChild && root.firstElementChild.getBoundingClientRect().height > 0)
-          return '#root > *:first-child';
-        return '#root';
-      })()
-    JS
+    # When there's drop shadow padding, screenshot #root to capture shadow overflow.
+    # Otherwise screenshot the component element directly.
+    selector = if shadow_pad > 0
+      "#root"
+    else
+      @browser_page.evaluate(<<~JS)
+        (function() {
+          var el = document.querySelector('[data-component]');
+          if (el && el.getBoundingClientRect().height > 0) return '[data-component]';
+          var root = document.getElementById('root');
+          if (root && root.firstElementChild && root.firstElementChild.getBoundingClientRect().height > 0)
+            return '#root > *:first-child';
+          return '#root';
+        })()
+      JS
+    end
 
     rect = @browser_page.evaluate("document.querySelector(#{selector.to_json}).getBoundingClientRect().toJSON()")
     if rect["height"].to_f < 1 || rect["width"].to_f < 1
@@ -788,10 +820,12 @@ class PipelineGrind
     max_pad = 0
     effects.each do |e|
       next unless e["visible"] != false
-      next unless %w[DROP_SHADOW INNER_SHADOW].include?(e["type"])
+      next unless e["type"] == "DROP_SHADOW"
       radius = e["radius"] || 0
       spread = e["spread"] || 0
-      pad = radius + spread
+      ox = (e.dig("offset", "x") || 0).abs
+      oy = (e.dig("offset", "y") || 0).abs
+      pad = radius + spread + [ox, oy].max
       max_pad = pad if pad > max_pad
     end
     max_pad.ceil

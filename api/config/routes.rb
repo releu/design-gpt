@@ -61,6 +61,19 @@ Rails.application.routes.draw do
     get "up" => "application#health_check", :as => :rails_health_check
   end
 
+  namespace :admin, path: "admin" do
+    resources :pipeline_reviews, path: "figma2react", only: [:index, :show] do
+      post :update, on: :member
+      member do
+        get :image
+        get :rerun
+      end
+      collection do
+        post :mark_fixing
+      end
+    end
+  end
+
   # SPA fallback — serve index.html for non-API routes (client-side routing)
   get "*path", to: "application#spa_fallback", constraints: ->(req) { !req.path.start_with?("/api") && !req.path.include?(".") }
 end

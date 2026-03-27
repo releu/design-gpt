@@ -110,6 +110,7 @@ module Figma
       imports_str = generate_imports(instances, detached_nodes)
 
       tree = resolve_node(node, is_root: true)
+      promote_shadow_to_filled_child(tree)
 
       # Add imports for components referenced in INSTANCE_SWAP overrides
       all_imports = parse_imports(imports_str)
@@ -190,6 +191,21 @@ module Figma
     end
 
     private
+
+    # When a root frame has box-shadow but no background/border-radius,
+    # the shadow renders as a rectangle in CSS. Move it to the first child
+    # that has a background so the shadow follows the visual shape.
+    def promote_shadow_to_filled_child(tree)
+      return unless tree.is_a?(Hash) && tree[:kind] == :frame
+      styles = tree[:styles] || {}
+      return unless styles["box-shadow"] && !styles["background"]
+
+      children = tree[:children] || []
+      filled_child = children.find { |c| c.is_a?(Hash) && c[:styles]&.key?("background") }
+      return unless filled_child
+
+      filled_child[:styles]["box-shadow"] = styles.delete("box-shadow")
+    end
 
     def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false)
       styles = extract_frame_styles(node, is_root)
@@ -322,6 +338,16 @@ module Figma
 
       # Check for icon swap (INSTANCE_SWAP without preferredValues)
       if (swap_prop = instance_swap_prop_name(node, pd))
+        # If we have SVG content for this instance, inline it instead of
+        # creating a component prop that requires the consumer to pass a value
+        svg_content = find_svg_for_instance_swap(node)
+        if svg_content
+          styles = extract_frame_styles(node, false)
+          return Figma::IR.svg_inline(node_id: node["id"], name: node["name"] || "element",
+                                       styles: styles, svg_content: svg_content,
+                                       visibility_prop: visibility_prop)
+        end
+
         overrides = extract_instance_style_overrides(node)
         return Figma::IR.icon_swap(node_id: node["id"], name: node["name"] || "element",
                                     prop_name: swap_prop, style_overrides: overrides,
@@ -450,6 +476,7 @@ module Figma
       imports_str = generate_imports(instances, detached_nodes)
 
       tree = resolve_node(node, is_root: true)
+      promote_shadow_to_filled_child(tree)
 
       all_imports = parse_imports(imports_str)
       @extra_instance_imports.each do |name|
@@ -482,6 +509,7 @@ module Figma
         imports_str = generate_imports(instances, detached_nodes)
 
         tree = resolve_node(node, is_root: true)
+        promote_shadow_to_filled_child(tree)
 
         all_imports = parse_imports(imports_str)
         @extra_instance_imports.each do |name|
@@ -965,6 +993,25 @@ module Figma
         variations.each do |variant_name|
           return @svg_assets_by_name[variant_name] if @svg_assets_by_name[variant_name]
         end
+      end
+
+      nil
+    end
+
+    # Find SVG content for a large INSTANCE_SWAP node (e.g. illustration)
+    # by looking up FigmaAsset by node_id
+    def find_svg_for_instance_swap(node)
+      node_id = node["id"]
+      return nil unless node_id
+
+      asset = FigmaAsset.find_by(node_id: node_id, asset_type: "svg")
+      return asset.content if asset&.content.present?
+
+      # Try by componentId
+      component_id = node["componentId"]
+      if component_id
+        asset = FigmaAsset.find_by(node_id: component_id, asset_type: "svg")
+        return asset.content if asset&.content.present?
       end
 
       nil

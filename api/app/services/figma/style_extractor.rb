@@ -33,7 +33,15 @@ module Figma
         styles["align-items"] = figma_align_to_css(counter_align)
 
         item_spacing = node["itemSpacing"]
-        styles["gap"] = "#{item_spacing}px" if item_spacing && item_spacing > 0
+        if item_spacing && item_spacing > 0
+          styles["gap"] = "#{item_spacing}px"
+        elsif item_spacing && item_spacing < 0
+          # Negative spacing creates overlapping children (e.g. AvatarStack).
+          # CSS gap doesn't support negatives, so use negative margin on children.
+          direction = node["layoutMode"] == "VERTICAL" ? "margin-top" : "margin-left"
+          styles["--negative-spacing"] = "#{item_spacing}px"
+          styles["--negative-spacing-direction"] = direction
+        end
 
         counter_spacing = node["counterAxisSpacing"]
         if counter_spacing && counter_spacing > 0 && node["layoutWrap"] == "WRAP"
@@ -240,7 +248,13 @@ module Figma
 
       text_auto_resize = node.dig("style", "textAutoResize")
       if text_auto_resize == "WIDTH_AND_HEIGHT"
-        styles["white-space"] = "nowrap"
+        # Only nowrap if text actually fits on one line.
+        # If bbox height > ~1.5x line height, text is wrapping in Figma.
+        line_height = node.dig("style", "lineHeightPx") || node.dig("style", "fontSize") || 16
+        bbox_height = node.dig("absoluteBoundingBox", "height") || 0
+        if bbox_height <= line_height * 1.5
+          styles["white-space"] = "nowrap"
+        end
       end
 
       if node["opacity"] && node["opacity"] < 1

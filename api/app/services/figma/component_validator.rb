@@ -22,6 +22,7 @@ module Figma
       warnings.concat(check_scrolling_content)
       warnings.concat(check_fixed_position_elements)
       warnings.concat(check_instance_style_overrides)
+      warnings.concat(check_instance_size_overrides)
       warnings.concat(check_image_convention) if @is_image
 
       warnings.uniq
@@ -99,6 +100,42 @@ module Figma
       warnings = []
       find_instance_overrides(@json, warnings)
       warnings
+    end
+
+    # Detect instances that have been manually resized (bbox doesn't match the
+    # referenced variant). These size overrides bypass the component prop API.
+    def check_instance_size_overrides
+      warnings = []
+      find_resized_instances(@json, warnings)
+      warnings
+    end
+
+    def find_resized_instances(node, warnings)
+      return unless node.is_a?(Hash)
+      return if node["visible"] == false
+
+      if node["type"] == "INSTANCE"
+        component_id = node["componentId"]
+        if component_id
+          source_json = @variant_json_by_id[component_id]
+          if source_json
+            src_bbox = source_json["absoluteBoundingBox"] || {}
+            inst_bbox = node["absoluteBoundingBox"] || {}
+            sw = src_bbox["width"].to_f
+            sh = src_bbox["height"].to_f
+            iw = inst_bbox["width"].to_f
+            ih = inst_bbox["height"].to_f
+
+            if sw > 0 && sh > 0 && ((sw - iw).abs > 1 || (sh - ih).abs > 1)
+              warnings << "Instance \"#{node["name"]}\" is manually resized " \
+                "(#{iw.round}x#{ih.round} vs component #{sw.round}x#{sh.round}) — " \
+                "size overrides bypass component props"
+            end
+          end
+        end
+      end
+
+      (node["children"] || []).each { |child| find_resized_instances(child, warnings) }
     end
 
     def find_instance_overrides(node, warnings)

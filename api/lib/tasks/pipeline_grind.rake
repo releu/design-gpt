@@ -10,6 +10,11 @@ namespace :pipeline do
     PipelineGrind.new.quick_test(args[:component_name])
   end
 
+  desc "Review: run quick sweep, open comparison images for variants below threshold (default 99.5%)"
+  task :review, [:component_name] => :environment do |_t, args|
+    PipelineGrind.new.review(component_name: args[:component_name])
+  end
+
   desc "Pre-download all Figma screenshots (run before grind to avoid rate limits)"
   task :cache_figma, [:ds_name] => :environment do |_t, args|
     PipelineGrind.new(args[:ds_name]).cache_figma_screenshots

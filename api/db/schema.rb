@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_27_160132) do
+ActiveRecord::Schema[8.0].define(version: 2026_03_28_093408) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -211,6 +211,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_27_160132) do
     t.index ["share_code"], name: "index_iterations_on_share_code", unique: true
   end
 
+  create_table "pipeline_reviews", force: :cascade do |t|
+    t.bigint "component_set_id", null: false
+    t.float "best_match_percent"
+    t.float "avg_match_percent"
+    t.string "status", default: "pending", null: false
+    t.text "comment"
+    t.jsonb "ai_analysis", default: {}
+    t.jsonb "variant_scores", default: {}
+    t.string "comparison_image_path"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["component_set_id"], name: "index_pipeline_reviews_on_component_set_id"
+    t.index ["status"], name: "index_pipeline_reviews_on_status"
+  end
+
   create_table "renders", force: :cascade do |t|
     t.binary "image"
     t.string "token"
@@ -377,6 +392,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_27_160132) do
   add_foreign_key "figma_assets", "components"
   add_foreign_key "figma_files", "design_systems"
   add_foreign_key "iterations", "design_systems"
+  add_foreign_key "pipeline_reviews", "component_sets"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

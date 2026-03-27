@@ -2,6 +2,7 @@ class ComponentSet < ApplicationRecord
   belongs_to :figma_file
   has_many :variants, class_name: "ComponentVariant", dependent: :destroy
   has_many :figma_assets, dependent: :destroy
+  has_one :pipeline_review, dependent: :destroy
 
   validates :node_id, presence: true, uniqueness: { scope: :figma_file_id }
 
@@ -21,6 +22,14 @@ class ComponentSet < ApplicationRecord
   def default_variant
     variants.find_by(is_default: true) || variants.first
   end
+
+  def has_warnings?
+    validation_warnings.present? && validation_warnings.any?
+  end
+
+  scope :without_warnings, -> {
+    where("validation_warnings IS NULL OR validation_warnings = '[]'")
+  }
 
   # Detect if this component set contains only vector shapes
   def vector?

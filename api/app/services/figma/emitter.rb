@@ -399,11 +399,15 @@ module Figma
 
     def emit_frame(ir, depth, is_root: false)
       class_name = generate_class_name(ir[:name], is_root)
-      @css_rules[class_name] = ir[:styles]
+      styles = ir[:styles].dup
+      neg_spacing = styles.delete("--negative-spacing")
+      neg_direction = styles.delete("--negative-spacing-direction")
+      @css_rules[class_name] = styles
 
       uses_absolute = ir[:uses_absolute]
       child_positions = ir[:child_positions] || {}
 
+      child_idx = 0
       children_jsx = ir[:children].each_with_index.map do |child, idx|
         child_jsx = emit_node(child, depth + 1)
         if child_jsx.present?
@@ -413,6 +417,13 @@ module Figma
             @css_rules[wrapper_class] = pos[:styles]
             child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
           end
+          # Apply negative spacing as margin on children after the first
+          if neg_spacing && child_idx > 0
+            overlap_class = "#{class_name}-overlap"
+            @css_rules[overlap_class] ||= { neg_direction => neg_spacing }
+            child_jsx = "<div className=\"#{overlap_class}\">#{child_jsx}</div>"
+          end
+          child_idx += 1
         end
         child_jsx
       end.compact.join("\n")
