@@ -655,18 +655,24 @@ module Figma
         fills = child["fills"]
         next unless fills.is_a?(Array) && fills.any?
 
-        fill = fills.find { |f| f["type"] == "SOLID" && f["color"] }
+        fill = fills.find { |f| f["type"] == "SOLID" && f["visible"] != false && f["color"] }
         next unless fill
 
         c = fill["color"]
         r = (c["r"] * 255).round
         g = (c["g"] * 255).round
         b = (c["b"] * 255).round
+        a = (c["a"] || 1.0) * (fill["opacity"] || 1.0)
 
-        unless r == 0 && g == 0 && b == 0
+        # Skip fully opaque black (default color, no override needed)
+        next if r == 0 && g == 0 && b == 0 && a >= 0.99
+
+        if a < 0.99
+          style["color"] = "rgba(#{r}, #{g}, #{b}, #{a.round(2)})"
+        else
           style["color"] = "#%02x%02x%02x" % [r, g, b]
-          break
         end
+        break
       end
 
       bbox = node["absoluteBoundingBox"]

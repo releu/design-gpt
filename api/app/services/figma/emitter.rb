@@ -185,20 +185,25 @@ module Figma
 
       w = clean_svg.match(/width="(\d+(?:\.\d+)?)"/)&.captures&.first
       h = clean_svg.match(/height="(\d+(?:\.\d+)?)"/)&.captures&.first
-      style_obj = if w && h
+      default_style = if w && h
         "{ width: '#{w}px', height: '#{h}px', flexShrink: 0 }"
       else
         "{ flexShrink: 0 }"
       end
 
+      # Make SVG fill its container so parent size overrides work
+      scalable_svg = clean_svg
+        .gsub(/(<svg[^>]*)\bwidth="[\d.]+"/, '\\1width="100%"')
+        .gsub(/(<svg[^>]*)\bheight="[\d.]+"/, '\\1height="100%"')
+
       <<~CODE
         import React from 'react';
 
-        const svg = `#{clean_svg.gsub('`', '\\`')}`;
+        const svg = `#{scalable_svg.gsub('`', '\\`')}`;
 
         export function #{component_name}({ style: __passedStyle, ...props }) {
           return (
-            <div data-component="#{component_name}" style={{...__passedStyle, ...#{style_obj}}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
+            <div data-component="#{component_name}" style={{...#{default_style}, ...__passedStyle}} dangerouslySetInnerHTML={{__html: svg}} {...props} />
           );
         }
 
@@ -463,11 +468,16 @@ module Figma
       prop = ir[:prop_name]
       if ir[:style_overrides].any?
         style_pairs = ir[:style_overrides].map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+        # Extract size-related styles to pass to the icon component so SVG icons
+        # can scale (they use width/height from passed style to override defaults).
+        size_pairs = ir[:style_overrides].select { |k, _| %w[width height].include?(k) }
+          .map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+        icon_style = size_pairs.empty? ? "" : " style={{#{size_pairs}}}"
         # Wrap icon in a styled span so color/size overrides work regardless of
         # whether the icon is an SVG component (spreads props) or a regular
         # multi-variant component (does not spread props). SVG icons use
         # fill="currentColor" and inherit the CSS color from the wrapper.
-        "{#{prop} && <span style={{#{style_pairs}}}><#{prop} /></span>}"
+        "{#{prop} && <span style={{display: \"inline-flex\", #{style_pairs}}}><#{prop}#{icon_style} /></span>}"
       else
         "{#{prop} && <#{prop} />}"
       end
