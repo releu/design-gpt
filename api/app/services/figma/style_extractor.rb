@@ -114,9 +114,11 @@ module Figma
         styles["height"] = "#{height}px"
       end
 
-      # Root frames should fill their container, not use Figma's fixed width
+      # Root frames fill their container only when Figma says FILL.
+      # FIXED/HUG components keep their natural width.
       if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
-        styles["width"] = "100%"
+        sizing_h = node["layoutSizingHorizontal"]
+        styles["width"] = "100%" if sizing_h.nil? || sizing_h == "FILL"
       end
 
       if node["layoutAlign"] == "STRETCH"
