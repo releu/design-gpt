@@ -242,6 +242,7 @@ module Figma
       uses_absolute = !node["layoutMode"] && raw_children.any?
 
       child_positions = {}
+      pending_mask_gradient = nil
       children = raw_children.each_with_index.filter_map do |child, idx|
         ir_child = resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm)
         if ir_child
@@ -256,7 +257,25 @@ module Figma
             if constraints["horizontal"] == "LEFT_RIGHT" && constraints["vertical"] == "TOP_BOTTOM"
               pos_styles = { "position" => "absolute", "top" => "0", "left" => "0", "right" => "0", "bottom" => "0" }
             end
+
+            if child["isMask"] == true && child["maskType"] == "ALPHA"
+              # Figma alpha mask: the gradient's alpha channel controls sibling visibility.
+              # Hide this rect and apply its gradient as mask-image on the next sibling.
+              mask_fills = (child["fills"] || []).select { |f| f["visible"] != false }
+              if mask_fills.any? && mask_fills.first["type"] == "GRADIENT_LINEAR"
+                pending_mask_gradient = alpha_mask_gradient(mask_fills.first)
+              end
+              pos_styles["display"] = "none"
+            elsif pending_mask_gradient
+              # Apply the alpha mask from the previous sibling to this element's wrapper
+              pos_styles["mask-image"] = pending_mask_gradient
+              pos_styles["-webkit-mask-image"] = pending_mask_gradient
+              pending_mask_gradient = nil
+            end
+
             child_positions[ir_child[:node_id]] = { index: idx, styles: pos_styles }
+          else
+            pending_mask_gradient = nil
           end
         end
         ir_child
@@ -715,6 +734,29 @@ module Figma
           style["color"] = "#%02x%02x%02x" % [r, g, b]
         end
         break
+      end
+
+      # Check the first FRAME child of the instance for distinctly colored strokes.
+      # In Figma, state overrides (e.g. error-state red border) are sometimes applied
+      # to an inner frame inside an INSTANCE rather than the instance's container frame.
+      # We bubble those up as a boxShadow style override so the emitter can render them
+      # as an inset border on the component wrapper span.
+      # Dark/black strokes are the library component's own default border — skip those
+      # to avoid adding a double border on top of the component's internal styling.
+      first_frame = (node["children"] || []).find { |c| c["type"] == "FRAME" }
+      if first_frame && !style.key?("boxShadow")
+        frame_strokes = first_frame["strokes"] || []
+        visible_stroke = frame_strokes.find { |s| s["visible"] != false && s["color"] }
+        if visible_stroke
+          sc = visible_stroke["color"]
+          sr, sg, sb = sc["r"].to_f, sc["g"].to_f, sc["b"].to_f
+          # Only bubble up non-dark colored strokes (e.g. error red, not default gray/black)
+          unless sr < 0.3 && sg < 0.3 && sb < 0.3
+            weight = first_frame["strokeWeight"] || 1
+            css_color = figma_color_to_css(sc, visible_stroke["opacity"])
+            style["boxShadow"] = "inset 0 0 0 #{weight}px #{css_color}"
+          end
+        end
       end
 
       bbox = node["absoluteBoundingBox"]
@@ -1206,12 +1248,23 @@ module Figma
 
         clean_key = key.gsub(/#[\d:]+$/, "").strip
         matching_def_key = prop_definitions.keys.find { |dk| dk.gsub(/#[\d:]+$/, "").strip == clean_key }
+
+        # For nested/forwarded props (↳ prefix), name won't match target's prop_definitions.
+        # Fall back to type-based matching: if the target has exactly one TEXT prop, use it.
+        if matching_def_key.nil? && clean_key.include?("\u21B3") && prop_type == "TEXT"
+          text_def_keys = prop_definitions.select { |_, d| d["type"] == "TEXT" }.keys
+          matching_def_key = text_def_keys.first if text_def_keys.size == 1
+        end
+
         definition = matching_def_key ? prop_definitions[matching_def_key] : nil
 
         # Skip if value matches default
         next if definition && definition["defaultValue"].to_s == value.to_s
 
-        prop_name = to_prop_name(clean_key.gsub(/^[\s\u21B3]+/, "").strip)
+        # Use the matched prop definition key for the prop name so it aligns with the
+        # target component's compiled prop interface (avoids name mismatches for nested props).
+        effective_name_key = matching_def_key ? matching_def_key.gsub(/#[\d:]+$/, "").strip : clean_key.gsub(/^[\s\u21B3]+/, "").strip
+        prop_name = to_prop_name(effective_name_key)
 
         case prop_type
         when "VARIANT"

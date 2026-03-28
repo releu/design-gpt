@@ -94,10 +94,12 @@ module PipelineAutofix
       3. Read the Figma JSON for specific details: bundle exec rails runner "cs = ComponentSet.find_by!(name: '#{cs.name}'); puts JSON.pretty_generate(cs.variants.first.figma_json)"
       4. Identify the root cause in style_extractor.rb, resolver.rb, or emitter.rb
       5. Make targeted code changes
-      6. Verify: bundle exec rake "pipeline:verify_fix[#{cs.name}]"
-      7. Read updated comparison images to check improvement
+      6. Verify by running: bundle exec rake "pipeline:verify_fix[#{cs.name}]"
+         This regenerates the component, screenshots it, diffs vs Figma, and runs GPT-4o analysis.
+      7. Read the updated comparison images to check visual improvement
       8. Repeat steps 4-7 until GPT-4o issues are resolved or remaining issues are only font rendering / shadow rendering / sub-pixel differences that can't be fixed in CSS
       9. Do NOT run pipeline:regression — that happens externally after all fixes.
+      10. Limit yourself to max 3 verify iterations. If not fixed after 3 tries, report partial/not-fixable.
 
       IMPORTANT RULES:
       - Do NOT use Claude vision for comparing screenshots. Only GPT-4o via verify_fix does visual inspection.

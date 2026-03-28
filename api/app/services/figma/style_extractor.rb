@@ -170,7 +170,7 @@ module Figma
 
       styles["display"] = "none" if node["visible"] == false
 
-      styles["box-sizing"] = "border-box"
+      styles["box-sizing"] ||= "border-box"
 
       styles
     end
@@ -201,7 +201,11 @@ module Figma
       styles["text-align"] = text_align.downcase if text_align
 
       text_align_vertical = style["textAlignVertical"]
-      if text_align_vertical && text_align_vertical != "TOP"
+      # Only apply flex-based vertical alignment when the text box has a fixed height.
+      # For HUG-sized text nodes the box height equals the content height, so
+      # textAlignVertical is visually irrelevant and adding display:flex can subtly
+      # affect font rendering vs. Figma's native text rendering.
+      if text_align_vertical && text_align_vertical != "TOP" && node["layoutSizingVertical"] != "HUG"
         styles["display"] = "flex"
         styles["align-items"] = case text_align_vertical
                                 when "CENTER" then "center"
@@ -273,6 +277,16 @@ module Figma
       elsif layout_sizing_h == "FIXED"
         bbox = node["absoluteBoundingBox"] || {}
         styles["width"] = "#{bbox["width"]}px" if bbox["width"]
+      elsif layout_sizing_h == "HUG"
+        # For non-left-aligned HUG text, set the bounding-box width explicitly so that
+        # text-align: right/center has room to work. Without an explicit width the span
+        # collapses to content width and the alignment is a visual no-op, causing a
+        # horizontal offset vs Figma where glyphs are right/center-positioned within the box.
+        text_align_h = (node["style"] || {})["textAlignHorizontal"]
+        if text_align_h && text_align_h != "LEFT"
+          bbox = node["absoluteBoundingBox"] || {}
+          styles["width"] = "#{bbox["width"]}px" if bbox["width"]
+        end
       end
 
       if layout_sizing_v == "FILL"
@@ -509,14 +523,16 @@ module Figma
         shadow = "inset 0 0 0 #{weight}px #{color}"
         styles["box-shadow"] = existing_shadow ? "#{existing_shadow}, #{shadow}" : shadow
       when "OUTSIDE"
-        # box-shadow extends outside the element's layout bounding box and gets clipped when
-        # the screenshot is taken via element selector. Use CSS border + expand dimensions instead.
+        # Use content-box so the border extends outside the content area.
+        # The pipeline forces the element's inline width/height to the Figma bounding box
+        # (content size), which in content-box mode keeps the total rendered element at the
+        # Figma render-bounds size — matching the Figma screenshot dimensions exactly.
         width_px = styles["width"]&.match(/^([\d.]+)px$/)&.[](1)&.to_f
         height_px = styles["height"]&.match(/^([\d.]+)px$/)&.[](1)&.to_f
         if width_px || height_px
           styles["border"] = "#{weight}px solid #{color}"
-          styles["width"] = "#{(width_px + 2 * weight).round(1)}px" if width_px
-          styles["height"] = "#{(height_px + 2 * weight).round(1)}px" if height_px
+          styles["box-sizing"] = "content-box"
+          # Don't expand width/height — content-box + border naturally adds weight px on each side
         else
           shadow = "0 0 0 #{weight}px #{color}"
           styles["box-shadow"] = existing_shadow ? "#{existing_shadow}, #{shadow}" : shadow
@@ -648,6 +664,29 @@ module Figma
       angle = Math.atan2(dy, dx) * 180 / Math::PI + 90
 
       stops = generate_gradient_stops(fill["gradientStops"], fill_opacity)
+      "linear-gradient(#{angle.round}deg, #{stops})"
+    end
+
+    # Convert a Figma GRADIENT_LINEAR fill used as an alpha mask into a CSS mask-image gradient.
+    # Uses only the alpha channel of each stop (ignores RGB), so the mask image controls
+    # transparency: fully-opaque stops reveal the masked layer, transparent stops hide it.
+    def alpha_mask_gradient(fill)
+      handle_positions = fill["gradientHandlePositions"]
+      return nil unless handle_positions&.size&.>= 2
+
+      start_pos = handle_positions[0]
+      end_pos = handle_positions[1]
+
+      dx = end_pos["x"] - start_pos["x"]
+      dy = end_pos["y"] - start_pos["y"]
+      angle = Math.atan2(dy, dx) * 180 / Math::PI + 90
+
+      stops = (fill["gradientStops"] || []).map do |stop|
+        alpha = stop.dig("color", "a") || 1.0
+        position = (stop["position"] * 100).round(1)
+        "rgba(0, 0, 0, #{alpha.round(3)}) #{position}%"
+      end.join(", ")
+
       "linear-gradient(#{angle.round}deg, #{stops})"
     end
 
