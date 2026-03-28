@@ -343,6 +343,9 @@ module Figma
         svg_content = find_svg_for_instance_swap(node)
         if svg_content
           styles = extract_frame_styles(node, false)
+          # Apply icon color/opacity from instance children fills
+          overrides = extract_instance_style_overrides(node)
+          styles.merge!(overrides.slice("color", "opacity"))
           return Figma::IR.svg_inline(node_id: node["id"], name: node["name"] || "element",
                                        styles: styles, svg_content: svg_content,
                                        visibility_prop: visibility_prop)
@@ -697,7 +700,11 @@ module Figma
         # Skip fully opaque black (default color, no override needed)
         next if r == 0 && g == 0 && b == 0 && a >= 0.99
 
-        if a < 0.99
+        # Very transparent black overlays are visual fade effects, not text colors.
+        # Use opacity instead so the entire sub-component is faded.
+        if r == 0 && g == 0 && b == 0 && a < 0.3
+          style["opacity"] = (1.0 - a).round(2).to_s
+        elsif a < 0.99
           style["color"] = "rgba(#{r}, #{g}, #{b}, #{a.round(2)})"
         else
           style["color"] = "#%02x%02x%02x" % [r, g, b]

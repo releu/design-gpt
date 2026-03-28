@@ -41,6 +41,7 @@ module Figma
           direction = node["layoutMode"] == "VERTICAL" ? "margin-top" : "margin-left"
           styles["--negative-spacing"] = "#{item_spacing}px"
           styles["--negative-spacing-direction"] = direction
+          styles["--negative-spacing-reverse-z"] = "true" if node["itemReverseZIndex"]
         end
 
         counter_spacing = node["counterAxisSpacing"]

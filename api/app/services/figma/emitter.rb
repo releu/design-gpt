@@ -402,6 +402,22 @@ module Figma
       styles = ir[:styles].dup
       neg_spacing = styles.delete("--negative-spacing")
       neg_direction = styles.delete("--negative-spacing-direction")
+      neg_reverse_z = styles.delete("--negative-spacing-reverse-z")
+
+      # For negative spacing, use CSS child selectors to avoid wrapper divs
+      if neg_spacing
+        total_visible = ir[:children].count { |c| c[:visible] != false }
+        overlap_selector = "#{class_name} > * + *"
+        @css_rules[overlap_selector] = { neg_direction => neg_spacing, "position" => "relative" }
+        if neg_reverse_z
+          # Assign descending z-index to each direct child
+          total_visible.times do |i|
+            nth_selector = "#{class_name} > *:nth-child(#{i + 1})"
+            @css_rules[nth_selector] = { "position" => "relative", "z-index" => (total_visible - i).to_s }
+          end
+        end
+      end
+
       @css_rules[class_name] = styles
 
       uses_absolute = ir[:uses_absolute]
@@ -417,8 +433,8 @@ module Figma
             @css_rules[wrapper_class] = pos[:styles]
             child_jsx = "<div className=\"#{wrapper_class}\">#{child_jsx}</div>"
           end
-          # Apply negative spacing as margin on children after the first
-          if neg_spacing && child_idx > 0
+          # Apply negative spacing as margin on children after the first (non-reverse-z case)
+          if neg_spacing && !neg_reverse_z && child_idx > 0
             overlap_class = "#{class_name}-overlap"
             @css_rules[overlap_class] ||= { neg_direction => neg_spacing }
             child_jsx = "<div className=\"#{overlap_class}\">#{child_jsx}</div>"
@@ -518,6 +534,13 @@ module Figma
         .gsub(/<\?xml[^>]*\?>/, "")
         .gsub(/xmlns="[^"]*"/, "")
         .strip
+      # Replace black fills/strokes with currentColor so CSS color inheritance works
+      clean_svg = clean_svg
+        .gsub(/fill="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'fill="currentColor"')
+        .gsub(/stroke="(?:#000(?:000)?|black|rgb\(0,\s*0,\s*0\))"/i, 'stroke="currentColor"')
+      clean_svg = clean_svg.gsub(/<path(?![^>]*\bfill=)([^>]*?)(\s*\/?>)/) do
+        "<path fill=\"currentColor\"#{$1}#{$2}"
+      end
       @css_rules[class_name] = ir[:styles]
       "<div className=\"#{class_name}\" dangerouslySetInnerHTML={{__html: `#{clean_svg.gsub('`', '\\`')}`}} />"
     end
