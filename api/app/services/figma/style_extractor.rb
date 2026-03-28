@@ -291,6 +291,8 @@ module Figma
       end
       styles["position"] = "relative"
       styles["margin"] = "0"
+      styles["-webkit-font-smoothing"] = "antialiased"
+      styles["-moz-osx-font-smoothing"] = "grayscale"
       styles["word-wrap"] = "break-word"
       styles["overflow-wrap"] = "break-word"
 
@@ -386,28 +388,26 @@ module Figma
 
       case h_constraint
       when "RIGHT"
-        styles["right"] = "#{(parent_x + parent_w - node_x - node_w).round}px"
+        styles["right"] = fmt_px(parent_x + parent_w - node_x - node_w)
       when "LEFT_RIGHT"
-        styles["left"] = "#{(node_x - parent_x).round}px"
-        styles["right"] = "#{(parent_x + parent_w - node_x - node_w).round}px"
+        styles["left"] = fmt_px(node_x - parent_x)
+        styles["right"] = fmt_px(parent_x + parent_w - node_x - node_w)
       when "CENTER"
-        left = node_x - parent_x
-        styles["left"] = "#{left.round}px"
+        styles["left"] = fmt_px(node_x - parent_x)
       else # LEFT
-        styles["left"] = "#{(node_x - parent_x).round}px"
+        styles["left"] = fmt_px(node_x - parent_x)
       end
 
       case v_constraint
       when "BOTTOM"
-        styles["bottom"] = "#{(parent_y + parent_h - node_y - node_h).round}px"
+        styles["bottom"] = fmt_px(parent_y + parent_h - node_y - node_h)
       when "TOP_BOTTOM"
-        styles["top"] = "#{(node_y - parent_y).round}px"
-        styles["bottom"] = "#{(parent_y + parent_h - node_y - node_h).round}px"
+        styles["top"] = fmt_px(node_y - parent_y)
+        styles["bottom"] = fmt_px(parent_y + parent_h - node_y - node_h)
       when "CENTER"
-        top = node_y - parent_y
-        styles["top"] = "#{top.round}px"
+        styles["top"] = fmt_px(node_y - parent_y)
       else # TOP
-        styles["top"] = "#{(node_y - parent_y).round}px"
+        styles["top"] = fmt_px(node_y - parent_y)
       end
 
       styles
@@ -416,6 +416,11 @@ module Figma
     # ============================================
     # Style Helpers
     # ============================================
+
+    def fmt_px(val)
+      r = val.round(1)
+      r == r.to_i.to_f ? "#{r.to_i}px" : "#{r}px"
+    end
 
     def add_min_max_size(styles, node)
       styles["min-width"] = "#{node["minWidth"]}px" if node["minWidth"]&.positive?
@@ -504,8 +509,18 @@ module Figma
         shadow = "inset 0 0 0 #{weight}px #{color}"
         styles["box-shadow"] = existing_shadow ? "#{existing_shadow}, #{shadow}" : shadow
       when "OUTSIDE"
-        shadow = "0 0 0 #{weight}px #{color}"
-        styles["box-shadow"] = existing_shadow ? "#{existing_shadow}, #{shadow}" : shadow
+        # box-shadow extends outside the element's layout bounding box and gets clipped when
+        # the screenshot is taken via element selector. Use CSS border + expand dimensions instead.
+        width_px = styles["width"]&.match(/^([\d.]+)px$/)&.[](1)&.to_f
+        height_px = styles["height"]&.match(/^([\d.]+)px$/)&.[](1)&.to_f
+        if width_px || height_px
+          styles["border"] = "#{weight}px solid #{color}"
+          styles["width"] = "#{(width_px + 2 * weight).round(1)}px" if width_px
+          styles["height"] = "#{(height_px + 2 * weight).round(1)}px" if height_px
+        else
+          shadow = "0 0 0 #{weight}px #{color}"
+          styles["box-shadow"] = existing_shadow ? "#{existing_shadow}, #{shadow}" : shadow
+        end
       else
         styles["border"] = "#{weight}px solid #{color}"
       end
@@ -525,20 +540,28 @@ module Figma
     end
 
     def add_border_radius(styles, node)
+      # For OUTSIDE strokes rendered as CSS border (not box-shadow), the border-radius
+      # must include the stroke weight so the outer edge matches the Figma design.
+      outside_stroke_offset = if node["strokeAlign"] == "OUTSIDE" && styles["border"]
+        node["strokeWeight"] || 1
+      else
+        0
+      end
+
       if node["cornerRadius"] && node["cornerRadius"] > 0
-        styles["border-radius"] = "#{node["cornerRadius"]}px"
+        styles["border-radius"] = "#{node["cornerRadius"] + outside_stroke_offset}px"
       elsif node["rectangleCornerRadii"]
         radii = node["rectangleCornerRadii"]
         if radii.is_a?(Array) && radii.size == 4 && radii.any? { |r| r > 0 }
-          styles["border-radius"] = radii.map { |r| "#{r}px" }.join(" ")
+          styles["border-radius"] = radii.map { |r| "#{r + outside_stroke_offset}px" }.join(" ")
         end
       end
 
       if node["topLeftRadius"] || node["topRightRadius"] || node["bottomRightRadius"] || node["bottomLeftRadius"]
-        tl = node["topLeftRadius"] || 0
-        tr = node["topRightRadius"] || 0
-        br = node["bottomRightRadius"] || 0
-        bl = node["bottomLeftRadius"] || 0
+        tl = (node["topLeftRadius"] || 0) + outside_stroke_offset
+        tr = (node["topRightRadius"] || 0) + outside_stroke_offset
+        br = (node["bottomRightRadius"] || 0) + outside_stroke_offset
+        bl = (node["bottomLeftRadius"] || 0) + outside_stroke_offset
         if [tl, tr, br, bl].any?(&:positive?)
           styles["border-radius"] = "#{tl}px #{tr}px #{br}px #{bl}px"
         end
@@ -678,6 +701,7 @@ module Figma
         border border-top border-right border-bottom border-left border-radius
         box-shadow
         font-family font-size font-weight font-style line-height letter-spacing
+        -webkit-font-smoothing -moz-osx-font-smoothing
         text-align text-decoration text-transform text-overflow white-space
         -webkit-line-clamp -webkit-box-orient
         color

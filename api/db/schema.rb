@@ -222,6 +222,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_093408) do
     t.string "comparison_image_path"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "ai_resolution"
     t.index ["component_set_id"], name: "index_pipeline_reviews_on_component_set_id"
     t.index ["status"], name: "index_pipeline_reviews_on_status"
   end

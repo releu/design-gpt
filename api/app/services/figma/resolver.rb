@@ -210,6 +210,11 @@ module Figma
     def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false)
       styles = extract_frame_styles(node, is_root)
 
+      # When a node is conditionally rendered via a boolean prop (e.g. {checked && <div>}),
+      # the prop-based conditional already handles visibility. Remove display:none so the
+      # element is actually visible when the controlling prop is true.
+      styles.delete("display") if visibility_prop && styles["display"] == "none"
+
       node_id = node["id"]
       # Don't inline root frames as PNG/SVG — they must render as component containers
       if !is_root && @inline_pngs_by_node_id[node_id]
