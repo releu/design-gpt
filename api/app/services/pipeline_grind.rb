@@ -823,9 +823,11 @@ class PipelineGrind
       next unless e["type"] == "DROP_SHADOW"
       radius = e["radius"] || 0
       spread = e["spread"] || 0
-      ox = (e.dig("offset", "x") || 0).abs
-      oy = (e.dig("offset", "y") || 0).abs
-      pad = radius + spread + [ox, oy].max
+      # Figma exports screenshots using blur_radius + spread as the padding on all sides,
+      # independent of the shadow offset. Adding the offset here causes the React screenshot
+      # to position the component further from the edge than Figma does, creating a
+      # systematic positional offset that inflates the diff score for colored backgrounds.
+      pad = radius + spread
       max_pad = pad if pad > max_pad
     end
     max_pad.ceil

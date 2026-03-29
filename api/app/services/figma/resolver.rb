@@ -1354,8 +1354,10 @@ module Figma
 
         definition = matching_def_key ? prop_definitions[matching_def_key] : nil
 
-        # Skip if value matches default
-        next if definition && definition["defaultValue"].to_s == value.to_s
+        # Skip if value matches default (but always emit VARIANT props so sub-components
+        # receive explicit size/type/etc. even when matching defaults — avoids React
+        # library components rendering with implicit defaults that differ from Figma).
+        next if definition && definition["defaultValue"].to_s == value.to_s && prop_type != "VARIANT"
 
         # Use the matched prop definition key for the prop name so it aligns with the
         # target component's compiled prop interface (avoids name mismatches for nested props).
