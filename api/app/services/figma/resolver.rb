@@ -757,8 +757,9 @@ module Figma
         b = (c["b"] * 255).round
         a = (c["a"] || 1.0) * (fill["opacity"] || 1.0)
 
-        # Skip fully opaque black (default color, no override needed)
+        # Skip fully opaque black or white (default colors, not meaningful overrides)
         next if r == 0 && g == 0 && b == 0 && a >= 0.99
+        next if r == 255 && g == 255 && b == 255 && a >= 0.99
 
         # Very transparent black overlays are visual fade effects, not text colors.
         # Use opacity instead so the entire sub-component is faded.

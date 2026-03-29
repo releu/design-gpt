@@ -122,7 +122,7 @@ module Figma
         styles["height"] = "100%"
         styles["max-height"] = "#{height}px" if height
       elsif layout_sizing_v == "HUG" && !own_height_fixed
-        has_children = (node["children"] || []).any? unless defined?(has_children)
+        has_children = (node["children"] || []).any?
         if has_children
           styles["height"] = "fit-content"
           styles["max-height"] = "#{height}px" if height && node["clipsContent"]
@@ -367,20 +367,35 @@ module Figma
       styles["border-radius"] = "50%" if node["type"] == "ELLIPSE"
 
       if node["type"] == "LINE"
-        styles["height"] = "0"
+        # Determine orientation from bounding box: height > width means vertical line
+        line_bbox = node["absoluteBoundingBox"] || {}
+        line_is_vertical = (line_bbox["height"] || 0) > (line_bbox["width"] || 0)
+        if line_is_vertical
+          styles["width"] = "0"
+          styles.delete("height")  # height handled by flex-grow in vertical container
+        else
+          styles["height"] = "0"
+        end
       end
 
       add_fills(styles, node["fills"])
       add_strokes(styles, node)
 
-      # For LINE nodes, convert full border to border-top since lines are horizontal
+      # For LINE nodes, convert full border to the appropriate directional border
       if node["type"] == "LINE" && styles["border"]
-        styles["border-top"] = styles.delete("border")
+        line_bbox = node["absoluteBoundingBox"] || {}
+        line_is_vertical = (line_bbox["height"] || 0) > (line_bbox["width"] || 0)
+        if line_is_vertical
+          styles["border-left"] = styles.delete("border")
+        else
+          styles["border-top"] = styles.delete("border")
+        end
       end
       add_border_radius(styles, node) unless node["type"] == "ELLIPSE"
       add_effects(styles, node["effects"])
 
-      if node["rotation"] && node["rotation"] != 0
+      # Skip rotation for LINE nodes — orientation is determined from bounding box dimensions
+      if node["rotation"] && node["rotation"] != 0 && node["type"] != "LINE"
         styles["transform"] = "rotate(#{-node["rotation"]}deg)"
       end
 
