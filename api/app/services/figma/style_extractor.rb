@@ -133,11 +133,27 @@ module Figma
         styles["height"] = "#{height}px"
       end
 
+      # Detect semi-transparent fills early — needed for root width decision below.
+      node_fills = node["fills"] || []
+      has_semitransparent_fill = node_fills.any? do |f|
+        next false unless f["visible"] != false && f["type"] == "SOLID"
+        color_a = (f.dig("color", "a") || 1.0).to_f
+        fill_opacity = (f["opacity"] || 1.0).to_f
+        (color_a * fill_opacity).between?(0.01, 0.99)
+      end
+
       # Root frames fill their container only when Figma says FILL.
       # FIXED/HUG components keep their natural width.
+      # Exception: frames with semi-transparent fills keep fixed pixel width so Chrome
+      # paints the background across the full declared width on the initial render.
+      # (If we use width:100%, Chrome initially renders at ~800px viewport width, then
+      # pipeline_grind resizes inline to the true width, but the background paint from
+      # the initial layout doesn't fully extend into the new right portion.)
       if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
         sizing_h = node["layoutSizingHorizontal"]
-        styles["width"] = "100%" if sizing_h.nil? || sizing_h == "FILL"
+        if (sizing_h.nil? || sizing_h == "FILL") && !has_semitransparent_fill
+          styles["width"] = "100%"
+        end
       end
 
       if node["layoutAlign"] == "STRETCH"
@@ -601,7 +617,14 @@ module Figma
           blur = effect["radius"] || 0
           spread = effect["spread"] || 0
           color = effect["color"] ? figma_color_to_css(effect["color"]) : "rgba(0, 0, 0, 0.25)"
-          shadows << "#{x.round}px #{y.round}px #{blur.round}px #{spread.round}px #{color}"
+          if effect["showShadowBehindNode"]
+            # filter: drop-shadow respects actual rendered content (transparency, border-radius),
+            # matching Figma's "Show shadow behind transparent areas" behaviour.
+            # Note: drop-shadow() has no spread parameter, so spread is intentionally omitted.
+            filters << "drop-shadow(#{x.round}px #{y.round}px #{blur.round}px #{color})"
+          else
+            shadows << "#{x.round}px #{y.round}px #{blur.round}px #{spread.round}px #{color}"
+          end
         when "INNER_SHADOW"
           x = effect.dig("offset", "x") || 0
           y = effect.dig("offset", "y") || 0

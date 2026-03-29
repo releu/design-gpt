@@ -204,7 +204,36 @@ module Figma
       filled_child = children.find { |c| c.is_a?(Hash) && c[:styles]&.key?("background") }
       return unless filled_child
 
-      filled_child[:styles]["box-shadow"] = styles.delete("box-shadow")
+      existing = filled_child[:styles]["box-shadow"]
+      new_shadow = styles.delete("box-shadow")
+      filled_child[:styles]["box-shadow"] = existing ? "#{new_shadow}, #{existing}" : new_shadow
+
+      # Compensate for pipeline screenshot padding mismatch.
+      # The pipeline adds uniform shadow_pad = radius + spread + max(|ox|,|oy|) on all sides,
+      # but Figma's render bounds use direction-specific extents. Without compensation,
+      # vivid-colored components appear misaligned vs Figma (shifted right/down). Adding
+      # negative margins to the root shrinks the effective canvas to match render bounds.
+      if new_shadow =~ /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px/
+        ox = $1.to_f.abs
+        oy = $2.to_f
+        radius = $3.to_f
+        spread = $4.to_f
+
+        uniform_pad = radius + spread + [ox, oy.abs].max
+        actual_top    = [radius + spread - oy,    0].max
+        actual_bottom = [radius + spread + oy,    0].max
+        actual_left   = [radius + spread - ox,    0].max
+        actual_right  = [radius + spread + ox,    0].max
+
+        mt = -(uniform_pad - actual_top).round
+        mr = -(uniform_pad - actual_right).round
+        mb = -(uniform_pad - actual_bottom).round
+        ml = -(uniform_pad - actual_left).round
+
+        if [mt, mr, mb, ml].any? { |m| m != 0 }
+          styles["margin"] = "#{mt}px #{mr}px #{mb}px #{ml}px"
+        end
+      end
     end
 
     def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false)
@@ -232,8 +261,12 @@ module Figma
           )
         }
         unless has_resolvable_instance
+          # The exported SVG already visually encodes the frame's padding (content is
+          # positioned within the full frame bounding box). Applying CSS padding on top
+          # would double-pad the icon, shifting it visually. Strip padding from styles.
+          svg_styles = styles.reject { |k, _| k =~ /^padding/ }
           return Figma::IR.svg_inline(node_id: node_id, name: node["name"] || "element",
-                                       styles: styles, svg_content: @inline_svgs_by_node_id[node_id],
+                                       styles: svg_styles, svg_content: @inline_svgs_by_node_id[node_id],
                                        visibility_prop: visibility_prop)
         end
       end
@@ -376,8 +409,11 @@ module Figma
         end
 
         overrides = extract_instance_style_overrides(node)
+        placeholder_styles, placeholder_text = extract_icon_swap_placeholder_styles(node)
         return Figma::IR.icon_swap(node_id: node["id"], name: node["name"] || "element",
                                     prop_name: swap_prop, style_overrides: overrides,
+                                    placeholder_styles: placeholder_styles,
+                                    placeholder_text: placeholder_text,
                                     visibility_prop: visibility_prop)
       end
 
@@ -768,6 +804,66 @@ module Figma
       end
 
       style
+    end
+
+    # Extract visual appearance styles from an icon-swap node itself (not its children)
+    # so the emitter can render a placeholder when no component prop is provided.
+    # Returns [styles_hash, text_label] where text_label is any centered text found inside.
+    def extract_icon_swap_placeholder_styles(node)
+      styles = {}
+
+      # Background fill from node's own fills
+      fills = node["fills"]
+      if fills.is_a?(Array)
+        fill = fills.find { |f| f["type"] == "SOLID" && f["visible"] != false && f["color"] }
+        if fill
+          styles["background"] = figma_color_to_css(fill["color"], fill["opacity"])
+        end
+      end
+
+      # Border from node's own strokes
+      strokes = node["strokes"]
+      if strokes.is_a?(Array) && strokes.any?
+        stroke = strokes.find { |s| s["visible"] != false && s["color"] }
+        if stroke
+          weight = (node["strokeWeight"] || 1).round
+          color = figma_color_to_css(stroke["color"], stroke["opacity"])
+          dashes = node["strokeDashes"]
+          style_word = (dashes.is_a?(Array) && dashes.any?) ? "dashed" : "solid"
+          styles["border"] = "#{weight}px #{style_word} #{color}"
+        end
+      end
+
+      # Border radius
+      r = node["cornerRadius"]
+      styles["borderRadius"] = "#{r.round}px" if r && r > 0
+
+      # Dimensions from absoluteBoundingBox
+      bbox = node["absoluteBoundingBox"]
+      if bbox
+        w = bbox["width"]&.round
+        h = bbox["height"]&.round
+        styles["width"] = "#{w}px" if w && w > 0
+        styles["height"] = "#{h}px" if h && h > 0
+      end
+
+      # Extract centered label text from children (e.g. "Swap-area" placeholder text)
+      label_text = nil
+      (node["children"] || []).each do |child|
+        next unless child["type"] == "TEXT"
+        chars = child["characters"]
+        label_text = chars if chars && !chars.strip.empty?
+        break
+      end
+
+      # Add flex centering to the placeholder if we have a text label to display
+      if label_text
+        styles["display"] = "flex"
+        styles["alignItems"] = "center"
+        styles["justifyContent"] = "center"
+      end
+
+      [styles, label_text]
     end
 
     def image_swap_instance?(node, prop_defs = nil)

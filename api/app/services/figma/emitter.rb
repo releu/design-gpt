@@ -418,6 +418,7 @@ module Figma
         end
       end
 
+
       @css_rules[class_name] = styles
 
       uses_absolute = ir[:uses_absolute]
@@ -495,7 +496,17 @@ module Figma
         size_pairs = ir[:style_overrides].select { |k, _| %w[width height].include?(k) }
           .map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
         icon_style = size_pairs.empty? ? "" : " style={{#{size_pairs}}}"
-        "<span style={{display: \"inline-flex\", #{style_pairs}}}>#{component_jsx.sub(' />', "#{icon_style} />")}</span>"
+
+        if size_pairs.present?
+          # Library components (e.g. Button) use width: fit-content and don't spread ...props
+          # to their root div, so inline style overrides are ignored. Add a scoped CSS rule
+          # targeting [data-component] to force the component to fill its span wrapper.
+          span_class = generate_class_name("cw", false)
+          @css_rules["#{span_class} > [data-component]"] = { "width" => "100%" }
+          "<span className=\"#{span_class}\" style={{display: \"inline-flex\", #{style_pairs}}}>#{component_jsx.sub(' />', "#{icon_style} />")}</span>"
+        else
+          "<span style={{display: \"inline-flex\", #{style_pairs}}}>#{component_jsx.sub(' />', "#{icon_style} />")}</span>"
+        end
       else
         component_jsx
       end
@@ -503,6 +514,20 @@ module Figma
 
     def emit_icon_swap(ir)
       prop = ir[:prop_name]
+      placeholder = ir[:placeholder_styles] || {}
+
+      placeholder_text = ir[:placeholder_text]
+      placeholder_jsx = if placeholder.any?
+        ph_pairs = placeholder.map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
+        if placeholder_text
+          "<div style={{#{ph_pairs}}}>#{placeholder_text}</div>"
+        else
+          "<div style={{#{ph_pairs}}} />"
+        end
+      else
+        nil
+      end
+
       if ir[:style_overrides].any?
         style_pairs = ir[:style_overrides].map { |k, v| "#{k}: \"#{v}\"" }.join(", ")
         # Extract size-related styles to pass to the icon component so SVG icons
@@ -514,9 +539,18 @@ module Figma
         # whether the icon is an SVG component (spreads props) or a regular
         # multi-variant component (does not spread props). SVG icons use
         # fill="currentColor" and inherit the CSS color from the wrapper.
-        "{#{prop} && <span style={{display: \"inline-flex\", #{style_pairs}}}><#{prop}#{icon_style} /></span>}"
+        active_jsx = "<span style={{display: \"inline-flex\", #{style_pairs}}}><#{prop}#{icon_style} /></span>"
+        if placeholder_jsx
+          "{#{prop} ? #{active_jsx} : #{placeholder_jsx}}"
+        else
+          "{#{prop} && #{active_jsx}}"
+        end
       else
-        "{#{prop} && <#{prop} />}"
+        if placeholder_jsx
+          "{#{prop} ? <#{prop} /> : #{placeholder_jsx}}"
+        else
+          "{#{prop} && <#{prop} />}"
+        end
       end
     end
 

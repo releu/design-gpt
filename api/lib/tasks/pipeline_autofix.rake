@@ -16,7 +16,6 @@ module PipelineAutofix
   def self.pick_all(threshold: 95.0)
     fixable_ids = fixable_component_ids
     PipelineReview.where(component_set_id: fixable_ids)
-      .where(status: %w[need_fix pending])
       .where(ai_resolution: [nil, ""])
       .where("avg_match_percent < ? OR avg_match_percent IS NULL", threshold)
       .by_match

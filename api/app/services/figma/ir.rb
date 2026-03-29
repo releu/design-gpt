@@ -34,9 +34,10 @@ module Figma
         visible: visible, visibility_prop: visibility_prop }
     end
 
-    def self.icon_swap(node_id:, name:, prop_name:, style_overrides: {}, visible: true, visibility_prop: nil)
+    def self.icon_swap(node_id:, name:, prop_name:, style_overrides: {}, placeholder_styles: {}, placeholder_text: nil, visible: true, visibility_prop: nil)
       { kind: :icon_swap, node_id: node_id, name: name, prop_name: prop_name,
-        style_overrides: style_overrides,
+        style_overrides: style_overrides, placeholder_styles: placeholder_styles,
+        placeholder_text: placeholder_text,
         visible: visible, visibility_prop: visibility_prop }
     end
 
