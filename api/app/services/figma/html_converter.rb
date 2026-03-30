@@ -278,7 +278,7 @@ module Figma
       svg
     end
 
-    def generate_node(node, root_name, depth, is_root = false)
+    def generate_node(node, root_name, depth, is_root = false, parent_layout_mode: nil)
       return "" unless node.is_a?(Hash)
       return "" if node["visible"] == false
 
@@ -310,13 +310,13 @@ module Figma
 
       case type
       when *CONTAINER_TYPES
-        generate_frame(node, root_name, class_name, depth, is_root)
+        generate_frame(node, root_name, class_name, depth, is_root, parent_layout_mode: parent_layout_mode)
       when "TEXT"
-        generate_text(node, class_name)
+        generate_text(node, class_name, parent_layout_mode: parent_layout_mode)
       when *VECTOR_TYPES
         generate_shape(node, class_name)
       else
-        generate_frame(node, root_name, class_name, depth, is_root)
+        generate_frame(node, root_name, class_name, depth, is_root, parent_layout_mode: parent_layout_mode)
       end
     end
 
@@ -403,8 +403,8 @@ module Figma
       @class_index
     end
 
-    def generate_frame(node, root_name, class_name, depth, is_root = false)
-      styles = extract_frame_styles(node, is_root)
+    def generate_frame(node, root_name, class_name, depth, is_root = false, parent_layout_mode: nil)
+      styles = extract_frame_styles(node, is_root, parent_layout_mode: parent_layout_mode)
 
       has_layout_mode = node["layoutMode"].present?
       children = node["children"] || []
@@ -426,7 +426,7 @@ module Figma
       flow_child_count = 0
 
       children_html = children.map.with_index do |child, idx|
-        child_html = generate_node(child, root_name, depth + 1)
+        child_html = generate_node(child, root_name, depth + 1, parent_layout_mode: node["layoutMode"])
 
         child_is_absolute = false
         needs_absolute_wrapper = (uses_absolute_for_all || (has_layout_mode && child_is_absolute)) && child_html.present?
@@ -464,8 +464,8 @@ module Figma
       end
     end
 
-    def generate_text(node, class_name)
-      styles = extract_text_styles(node)
+    def generate_text(node, class_name, parent_layout_mode: nil)
+      styles = extract_text_styles(node, parent_layout_mode: parent_layout_mode)
       @css_rules[class_name] = styles
 
       font_family = node.dig("style", "fontFamily")

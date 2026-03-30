@@ -9,7 +9,7 @@ module Figma
     # Style Extraction
     # ============================================
 
-    def extract_frame_styles(node, is_root = false)
+    def extract_frame_styles(node, is_root = false, parent_layout_mode: nil)
       styles = {}
 
       # Dimensions
@@ -58,29 +58,40 @@ module Figma
       primary_sizing = node["primaryAxisSizingMode"]
       counter_sizing = node["counterAxisSizingMode"]
 
+      layout_sizing_h = node["layoutSizingHorizontal"]
+      layout_sizing_v = node["layoutSizingVertical"]
+
       if layout_mode == "HORIZONTAL"
-        if primary_sizing == "FIXED"
-          styles["width"] = "#{width}px"
-        elsif primary_sizing == "HUG"
-          styles["width"] = "fit-content"
+        if layout_sizing_h != "FILL"
+          if primary_sizing == "FIXED"
+            styles["width"] = "#{width}px"
+          elsif primary_sizing == "HUG"
+            styles["width"] = "fit-content"
+          end
         end
 
-        if counter_sizing == "FIXED"
-          styles["height"] = "#{height}px"
-        elsif counter_sizing == "HUG"
-          styles["height"] = "fit-content"
+        if layout_sizing_v != "FILL"
+          if counter_sizing == "FIXED"
+            styles["height"] = "#{height}px"
+          elsif counter_sizing == "HUG"
+            styles["height"] = "fit-content"
+          end
         end
       elsif layout_mode == "VERTICAL"
-        if counter_sizing == "FIXED"
-          styles["width"] = "#{width}px"
-        elsif counter_sizing == "HUG"
-          styles["width"] = "fit-content"
+        if layout_sizing_h != "FILL"
+          if counter_sizing == "FIXED"
+            styles["width"] = "#{width}px"
+          elsif counter_sizing == "HUG"
+            styles["width"] = "fit-content"
+          end
         end
 
-        if primary_sizing == "FIXED"
-          styles["height"] = "#{height}px"
-        elsif primary_sizing == "HUG"
-          styles["height"] = "fit-content"
+        if layout_sizing_v != "FILL"
+          if primary_sizing == "FIXED"
+            styles["height"] = "#{height}px"
+          elsif primary_sizing == "HUG"
+            styles["height"] = "fit-content"
+          end
         end
       else
         styles["width"] = "#{width}px" if width
@@ -96,20 +107,23 @@ module Figma
         styles["flex-basis"] = "0"
       end
 
-      layout_sizing_h = node["layoutSizingHorizontal"]
-      layout_sizing_v = node["layoutSizingVertical"]
-
       own_width_fixed = (layout_mode == "HORIZONTAL" && primary_sizing == "FIXED") ||
                         (layout_mode == "VERTICAL" && counter_sizing == "FIXED")
       own_height_fixed = (layout_mode == "VERTICAL" && primary_sizing == "FIXED") ||
                          (layout_mode == "HORIZONTAL" && counter_sizing == "FIXED")
 
       if layout_sizing_h == "FILL"
-        # When flex-grow is set, it handles FILL — width: 100% would break flex layout
-        unless node["layoutGrow"] && node["layoutGrow"] > 0
+        if parent_layout_mode == "HORIZONTAL"
+          # Main axis in row parent → flex-grow
+          unless node["layoutGrow"] && node["layoutGrow"] > 0
+            styles["flex-grow"] = "1"
+            styles["flex-basis"] = "0"
+            styles["min-width"] ||= "0"
+          end
+        else
+          # Cross axis in column parent (or no parent context) → stretch width
           styles["width"] = "100%"
         end
-        styles["max-width"] = "#{width}px" if width
       elsif layout_sizing_h == "HUG" && !own_width_fixed
         # Empty frames with HUG collapse to 0 — use fixed dimensions instead
         has_children = (node["children"] || []).any?
@@ -119,8 +133,17 @@ module Figma
       end
 
       if layout_sizing_v == "FILL"
-        styles["height"] = "100%"
-        styles["max-height"] = "#{height}px" if height
+        if parent_layout_mode == "VERTICAL"
+          # Main axis in column parent → flex-grow
+          unless node["layoutGrow"] && node["layoutGrow"] > 0
+            styles["flex-grow"] = "1"
+            styles["flex-basis"] = "0"
+            styles["min-height"] ||= "0"
+          end
+        else
+          # Cross axis in row parent (or no parent context) → stretch height
+          styles["height"] = "100%"
+        end
       elsif layout_sizing_v == "HUG" && !own_height_fixed
         has_children = (node["children"] || []).any?
         if has_children
@@ -142,16 +165,13 @@ module Figma
         (color_a * fill_opacity).between?(0.01, 0.99)
       end
 
-      # Root frames fill their container only when Figma says FILL.
-      # FIXED/HUG components keep their natural width.
+      # Component roots should not dictate their own width — the parent context
+      # (SLOT, autolayout, etc.) controls sizing.  Default to 100% so the
+      # component fills its container.
       # Exception: frames with semi-transparent fills keep fixed pixel width so Chrome
       # paints the background across the full declared width on the initial render.
-      # (If we use width:100%, Chrome initially renders at ~800px viewport width, then
-      # pipeline_grind resizes inline to the true width, but the background paint from
-      # the initial layout doesn't fully extend into the new right portion.)
       if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
-        sizing_h = node["layoutSizingHorizontal"]
-        if (sizing_h.nil? || sizing_h == "FILL") && !has_semitransparent_fill
+        unless has_semitransparent_fill
           styles["width"] = "100%"
         end
       end
@@ -191,7 +211,7 @@ module Figma
       styles
     end
 
-    def extract_text_styles(node)
+    def extract_text_styles(node, parent_layout_mode: nil)
       styles = {}
 
       style = node["style"] || {}
@@ -286,8 +306,13 @@ module Figma
       layout_sizing_v = node["layoutSizingVertical"]
 
       if layout_sizing_h == "FILL"
-        # flex-grow handles FILL in flex parents — width: 100% breaks layout
-        unless node["layoutGrow"] && node["layoutGrow"] > 0
+        if parent_layout_mode == "HORIZONTAL"
+          unless node["layoutGrow"] && node["layoutGrow"] > 0
+            styles["flex-grow"] = "1"
+            styles["flex-basis"] = "0"
+            styles["min-width"] ||= "0"
+          end
+        else
           styles["width"] = "100%"
         end
       elsif layout_sizing_h == "FIXED"
@@ -306,7 +331,15 @@ module Figma
       end
 
       if layout_sizing_v == "FILL"
-        styles["height"] = "100%"
+        if parent_layout_mode == "VERTICAL"
+          unless node["layoutGrow"] && node["layoutGrow"] > 0
+            styles["flex-grow"] = "1"
+            styles["flex-basis"] = "0"
+            styles["min-height"] ||= "0"
+          end
+        else
+          styles["height"] = "100%"
+        end
       elsif layout_sizing_v == "FIXED"
         bbox ||= node["absoluteBoundingBox"] || {}
         styles["height"] = "#{bbox["height"]}px" if bbox["height"]
@@ -343,14 +376,20 @@ module Figma
 
       if layout_sizing_h == "FILL"
         unless node["layoutGrow"] && node["layoutGrow"] > 0
-          styles["width"] = "100%"
+          styles["flex-grow"] = "1"
+          styles["flex-basis"] = "0"
+          styles["min-width"] = "0"
         end
       else
         styles["width"] = "#{width}px" if width
       end
 
       if layout_sizing_v == "FILL"
-        styles["height"] = "100%"
+        unless node["layoutGrow"] && node["layoutGrow"] > 0
+          styles["flex-grow"] = "1"
+          styles["flex-basis"] = "0"
+          styles["min-height"] = "0"
+        end
       else
         styles["height"] = "#{height}px" if height
       end

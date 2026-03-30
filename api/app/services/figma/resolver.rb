@@ -132,7 +132,7 @@ module Figma
                            is_svg: !!svg_content, svg_content: svg_content)
     end
 
-    def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil, is_root: false)
+    def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil, is_root: false, parent_layout_mode: nil)
       return nil unless node.is_a?(Hash)
 
       pd = prop_definitions || @prop_definitions || {}
@@ -174,17 +174,17 @@ module Figma
 
       ir = case type
       when "COMPONENT", "COMPONENT_SET", "FRAME", "GROUP"
-        resolve_frame(node, pd, cp, sm, visibility_prop, is_root)
+        resolve_frame(node, pd, cp, sm, visibility_prop, is_root, parent_layout_mode: parent_layout_mode)
       when "TEXT"
-        resolve_text(node, pd, cp, visibility_prop)
+        resolve_text(node, pd, cp, visibility_prop, parent_layout_mode: parent_layout_mode)
       when *VECTOR_TYPES
         resolve_shape(node, visibility_prop)
       when "INSTANCE"
-        resolve_instance_ir(node, pd, cp, sm, visibility_prop)
+        resolve_instance_ir(node, pd, cp, sm, visibility_prop, parent_layout_mode: parent_layout_mode)
       when "SLOT"
-        resolve_slot_node(node, pd, cp, sm, visibility_prop)
+        resolve_slot_node(node, pd, cp, sm, visibility_prop, parent_layout_mode: parent_layout_mode)
       else
-        resolve_frame(node, pd, cp, sm, visibility_prop, is_root)
+        resolve_frame(node, pd, cp, sm, visibility_prop, is_root, parent_layout_mode: parent_layout_mode)
       end
 
       ir
@@ -236,8 +236,8 @@ module Figma
       end
     end
 
-    def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false)
-      styles = extract_frame_styles(node, is_root)
+    def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false, parent_layout_mode: nil)
+      styles = extract_frame_styles(node, is_root, parent_layout_mode: parent_layout_mode)
 
       # When a node is conditionally rendered via a boolean prop (e.g. {checked && <div>}),
       # the prop-based conditional already handles visibility. Remove display:none so the
@@ -277,7 +277,7 @@ module Figma
       child_positions = {}
       pending_mask_gradient = nil
       children = raw_children.each_with_index.filter_map do |child, idx|
-        ir_child = resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm)
+        ir_child = resolve_node(child, prop_definitions: pd, current_props: cp, slot_map: sm, parent_layout_mode: node["layoutMode"])
         if ir_child
           # Handle absolute positioning: either parent has no layout (all children absolute)
           # or child explicitly opts out of flex with layoutPositioning: ABSOLUTE
@@ -320,8 +320,8 @@ module Figma
                        uses_absolute: uses_absolute, child_positions: child_positions)
     end
 
-    def resolve_text(node, pd, cp, visibility_prop)
-      styles = extract_text_styles(node)
+    def resolve_text(node, pd, cp, visibility_prop, parent_layout_mode: nil)
+      styles = extract_text_styles(node, parent_layout_mode: parent_layout_mode)
       text = node["characters"] || ""
 
       prop_refs = node["componentPropertyReferences"] || {}
@@ -359,7 +359,7 @@ module Figma
                        styles: styles, visibility_prop: visibility_prop)
     end
 
-    def resolve_instance_ir(node, pd, cp, sm, visibility_prop)
+    def resolve_instance_ir(node, pd, cp, sm, visibility_prop, parent_layout_mode: nil)
       ref = node["componentPropertyReferences"]&.dig("mainComponent")
 
       # Check for list component dedup (INSTANCE_SWAP in a #list component)
@@ -450,9 +450,9 @@ module Figma
                             styles: styles, instance_name: node["name"] || "unknown")
     end
 
-    def resolve_slot_node(node, pd, cp, sm, visibility_prop)
+    def resolve_slot_node(node, pd, cp, sm, visibility_prop, parent_layout_mode: nil)
       @has_slot_during_resolve = true
-      styles = extract_frame_styles(node, false)
+      styles = extract_frame_styles(node, false, parent_layout_mode: parent_layout_mode)
       styles["min-width"] = "0" if styles["flex-grow"] || styles["align-self"]
       styles["overflow"] = "hidden" if styles["flex-grow"]
       slot_name = sm[node["id"]] || "children"

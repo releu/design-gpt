@@ -621,6 +621,7 @@ module Figma
       @has_slot = true
       class_name = generate_class_name(ir[:name], false)
       @css_rules[class_name] = ir[:styles]
+      @css_rules["#{class_name} > *"] = { "width" => "100%", "height" => "auto" }
       "<div className=\"#{class_name}\">{props.#{ir[:prop_name]}}</div>"
     end
 
