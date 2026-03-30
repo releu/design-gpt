@@ -31,12 +31,14 @@ module Exports
           end
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
+          enriched["instanceSwapProperties"] = build_instance_swap_properties(node, record)
           enriched["isImage"] = true if record.is_image
         when Component
           enriched["componentKey"] = record.component_key
           enriched["nodeId"] = record.node_id
           enriched["textProperties"] = build_typed_properties(node, record, "TEXT")
           enriched["booleanProperties"] = build_typed_properties(node, record, "BOOLEAN")
+          enriched["instanceSwapProperties"] = build_instance_swap_properties(node, record)
           enriched["isImage"] = true if record.is_image
         end
 
@@ -85,6 +87,49 @@ module Exports
         end
       end
       props
+    end
+
+    # Resolve INSTANCE_SWAP properties: the AI schema renames "icon" to "IconComponent"
+    # in the tree. We match the PascalCase name to component keys from the DB
+    # (including vector/icon components excluded from the main index).
+    def build_instance_swap_properties(node, record)
+      prop_defs = record.respond_to?(:prop_definitions) ? record.prop_definitions : {}
+      props = {}
+      (prop_defs || {}).each do |prop_name, prop_def|
+        next unless prop_def["type"] == "INSTANCE_SWAP"
+        preferred = prop_def["preferredValues"] || []
+        next if preferred.any? { |pv| image_component_keys.include?(pv["key"]) }
+
+        # The AI schema converts "icon" → "IconComponent" (capitalize first letter + "Component")
+        camel = to_prop_name(prop_name)
+        tree_key = camel.sub(/^(\w)/) { $1.upcase } + "Component"
+        value = node[tree_key] || node[camel]
+        next if value.nil?
+
+        # Resolve PascalCase name to component key via swap_component_index (includes vectors)
+        key = swap_component_index[value.to_s]
+        props[prop_name] = key if key
+      end
+      props
+    end
+
+    # Index of ALL components (including vectors/icons) for INSTANCE_SWAP resolution.
+    # Maps PascalCase name → default variant component_key.
+    def swap_component_index
+      @swap_component_index ||= begin
+        index = {}
+        figma_files = @design.design_system&.current_figma_files || []
+        figma_files.each do |ff|
+          ff.component_sets.includes(:variants).each do |cs|
+            key = cs.default_variant&.component_key
+            index[to_component_name(cs.name)] = key if key
+          end
+          ff.components.each do |comp|
+            index[to_component_name(comp.name)] = comp.component_key if comp.component_key
+          end
+        end
+        index
+      end
     end
 
     def image_component_keys

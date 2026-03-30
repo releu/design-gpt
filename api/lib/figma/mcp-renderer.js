@@ -94,7 +94,7 @@ async function renderComponentInstance(node) {
     return await renderFallbackFrame(node, node.component || "");
   }
   var instance = component.createInstance();
-  applyProperties(instance, node);
+  await applyProperties(instance, node);
   if (node.isImage && node.textProperties) {
     const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
     if (prompt) {
@@ -163,7 +163,7 @@ async function renderComponentInstance(node) {
   }
   return wrapper;
 }
-function applyProperties(instance, node) {
+async function applyProperties(instance, node) {
   const instanceProps = instance.componentProperties;
   const toSet = {};
   const keyMap = /* @__PURE__ */ new Map();
@@ -199,6 +199,21 @@ function applyProperties(instance, node) {
       const figmaKey = keyMap.get(normalized);
       if (figmaKey && instanceProps[figmaKey]?.type === "BOOLEAN") {
         toSet[figmaKey] = value;
+      }
+    }
+  }
+  // INSTANCE_SWAP: import component by key and set as swap value
+  if (node.instanceSwapProperties) {
+    for (const [name2, componentKey] of Object.entries(node.instanceSwapProperties)) {
+      const normalized = name2.replace(/#[\d:]+$/, "").trim().toLowerCase();
+      const figmaKey = keyMap.get(normalized);
+      if (figmaKey && instanceProps[figmaKey]?.type === "INSTANCE_SWAP") {
+        try {
+          const swapComp = await figma.importComponentByKeyAsync(componentKey);
+          toSet[figmaKey] = swapComp.id;
+        } catch (e) {
+          console.warn("[props] Failed to import swap component for " + name2 + ": " + e.message);
+        }
       }
     }
   }
