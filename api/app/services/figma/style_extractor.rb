@@ -9,7 +9,7 @@ module Figma
     # Style Extraction
     # ============================================
 
-    def extract_frame_styles(node, is_root = false, parent_layout_mode: nil)
+    def extract_frame_styles(node, is_root = false, parent_layout_mode: nil, is_page_root: false)
       styles = {}
 
       # Dimensions
@@ -121,8 +121,8 @@ module Figma
             styles["min-width"] ||= "0"
           end
         else
-          # Cross axis in column parent (or no parent context) → stretch width
-          styles["width"] = "100%"
+          # Cross axis in column parent → align-self: stretch
+          styles["align-self"] = "stretch"
         end
       elsif layout_sizing_h == "HUG" && !own_width_fixed
         # Empty frames with HUG collapse to 0 — use fixed dimensions instead
@@ -141,8 +141,8 @@ module Figma
             styles["min-height"] ||= "0"
           end
         else
-          # Cross axis in row parent (or no parent context) → stretch height
-          styles["height"] = "100%"
+          # Cross axis in row parent → align-self: stretch
+          styles["align-self"] = "stretch"
         end
       elsif layout_sizing_v == "HUG" && !own_height_fixed
         has_children = (node["children"] || []).any?
@@ -165,15 +165,22 @@ module Figma
         (color_a * fill_opacity).between?(0.01, 0.99)
       end
 
-      # Component roots should not dictate their own width — the parent context
-      # (SLOT, autolayout, etc.) controls sizing.  Default to 100% so the
-      # component fills its container.
-      # Exception: frames with semi-transparent fills keep fixed pixel width so Chrome
-      # paints the background across the full declared width on the initial render.
-      if is_root && styles["width"] && styles["width"] =~ /\d+(\.\d+)?px/
-        unless has_semitransparent_fill
-          styles["width"] = "100%"
+      if is_root
+        if is_page_root
+          # Page-level root: keep Figma dimensions (width + min-height)
+          styles["width"] = "#{width}px" if width
+          styles["min-height"] = "#{height}px" if height
+          styles.delete("height")
+        else
+          # Child component roots: flexible sizing, parent context controls dimensions.
+          # SLOT `> *` rules override these when used as slot children.
+          styles.delete("height") if styles["height"] =~ /\d+(\.\d+)?px/
+          if styles["width"] =~ /\d+(\.\d+)?px/
+            styles["width"] = "100%"
+          end
         end
+        styles.delete("max-height")
+        styles.delete("max-width")
       end
 
       if node["layoutAlign"] == "STRETCH"
@@ -313,7 +320,7 @@ module Figma
             styles["min-width"] ||= "0"
           end
         else
-          styles["width"] = "100%"
+          styles["align-self"] = "stretch"
         end
       elsif layout_sizing_h == "FIXED"
         bbox = node["absoluteBoundingBox"] || {}
@@ -338,7 +345,7 @@ module Figma
             styles["min-height"] ||= "0"
           end
         else
-          styles["height"] = "100%"
+          styles["align-self"] = "stretch"
         end
       elsif layout_sizing_v == "FIXED"
         bbox ||= node["absoluteBoundingBox"] || {}

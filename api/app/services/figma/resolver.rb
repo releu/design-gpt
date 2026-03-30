@@ -105,6 +105,7 @@ module Figma
       is_list = component.name.include?("#list") || component.description.to_s.include?("#list")
 
       setup_for_resolution(component_name, prop_definitions, node, is_list_component: is_list)
+      @is_page_root = component.is_root
 
       instances, detached_nodes = collect_instances(node)
       imports_str = generate_imports(instances, detached_nodes)
@@ -237,7 +238,8 @@ module Figma
     end
 
     def resolve_frame(node, pd, cp, sm, visibility_prop, is_root = false, parent_layout_mode: nil)
-      styles = extract_frame_styles(node, is_root, parent_layout_mode: parent_layout_mode)
+      styles = extract_frame_styles(node, is_root, parent_layout_mode: parent_layout_mode,
+                                    is_page_root: is_root && @is_page_root)
 
       # When a node is conditionally rendered via a boolean prop (e.g. {checked && <div>}),
       # the prop-based conditional already handles visibility. Remove display:none so the
@@ -455,6 +457,18 @@ module Figma
       styles = extract_frame_styles(node, false, parent_layout_mode: parent_layout_mode)
       styles["min-width"] = "0" if styles["flex-grow"] || styles["align-self"]
       styles["overflow"] = "hidden" if styles["flex-grow"]
+      # SLOT containers hold dynamic content — design-time dimensions are meaningless.
+      # Keep only flex-based sizing; remove fixed/max constraints from bounding box.
+      sizing_v = node["layoutSizingVertical"]
+      if sizing_v == "HUG"
+        styles.delete("height") unless styles["height"] == "fit-content"
+        styles.delete("max-height")
+      end
+      sizing_h = node["layoutSizingHorizontal"]
+      if sizing_h == "HUG"
+        styles.delete("width") unless styles["width"] == "fit-content"
+        styles.delete("max-width")
+      end
       slot_name = sm[node["id"]] || "children"
       Figma::IR.figma_slot(node_id: node["id"], name: node["name"] || "element",
                             prop_name: slot_name, styles: styles,
@@ -608,6 +622,7 @@ module Figma
       @nested_instance_counters = {}
       @nested_instance_props = {}
       @is_list_component = is_list_component
+      @is_page_root = false
       @prop_definitions = prop_definitions
       @rendered_list_slots = []
       @has_slot_during_resolve = false
