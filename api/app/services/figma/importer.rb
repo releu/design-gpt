@@ -13,6 +13,7 @@ module Figma
       return log("No figma_file_key on FigmaFile##{@figma_file.id}") unless @file_key.present?
 
       log "Starting import for FigmaFile##{@figma_file.id} (file: #{@file_key})"
+      report("Fetching Figma file...")
 
       # 1. Fetch the full Figma file
       file = @figma.get("/v1/files/#{@file_key}")
@@ -28,8 +29,10 @@ module Figma
       @figma_file.update!(figma_file_name: @file_name, figma_last_modified: file["lastModified"], component_key_map: component_key_map)
 
       # 2. Collect component metadata from file
+      report("Collecting components from #{@file_name}...")
       component_sets_data, standalone_data = collect_components(file)
       log "Found #{component_sets_data.size} component sets, #{standalone_data.size} standalone components"
+      report("Found #{component_sets_data.size} component sets, #{standalone_data.size} standalone")
 
       # 3. Build key → name map for resolving preferredValues
       key_to_name = build_key_to_name_map(file)
@@ -38,6 +41,7 @@ module Figma
       image_keys = build_image_component_keys(component_sets_data, standalone_data)
 
       # 4. Enrich with full JSON from document tree
+      report("Enriching component data...")
       node_index = {}
       build_node_index(document, node_index)
       enrich(component_sets_data, standalone_data, node_index, key_to_name, image_keys)
@@ -73,9 +77,12 @@ module Figma
       end
 
       # 7. Persist
+      report("Persisting #{component_sets_data.size} component sets...")
       persist_component_sets(component_sets_data, variant_json_by_id)
+      report("Persisting #{standalone_data.size} standalone components...")
       persist_standalone_components(standalone_data, variant_json_by_id)
 
+      report("Import complete — #{component_sets_data.size} sets, #{standalone_data.size} standalone")
       log "Import complete!"
     end
 
@@ -83,6 +90,10 @@ module Figma
 
     def log(message)
       puts "[Figma::Importer] #{message}"
+    end
+
+    def report(message)
+      @figma_file.update_progress(step: "importing", step_number: 1, total_steps: 4, message: message)
     end
 
     def collect_components(file)

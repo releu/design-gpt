@@ -71,8 +71,13 @@ class FigmaFileImportJob < ApplicationJob
     ff.update!(status: "importing", figma_last_modified: prev.figma_last_modified,
                figma_file_name: prev.figma_file_name, component_key_map: prev.component_key_map)
 
+    sets_count = prev.component_sets.count
+    comps_count = prev.components.count
+    ff.update_progress(step: "importing", step_number: 1, total_steps: 4,
+      message: "Unchanged — copying #{sets_count} sets, #{comps_count} components from v#{prev.version}")
+
     # Copy component sets + variants + assets
-    prev.component_sets.includes(:variants, :figma_assets).each do |cs|
+    prev.component_sets.includes(:variants, :figma_assets).each_with_index do |cs, idx|
       new_cs = ff.component_sets.create!(
         cs.attributes.except("id", "figma_file_id", "created_at", "updated_at")
       )

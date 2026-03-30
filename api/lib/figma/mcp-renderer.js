@@ -63,6 +63,15 @@ async function findComponent(key, nodeId, componentSetKey) {
     _componentCache.set(key, local);
     return local;
   }
+  try {
+    const imported = await figma.importComponentByKeyAsync(key);
+    if (imported && imported.type === "COMPONENT") {
+      console.log("[find] Imported by key: " + imported.name + " (key=" + key.substring(0, 8) + ")");
+      _componentCache.set(key, imported);
+      return imported;
+    }
+  } catch (_) {
+  }
   console.warn("[find] Not found: key=" + key.substring(0, 8));
   throw new Error("Component not found: " + key);
 }
@@ -85,6 +94,25 @@ async function renderComponentInstance(node) {
     return await renderFallbackFrame(node, node.component || "");
   }
   var instance = component.createInstance();
+  // Swap custom fonts immediately so the instance can be moved later
+  if (!_fallbackFontLoaded) {
+    for (const f of Object.values(_fallbackFonts)) {
+      try { await figma.loadFontAsync(f); } catch(_) {}
+    }
+    _fallbackFontLoaded = true;
+  }
+  (function swapInst(n, d) {
+    if (d > 10) return;
+    try {
+      if (n.type === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
+        var key = JSON.stringify(n.fontName);
+        if (!_loadedFonts.has(key)) {
+          n.fontName = _fallbackFonts[n.fontName.style] || _fallbackFont;
+        }
+      }
+    } catch(_) {}
+    try { if ("children" in n) for (const c of n.children) swapInst(c, d+1); } catch(_) {}
+  })(instance, 0);
   applyProperties(instance, node);
   if (node.isImage && node.textProperties) {
     const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
@@ -112,8 +140,8 @@ async function renderComponentInstance(node) {
   const slotFrames = node._slotFrames || {};
   const hasSlotFrames = Object.keys(slotFrames).length > 0;
   if (hasSlotFrames) {
-    const detached = instance.detachInstance();
-    console.log("[slot] Detached instance '" + detached.name + "' to manipulate slot frames");
+    console.log("[slot] Populating SLOT frames on instance '" + instance.name + "' (no detach)");
+    const allOverflow = [];
     for (const [key, frameName] of Object.entries(slotFrames)) {
       const value = node[key];
       if (!Array.isArray(value)) continue;
@@ -121,10 +149,23 @@ async function renderComponentInstance(node) {
         (item) => item != null && typeof item === "object" && "component" in item
       );
       if (slotChildren.length > 0) {
-        await populateSlotFrame(detached, frameName, slotChildren);
+        const overflow = await populateSlotFrame(instance, frameName, slotChildren);
+        allOverflow.push(...overflow);
       }
     }
-    return detached;
+    if (allOverflow.length === 0) return instance;
+    const wrapper = figma.createFrame();
+    wrapper.name = node.component || "Wrapper";
+    wrapper.layoutMode = "VERTICAL";
+    wrapper.primaryAxisSizingMode = "AUTO";
+    wrapper.counterAxisSizingMode = "AUTO";
+    wrapper.itemSpacing = 0;
+    wrapper.fills = [];
+    await safeAppendChild(wrapper, instance);
+    for (const child of allOverflow) {
+      await safeAppendChild(wrapper, child);
+    }
+    return wrapper;
   }
   const overflow = await renderSlotChildren(instance, node);
   if (overflow.length === 0) return instance;
@@ -135,9 +176,9 @@ async function renderComponentInstance(node) {
   wrapper.counterAxisSizingMode = "AUTO";
   wrapper.itemSpacing = 0;
   wrapper.fills = [];
-  wrapper.appendChild(instance);
+  await safeAppendChild(wrapper, instance);
   for (const child of overflow) {
-    wrapper.appendChild(child);
+    await safeAppendChild(wrapper, child);
   }
   return wrapper;
 }
@@ -198,7 +239,7 @@ async function renderLayoutFrame(node, direction, name2) {
   const children = collectChildNodes(node);
   for (const child of children) {
     const childNode = await renderNode(child);
-    frame.appendChild(childNode);
+    await safeAppendChild(frame, childNode);
   }
   return frame;
 }
@@ -213,7 +254,7 @@ async function renderFallbackFrame(node, name2) {
   const children = collectChildNodes(node);
   for (const child of children) {
     const childNode = await renderNode(child);
-    frame.appendChild(childNode);
+    await safeAppendChild(frame, childNode);
   }
   return frame;
 }
@@ -275,17 +316,22 @@ function findSwapChildInstance(parent, figmaKey) {
   return walk(parent);
 }
 function findChildByName(node, name2) {
-  if ("children" in node) {
-    for (const child of node.children) {
-      if (child.name === name2 && "children" in child) {
-        return child;
-      }
-      if ("children" in child) {
-        const found = findChildByName(child, name2);
-        if (found) return found;
-      }
+  try {
+    if (!("children" in node)) return null;
+    var kids = null;
+    try { kids = [...node.children]; } catch(_) { return null; }
+    for (const child of kids) {
+      try {
+        if (child.name === name2 && ("children" in child || child.type === "SLOT")) {
+          return child;
+        }
+        if ("children" in child) {
+          const found = findChildByName(child, name2);
+          if (found) return found;
+        }
+      } catch(_) { continue; }
     }
-  }
+  } catch(_) {}
   return null;
 }
 async function populateSlotFrame(instance, frameName, children) {
@@ -303,23 +349,36 @@ async function populateSlotFrame(instance, frameName, children) {
     }
     return overflow;
   }
-  if ("children" in slotFrame) {
-    const defaults = [...slotFrame.children];
-    for (const d of defaults) {
-      try {
-        d.remove();
-      } catch (_) {
+  try {
+    var defaultCount = 0;
+    if ("children" in slotFrame) {
+      const defaults = [...slotFrame.children];
+      defaultCount = defaults.length;
+      for (const d of defaults) {
+        try { d.remove(); } catch (_) {
+          try { d.visible = false; } catch (_2) {}
+        }
+      }
+    } else if (slotFrame.type === "SLOT") {
+      // SLOT nodes may need different access
+      const defaults = slotFrame.children ? [...slotFrame.children] : [];
+      defaultCount = defaults.length;
+      for (const d of defaults) {
+        try { d.remove(); } catch (_) {
+          try { d.visible = false; } catch (_2) {}
+        }
       }
     }
-    console.log("[slot] Removed " + defaults.length + " default children from '" + frameName + "'");
+    console.log("[slot] Cleared " + defaultCount + " defaults from '" + frameName + "'");
+  } catch(e) {
+    console.warn("[slot] Failed to clear defaults: " + e.message);
   }
   for (const child of children) {
-    const rendered2 = await renderNode(child);
     try {
-      slotFrame.appendChild(rendered2);
+      const rendered2 = await renderNode(child);
+      await safeAppendChild(slotFrame, rendered2);
     } catch (e) {
-      console.warn("[slot] appendChild failed for '" + rendered2.name + "': " + e.message);
-      overflow.push(rendered2);
+      console.warn("[slot] Render/append failed for '" + (child.component || "unknown") + "' in slot '" + frameName + "': " + e.message);
     }
   }
   return overflow;
@@ -417,6 +476,112 @@ function collectChildNodes(node) {
 // src/mcp-entry.ts
 var tree = __TREE__;
 var name = __NAME__ || "Design GPT Import";
+
+// Load all fonts from a node tree to prevent appendChild failures
+var _loadedFonts = new Set();
+async function loadFontsForNode(node) {
+  const fonts = new Set();
+  function collect(n) {
+    try {
+      if (!n || typeof n !== "object") return;
+      var nodeType = null;
+      try { nodeType = n.type; } catch(_) { return; }
+      if (!nodeType) return;
+      if (nodeType === "TEXT") {
+        try {
+          if (n.fontName && n.fontName !== figma.mixed) {
+            fonts.add(JSON.stringify(n.fontName));
+          }
+        } catch(_) {}
+      }
+    } catch (_) { return; }
+    try {
+      if ("children" in n) {
+        var kids = null;
+        try { kids = [...n.children]; } catch(_) { return; }
+        for (const c of kids) { try { collect(c); } catch(_) {} }
+      }
+    } catch (_) {}
+  }
+  collect(node);
+  for (const fs of fonts) {
+    if (_loadedFonts.has(fs)) continue;
+    try {
+      await figma.loadFontAsync(JSON.parse(fs));
+      _loadedFonts.add(fs);
+    } catch (_) {}
+  }
+}
+
+var _fallbackFonts = {
+  "Regular": { family: "Inter", style: "Regular" },
+  "Medium": { family: "Inter", style: "Medium" },
+  "Bold": { family: "Inter", style: "Bold" },
+};
+var _fallbackFont = _fallbackFonts["Regular"];
+var _fallbackFontLoaded = false;
+
+// Replace unloadable fonts with fallback to allow appendChild
+async function swapUnloadableFonts(node) {
+  if (!_fallbackFontLoaded) {
+    for (const f of Object.values(_fallbackFonts)) {
+      try { await figma.loadFontAsync(f); } catch(_) {}
+    }
+    _fallbackFontLoaded = true;
+  }
+  function swap(n) {
+    try {
+      if (!n || typeof n !== "object") return;
+      var nodeType = null;
+      try { nodeType = n.type; } catch(_) { return; }
+      if (!nodeType) return;
+      if (nodeType === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
+        const key = JSON.stringify(n.fontName);
+        if (!_loadedFonts.has(key)) {
+          const fallback = _fallbackFonts[n.fontName.style] || _fallbackFont;
+          n.fontName = fallback;
+        }
+      }
+    } catch(_) { return; }
+    try {
+      if ("children" in n) {
+        var kids = null;
+        try { kids = [...n.children]; } catch(_) { return; }
+        for (const c of kids) { try { swap(c); } catch(_) {} }
+      }
+    } catch(_) {}
+  }
+  swap(node);
+}
+
+// Swap fonts on a freshly-created node (not yet moved into SLOT hierarchy)
+async function swapFontsOnNode(node) {
+  if (!_fallbackFontLoaded) {
+    for (const f of Object.values(_fallbackFonts)) {
+      try { await figma.loadFontAsync(f); } catch(_) {}
+    }
+    _fallbackFontLoaded = true;
+  }
+  function doSwap(n, depth) {
+    if (depth > 3) return;
+    try {
+      if (n.type === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
+        var key = JSON.stringify(n.fontName);
+        if (!_loadedFonts.has(key)) {
+          n.fontName = _fallbackFonts[n.fontName.style] || _fallbackFont;
+        }
+      }
+    } catch(_) {}
+    try { if ("children" in n) { for (const c of [...n.children]) doSwap(c, depth + 1); } } catch(_) {}
+  }
+  doSwap(node, 0);
+}
+
+// appendChild with font error handling — child fonts should already be swapped
+async function safeAppendChild(parent, child) {
+  parent.appendChild(child);
+}
+
 for (const child of [...figma.currentPage.children]) {
   if (child.name === name) {
     try {
@@ -425,19 +590,10 @@ for (const child of [...figma.currentPage.children]) {
     }
   }
 }
-var rootFrame = figma.createFrame();
-rootFrame.name = name;
-rootFrame.layoutMode = "VERTICAL";
-rootFrame.primaryAxisSizingMode = "AUTO";
-rootFrame.counterAxisSizingMode = "AUTO";
-rootFrame.itemSpacing = 0;
-rootFrame.fills = [
-  { type: "SOLID", color: { r: 1, g: 1, b: 1 } }
-];
 var rendered = await renderNode(tree);
-rootFrame.appendChild(rendered);
-rootFrame.x = 0;
-rootFrame.y = 0;
-figma.currentPage.appendChild(rootFrame);
-collectImageSwapFills(rootFrame);
-figma.notify(`\u2713 Rendered "${name}" (${Math.round(rootFrame.width)}\xD7${Math.round(rootFrame.height)})`);
+rendered.name = name;
+rendered.x = 0;
+rendered.y = 0;
+// rendered is already on figma.currentPage (created there by renderNode)
+collectImageSwapFills(rendered);
+figma.notify(`\u2713 Rendered "${name}" (${Math.round(rendered.width)}\xD7${Math.round(rendered.height)})`);

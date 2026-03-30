@@ -11,16 +11,16 @@
       <div class="ModuleDesignSystem__importing" qa="ds-box">
         <div class="ModuleDesignSystem__importing-header">
           <span class="ModuleDesignSystem__importing-desc">
-            {{ syncingLib ? syncingLib.name : 'Syncing…' }}
-            <template v-if="syncingLib && syncingLib.progress && syncingLib.progress.message">
-              — {{ syncingLib.progress.message }}
-            </template>
+            {{ syncStepLabel }}
           </span>
           <span class="ModuleDesignSystem__importing-count" v-if="syncTotalSteps > 0">
             {{ syncStepNumber }}/{{ syncTotalSteps }}
           </span>
         </div>
         <ProgressBar :value="syncStepNumber" :max="syncTotalSteps || 1" />
+        <div v-if="syncMessage" class="ModuleDesignSystem__importing-detail">
+          {{ syncMessage }}
+        </div>
       </div>
     </div>
 
@@ -32,6 +32,7 @@
         :loading="false"
         :saving="saving"
         :name="designSystemName"
+        :preview-file-key="figmaWorkingFileKey"
         :route-names="browserRouteNames"
         :extra-route-names="['design-system-ai-schema']"
         :parent-id="dsId"
@@ -76,6 +77,7 @@ export default {
     return {
       loading: true,
       designSystemName: "",
+      figmaWorkingFileKey: "",
       figmaFiles: [],
       syncing: false,
       saving: false,
@@ -99,6 +101,18 @@ export default {
     syncStepNumber() {
       return this.syncProgress?.step_number || 0;
     },
+    syncStepLabel() {
+      const step = this.syncProgress?.step;
+      const labels = {
+        importing: "Importing",
+        extracting_assets: "Extracting assets",
+        converting: "Generating code",
+      };
+      return labels[step] || "Syncing";
+    },
+    syncMessage() {
+      return this.syncProgress?.message || null;
+    },
   },
   methods: {
     async getToken() {
@@ -118,6 +132,7 @@ export default {
       if (!res.ok) return;
       const ds = await res.json();
       this.designSystemName = ds.name;
+      this.figmaWorkingFileKey = ds.figma_working_file_key || "";
       this.isOwner = ds.is_owner || false;
 
       // If DS is still syncing, show progress bar and poll
@@ -201,10 +216,11 @@ export default {
         for (const lib of this.figmaFiles) lib.loading = false;
       }
     },
-    async saveEdits({ name, urls }) {
+    async saveEdits({ name, urls, previewFileKey }) {
       if (this.saving) return;
       this.saving = true;
       this.designSystemName = name;
+      this.figmaWorkingFileKey = previewFileKey || "";
 
       const newUrls = urls;
       const existingUrls = this.figmaFiles.map((l) => l.figma_url);
@@ -269,7 +285,10 @@ export default {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            design_system: { name: this.designSystemName },
+            design_system: {
+              name: this.designSystemName,
+              figma_working_file_key: this.figmaWorkingFileKey,
+            },
           }),
         });
       } catch { /* continue */ }
@@ -295,7 +314,7 @@ export default {
             this.syncing = false;
           }
         } catch { clearInterval(interval); }
-      }, 2000);
+      }, 1000);
     },
     selectComponentByName(name) {
       for (const lib of this.figmaFiles) {

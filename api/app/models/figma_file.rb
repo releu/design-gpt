@@ -52,9 +52,7 @@ class FigmaFile < ApplicationRecord
     update_progress(step: "converting", step_number: 3, total_steps: 4,
       message: "Complete - #{sets_with_code} component sets, #{components_with_code} standalone components with React code")
 
-    # 4. Visual diff
     update!(status: "ready", progress: progress.merge("completed_at" => Time.current.iso8601))
-    VisualDiffJob.perform_later(id)
     puts "[FigmaFile#sync_with_figma] Sync complete!"
   rescue => e
     update!(status: "error", progress: progress.merge("error" => e.message))

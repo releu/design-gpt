@@ -5,6 +5,8 @@ class DesignSystem < ApplicationRecord
 
   validates :name, presence: true
 
+  before_save :extract_working_file_key, if: :figma_working_file_key_changed?
+
   STATUSES = %w[pending importing converting ready error].freeze
   validates :status, inclusion: { in: STATUSES }
 
@@ -32,6 +34,16 @@ class DesignSystem < ApplicationRecord
     DesignSystemSyncJob.perform_later(id, new_version)
     new_version
   end
+
+  private
+
+  def extract_working_file_key
+    return unless figma_working_file_key.present?
+    match = figma_working_file_key.match(%r{figma\.com/(?:file|design)/([a-zA-Z0-9]+)})
+    self.figma_working_file_key = match[1] if match
+  end
+
+  public
 
   def update_progress(step:, step_number:, total_steps:, message:)
     new_progress = progress.merge(

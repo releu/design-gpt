@@ -30,6 +30,14 @@ class ApplicationController < ActionController::API
     return nil unless payload&.dig("sub")
 
     auth0_id = payload["sub"]
+
+    # Dev-only: ?user=xxx generates tokens with sub "dev|xxx", look up by username
+    if Rails.env.development? && auth0_id&.start_with?("dev|")
+      username = auth0_id.delete_prefix("dev|")
+      @current_user = User.where("username = ?", username).first
+      return @current_user
+    end
+
     @current_user = User.find_by(auth0_id: auth0_id)
 
     if @current_user && @current_user.email.blank?

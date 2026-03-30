@@ -131,7 +131,10 @@ module Figma
       component_sets.each_with_index do |component_set, idx|
         @resolver.current_owner_node_id = component_set.node_id
         generate_component_set(component_set)
-        log "  [#{idx + 1}/#{component_sets.size}] #{component_set.name}" if (idx + 1) % 10 == 0 || idx == component_sets.size - 1
+        if (idx + 1) % 5 == 0 || idx == component_sets.size - 1
+          log "  [#{idx + 1}/#{component_sets.size}] #{component_set.name}"
+          report("Codegen — #{idx + 1}/#{component_sets.size} sets: #{component_set.name}")
+        end
       end
 
       components = @figma_file.components.to_a
@@ -139,9 +142,13 @@ module Figma
       components.each_with_index do |component, idx|
         @resolver.current_owner_node_id = component.node_id
         generate_component(component)
-        log "  [#{idx + 1}/#{components.size}] #{component.name}" if (idx + 1) % 10 == 0 || idx == components.size - 1
+        if (idx + 1) % 5 == 0 || idx == components.size - 1
+          log "  [#{idx + 1}/#{components.size}] #{component.name}"
+          report("Codegen — #{component_sets.size} sets done, #{idx + 1}/#{components.size} components: #{component.name}")
+        end
       end
 
+      report("Compiling #{@pending_compilations.size} components + #{@pending_variant_compilations.size} variants...")
       batch_compile_and_persist
       save_unresolved_warnings
 
@@ -151,6 +158,10 @@ module Figma
 
     def log(message)
       puts "[Figma::ReactFactory] #{message}"
+    end
+
+    def report(message)
+      @figma_file.update_progress(step: "converting", step_number: 3, total_steps: 4, message: message)
     end
 
     def generate_component_set(component_set)

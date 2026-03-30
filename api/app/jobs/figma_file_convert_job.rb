@@ -24,8 +24,6 @@ class FigmaFileConvertJob < ApplicationJob
       "completed_at" => Time.current.iso8601,
       "codegen_version" => Figma::ReactFactory::CODEGEN_VERSION
     ))
-    VisualDiffJob.perform_later(ff.id)
-
     maybe_finalize_design_system(ff)
   rescue => e
     ff.update!(status: "error", progress: ff.progress.merge("error" => e.message))

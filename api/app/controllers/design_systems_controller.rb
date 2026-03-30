@@ -69,7 +69,12 @@ class DesignSystemsController < ApplicationController
 
   def show
     ds = find_viewable_design_system(params[:id])
-    libs = ds.current_figma_files
+    # When syncing, show in-progress files (next version) so frontend gets live progress
+    libs = if %w[pending importing converting].include?(ds.status)
+      ds.figma_files.where(version: ds.version + 1).presence || ds.current_figma_files
+    else
+      ds.current_figma_files
+    end
     is_owner = current_user&.id == ds.user_id
     render json: {
       id: ds.id,
@@ -78,6 +83,7 @@ class DesignSystemsController < ApplicationController
       status: ds.status,
       progress: ds.progress,
       is_owner: is_owner,
+      figma_working_file_key: ds.figma_working_file_key,
       figma_file_ids: libs.pluck(:id),
       figma_files: libs.map { |ff| {
         id: ff.id, name: ff.name || ff.figma_file_name, figma_url: ff.figma_url,

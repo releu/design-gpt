@@ -217,7 +217,7 @@ export default {
         } catch {
           clearInterval(interval);
         }
-      }, 2000);
+      }, 1000);
 
       this.pollingIntervals.push(interval);
     },
@@ -352,6 +352,15 @@ export default {
     color: var(--darkgray);
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  &__importing-detail {
+    font: var(--font-basic);
+    color: var(--darkgray);
+    margin-top: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   // Browser (used by DesignSystemView)

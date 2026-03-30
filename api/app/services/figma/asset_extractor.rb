@@ -16,17 +16,23 @@ module Figma
       end
 
       puts "[AssetExtractor] Starting asset extraction"
+      report("Starting asset extraction...")
 
       component_sets_count = extract_for_component_sets
       standalone_count = extract_for_standalone_components
       inline_count = extract_inline_vectors
 
+      report("Assets complete — #{component_sets_count} sets, #{standalone_count} standalone, #{inline_count} inline")
       puts "[AssetExtractor] Extraction complete: #{component_sets_count} component sets, #{standalone_count} standalone components, #{inline_count} inline vectors"
 
       dump_to_cache if Figma::Client.cache_enabled?
     end
 
     private
+
+    def report(message)
+      @figma_file.update_progress(step: "extracting_assets", step_number: 2, total_steps: 4, message: message)
+    end
 
     def cache_key
       lm = @figma_file.figma_last_modified || "unknown"
@@ -103,6 +109,7 @@ module Figma
       vector_sets = component_sets.select(&:vector?)
 
       puts "[AssetExtractor] Component sets: #{vector_sets.size} vectors out of #{total_count} total"
+      report("Extracting SVGs — #{vector_sets.size} vector sets out of #{total_count}...")
 
       vector_sets.group_by(&:figma_file_key).each do |file_key, sets|
         puts "[AssetExtractor]   Processing #{sets.size} component sets from #{sets.first&.figma_file_name}"
@@ -118,6 +125,7 @@ module Figma
       vector_components = components.select(&:vector?)
 
       puts "[AssetExtractor] Standalone components: #{vector_components.size} vectors out of #{total_count} total"
+      report("Extracting SVGs — #{vector_components.size} vector components...")
 
       vector_components.group_by(&:figma_file_key).each do |file_key, comps|
         puts "[AssetExtractor]   Processing #{comps.size} standalone components from #{comps.first&.figma_file_name}"
@@ -184,6 +192,7 @@ module Figma
 
       deduped_count = inline_vectors_by_file.values.sum(&:size)
       puts "[AssetExtractor] Found #{total_count} inline vector frames (#{deduped_count} unique after dedup)"
+      report("Extracting #{deduped_count} inline SVGs...")
 
       saved_count = 0
       inline_vectors_by_file.each do |file_key, node_ids|
@@ -452,6 +461,7 @@ module Figma
 
       node_ids.each_slice(100).with_index do |batch, batch_idx|
         puts "[AssetExtractor]     Batch #{batch_idx + 1}/#{total_batches} (#{saved_count} saved so far)"
+        report("Inline SVGs — batch #{batch_idx + 1}/#{total_batches}, #{saved_count} saved")
 
         begin
           # Rotate tokens across batches for rate limit distribution

@@ -63,6 +63,7 @@ module Figma
     end
 
     def self.renderer_js
+      return File.read(RENDERER_JS_PATH) if Rails.env.development?
       @renderer_js ||= File.read(RENDERER_JS_PATH)
     end
 

@@ -61,6 +61,19 @@
               </a>
             </div>
           </div>
+          <div class="ModuleDesignSystem__overview-field" v-if="previewFileKey">
+            <div class="ModuleDesignSystem__overview-label">preview file</div>
+            <div class="ModuleDesignSystem__overview-files">
+              <a
+                class="ModuleDesignSystem__overview-file-row"
+                :href="`https://www.figma.com/design/${previewFileKey}`"
+                target="_blank"
+              >
+                <Icon type="link" />
+                <span class="ModuleDesignSystem__overview-file-name">{{ previewFileKey }}</span>
+              </a>
+            </div>
+          </div>
           <div class="ModuleDesignSystem__overview-actions" v-if="isOwner">
             <div class="ModuleDesignSystem__overview-edit" @click="startEditing">edit</div>
             <div class="ModuleDesignSystem__overview-edit" @click="$emit('sync-all')">sync all</div>
@@ -90,6 +103,14 @@
                 @blur="cleanupEditUrls"
               />
             </div>
+          </div>
+          <div class="ModuleDesignSystem__overview-field">
+            <div class="ModuleDesignSystem__overview-label">preview file</div>
+            <input
+              class="ModuleDesignSystem__pill-input"
+              v-model="editPreviewFileKey"
+              placeholder="figma file key for rendering previews"
+            />
           </div>
           <div
             class="ModuleDesignSystem__do-import"
@@ -128,6 +149,7 @@ export default {
     loading: { type: Boolean, default: false },
     saving: { type: Boolean, default: false },
     name: { type: String, default: "" },
+    previewFileKey: { type: String, default: "" },
     isOwner: { type: Boolean, default: false },
     routeNames: { type: Object, default: null },
     extraRouteNames: { type: Array, default: () => [] },
@@ -138,6 +160,7 @@ export default {
     return {
       editing: false,
       editName: "",
+      editPreviewFileKey: "",
       editUrlFields: [""],
       localSelectedComponentId: null,
     };
@@ -186,6 +209,7 @@ export default {
     },
     startEditing() {
       this.editName = this.name;
+      this.editPreviewFileKey = this.previewFileKey;
       this.editUrlFields = [
         ...this.figmaFiles.map((l) => l.figma_url || ""),
         "",
@@ -207,7 +231,7 @@ export default {
     },
     emitSave() {
       const urls = [...new Set(this.editUrlFields.filter((u) => u.trim()))];
-      this.$emit("save", { name: this.editName, urls });
+      this.$emit("save", { name: this.editName, urls, previewFileKey: this.editPreviewFileKey.trim() });
     },
     finishEditing() {
       this.editing = false;
