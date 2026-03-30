@@ -94,29 +94,6 @@ async function renderComponentInstance(node) {
     return await renderFallbackFrame(node, node.component || "");
   }
   var instance = component.createInstance();
-
-  // Swap custom fonts so the instance can be moved between parents.
-  // Skip SLOT nodes — their children become broken refs after font swap.
-  if (!_fallbackFontLoaded) {
-    for (const f of Object.values(_fallbackFonts)) {
-      try { await figma.loadFontAsync(f); } catch(_) {}
-    }
-    _fallbackFontLoaded = true;
-  }
-  (function swapInst(n, d) {
-    if (d > 10) return;
-    try {
-      if (!n || !n.type) return;
-      if (n.type === "SLOT") return;
-      if (n.type === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
-        var key = JSON.stringify(n.fontName);
-        if (!_loadedFonts.has(key)) {
-          n.fontName = _fallbackFonts[n.fontName.style] || _fallbackFont;
-        }
-      }
-    } catch(_) { return; }
-    try { if ("children" in n) for (const c of n.children) swapInst(c, d+1); } catch(_) {}
-  })(instance, 0);
   applyProperties(instance, node);
   if (node.isImage && node.textProperties) {
     const prompt = Object.values(node.textProperties).find((v) => typeof v === "string" && v.length > 0);
@@ -465,16 +442,6 @@ function collectChildNodes(node) {
 var tree = __TREE__;
 var name = __NAME__ || "Design GPT Import";
 
-// Font fallback config — custom fonts (e.g. YS Text) can't be loaded via
-// figma.loadFontAsync, so we swap them to Inter before moving nodes between parents.
-var _loadedFonts = new Set();
-var _fallbackFonts = {
-  "Regular": { family: "Inter", style: "Regular" },
-  "Medium": { family: "Inter", style: "Medium" },
-  "Bold": { family: "Inter", style: "Bold" },
-};
-var _fallbackFont = _fallbackFonts["Regular"];
-var _fallbackFontLoaded = false;
 
 for (const child of [...figma.currentPage.children]) {
   if (child.name === name) {
