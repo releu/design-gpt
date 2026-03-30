@@ -161,9 +161,9 @@ async function renderComponentInstance(node) {
     wrapper.counterAxisSizingMode = "AUTO";
     wrapper.itemSpacing = 0;
     wrapper.fills = [];
-    await safeAppendChild(wrapper, instance);
+        wrapper.appendChild(instance);
     for (const child of allOverflow) {
-      await safeAppendChild(wrapper, child);
+          wrapper.appendChild(child);
     }
     return wrapper;
   }
@@ -176,9 +176,9 @@ async function renderComponentInstance(node) {
   wrapper.counterAxisSizingMode = "AUTO";
   wrapper.itemSpacing = 0;
   wrapper.fills = [];
-  await safeAppendChild(wrapper, instance);
+      wrapper.appendChild(instance);
   for (const child of overflow) {
-    await safeAppendChild(wrapper, child);
+        wrapper.appendChild(child);
   }
   return wrapper;
 }
@@ -239,7 +239,7 @@ async function renderLayoutFrame(node, direction, name2) {
   const children = collectChildNodes(node);
   for (const child of children) {
     const childNode = await renderNode(child);
-    await safeAppendChild(frame, childNode);
+        frame.appendChild(childNode);
   }
   return frame;
 }
@@ -254,7 +254,7 @@ async function renderFallbackFrame(node, name2) {
   const children = collectChildNodes(node);
   for (const child of children) {
     const childNode = await renderNode(child);
-    await safeAppendChild(frame, childNode);
+        frame.appendChild(childNode);
   }
   return frame;
 }
@@ -376,7 +376,7 @@ async function populateSlotFrame(instance, frameName, children) {
   for (const child of children) {
     try {
       const rendered2 = await renderNode(child);
-      await safeAppendChild(slotFrame, rendered2);
+          slotFrame.appendChild(rendered2);
     } catch (e) {
       console.warn("[slot] Render/append failed for '" + (child.component || "unknown") + "' in slot '" + frameName + "': " + e.message);
     }
@@ -477,42 +477,9 @@ function collectChildNodes(node) {
 var tree = __TREE__;
 var name = __NAME__ || "Design GPT Import";
 
-// Load all fonts from a node tree to prevent appendChild failures
+// Font fallback config — custom fonts (e.g. YS Text) can't be loaded via
+// figma.loadFontAsync, so we swap them to Inter before moving nodes between parents.
 var _loadedFonts = new Set();
-async function loadFontsForNode(node) {
-  const fonts = new Set();
-  function collect(n) {
-    try {
-      if (!n || typeof n !== "object") return;
-      var nodeType = null;
-      try { nodeType = n.type; } catch(_) { return; }
-      if (!nodeType) return;
-      if (nodeType === "TEXT") {
-        try {
-          if (n.fontName && n.fontName !== figma.mixed) {
-            fonts.add(JSON.stringify(n.fontName));
-          }
-        } catch(_) {}
-      }
-    } catch (_) { return; }
-    try {
-      if ("children" in n) {
-        var kids = null;
-        try { kids = [...n.children]; } catch(_) { return; }
-        for (const c of kids) { try { collect(c); } catch(_) {} }
-      }
-    } catch (_) {}
-  }
-  collect(node);
-  for (const fs of fonts) {
-    if (_loadedFonts.has(fs)) continue;
-    try {
-      await figma.loadFontAsync(JSON.parse(fs));
-      _loadedFonts.add(fs);
-    } catch (_) {}
-  }
-}
-
 var _fallbackFonts = {
   "Regular": { family: "Inter", style: "Regular" },
   "Medium": { family: "Inter", style: "Medium" },
@@ -520,67 +487,6 @@ var _fallbackFonts = {
 };
 var _fallbackFont = _fallbackFonts["Regular"];
 var _fallbackFontLoaded = false;
-
-// Replace unloadable fonts with fallback to allow appendChild
-async function swapUnloadableFonts(node) {
-  if (!_fallbackFontLoaded) {
-    for (const f of Object.values(_fallbackFonts)) {
-      try { await figma.loadFontAsync(f); } catch(_) {}
-    }
-    _fallbackFontLoaded = true;
-  }
-  function swap(n) {
-    try {
-      if (!n || typeof n !== "object") return;
-      var nodeType = null;
-      try { nodeType = n.type; } catch(_) { return; }
-      if (!nodeType) return;
-      if (nodeType === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
-        const key = JSON.stringify(n.fontName);
-        if (!_loadedFonts.has(key)) {
-          const fallback = _fallbackFonts[n.fontName.style] || _fallbackFont;
-          n.fontName = fallback;
-        }
-      }
-    } catch(_) { return; }
-    try {
-      if ("children" in n) {
-        var kids = null;
-        try { kids = [...n.children]; } catch(_) { return; }
-        for (const c of kids) { try { swap(c); } catch(_) {} }
-      }
-    } catch(_) {}
-  }
-  swap(node);
-}
-
-// Swap fonts on a freshly-created node (not yet moved into SLOT hierarchy)
-async function swapFontsOnNode(node) {
-  if (!_fallbackFontLoaded) {
-    for (const f of Object.values(_fallbackFonts)) {
-      try { await figma.loadFontAsync(f); } catch(_) {}
-    }
-    _fallbackFontLoaded = true;
-  }
-  function doSwap(n, depth) {
-    if (depth > 3) return;
-    try {
-      if (n.type === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
-        var key = JSON.stringify(n.fontName);
-        if (!_loadedFonts.has(key)) {
-          n.fontName = _fallbackFonts[n.fontName.style] || _fallbackFont;
-        }
-      }
-    } catch(_) {}
-    try { if ("children" in n) { for (const c of [...n.children]) doSwap(c, depth + 1); } } catch(_) {}
-  }
-  doSwap(node, 0);
-}
-
-// appendChild with font error handling — child fonts should already be swapped
-async function safeAppendChild(parent, child) {
-  parent.appendChild(child);
-}
 
 for (const child of [...figma.currentPage.children]) {
   if (child.name === name) {
