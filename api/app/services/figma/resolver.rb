@@ -397,19 +397,6 @@ module Figma
 
       # Check for icon swap (INSTANCE_SWAP without preferredValues)
       if (swap_prop = instance_swap_prop_name(node, pd))
-        # If we have SVG content for this instance, inline it instead of
-        # creating a component prop that requires the consumer to pass a value
-        svg_content = find_svg_for_instance_swap(node)
-        if svg_content
-          styles = extract_frame_styles(node, false)
-          # Apply icon color/opacity from instance children fills
-          overrides = extract_instance_style_overrides(node)
-          styles.merge!(overrides.slice("color", "opacity"))
-          return Figma::IR.svg_inline(node_id: node["id"], name: node["name"] || "element",
-                                       styles: styles, svg_content: svg_content,
-                                       visibility_prop: visibility_prop)
-        end
-
         overrides = extract_instance_style_overrides(node)
         placeholder_styles, placeholder_text = extract_icon_swap_placeholder_styles(node)
         return Figma::IR.icon_swap(node_id: node["id"], name: node["name"] || "element",
@@ -815,8 +802,11 @@ module Figma
       if bbox
         w = bbox["width"]&.round
         h = bbox["height"]&.round
-        style["width"] = "#{w}px" if w && w > 0
-        style["height"] = "#{h}px" if h && h > 0
+        sizing_h = node["layoutSizingHorizontal"]
+        sizing_v = node["layoutSizingVertical"]
+        # Only apply fixed dimensions when Figma sizing is FIXED (not FILL/HUG)
+        style["width"] = "#{w}px" if w && w > 0 && (sizing_h.nil? || sizing_h == "FIXED")
+        style["height"] = "#{h}px" if h && h > 0 && (sizing_v.nil? || sizing_v == "FIXED")
       end
 
       style
