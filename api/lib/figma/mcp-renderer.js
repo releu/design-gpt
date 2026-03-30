@@ -342,9 +342,9 @@ async function populateSlotFrame(instance, frameName, children) {
     try {
       const rendered2 = await renderNode(child);
       slotFrame.appendChild(rendered2);
-      // Match parent SLOT's layout — fill width/height by default
       try {
-        if (rendered2.layoutSizingHorizontal !== undefined) rendered2.layoutSizingHorizontal = "FILL";
+        rendered2.layoutSizingHorizontal = "FILL";
+        rendered2.layoutSizingVertical = "HUG";
       } catch(_) {}
     } catch (e) {
       console.warn("[slot] Render/append failed for '" + (child.component || "unknown") + "' in slot '" + frameName + "': " + e.message);
