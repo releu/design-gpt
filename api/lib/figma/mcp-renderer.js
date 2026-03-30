@@ -94,7 +94,9 @@ async function renderComponentInstance(node) {
     return await renderFallbackFrame(node, node.component || "");
   }
   var instance = component.createInstance();
-  // Swap custom fonts immediately so the instance can be moved later
+
+  // Swap custom fonts so the instance can be moved between parents.
+  // Skip SLOT nodes — their children become broken refs after font swap.
   if (!_fallbackFontLoaded) {
     for (const f of Object.values(_fallbackFonts)) {
       try { await figma.loadFontAsync(f); } catch(_) {}
@@ -104,13 +106,15 @@ async function renderComponentInstance(node) {
   (function swapInst(n, d) {
     if (d > 10) return;
     try {
+      if (!n || !n.type) return;
+      if (n.type === "SLOT") return;
       if (n.type === "TEXT" && n.fontName && n.fontName !== figma.mixed) {
         var key = JSON.stringify(n.fontName);
         if (!_loadedFonts.has(key)) {
           n.fontName = _fallbackFonts[n.fontName.style] || _fallbackFont;
         }
       }
-    } catch(_) {}
+    } catch(_) { return; }
     try { if ("children" in n) for (const c of n.children) swapInst(c, d+1); } catch(_) {}
   })(instance, 0);
   applyProperties(instance, node);
@@ -349,30 +353,14 @@ async function populateSlotFrame(instance, frameName, children) {
     }
     return overflow;
   }
+  // Hide SLOT default children before appending new ones
   try {
-    var defaultCount = 0;
     if ("children" in slotFrame) {
-      const defaults = [...slotFrame.children];
-      defaultCount = defaults.length;
-      for (const d of defaults) {
-        try { d.remove(); } catch (_) {
-          try { d.visible = false; } catch (_2) {}
-        }
-      }
-    } else if (slotFrame.type === "SLOT") {
-      // SLOT nodes may need different access
-      const defaults = slotFrame.children ? [...slotFrame.children] : [];
-      defaultCount = defaults.length;
-      for (const d of defaults) {
-        try { d.remove(); } catch (_) {
-          try { d.visible = false; } catch (_2) {}
-        }
+      for (const d of [...slotFrame.children]) {
+        try { d.remove(); } catch(_) { try { d.visible = false; } catch(_2) {} }
       }
     }
-    console.log("[slot] Cleared " + defaultCount + " defaults from '" + frameName + "'");
-  } catch(e) {
-    console.warn("[slot] Failed to clear defaults: " + e.message);
-  }
+  } catch(_) {}
   for (const child of children) {
     try {
       const rendered2 = await renderNode(child);
