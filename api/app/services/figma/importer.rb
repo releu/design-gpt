@@ -293,6 +293,8 @@ module Figma
       container_types = %w[FRAME GROUP COMPONENT COMPONENT_SET]
 
       if container_types.include?(figma_json["type"])
+        has_own_fills = figma_json["fills"].is_a?(Array) && figma_json["fills"].any? { |f| f["visible"] != false }
+        return false if has_own_fills
         return true if children.nil? || children.empty?
         return children.all? { |child| empty_component?(child) }
       end
