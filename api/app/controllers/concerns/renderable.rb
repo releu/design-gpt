@@ -228,7 +228,7 @@ module Renderable
       cl.components.where(source: "upload").where.not(react_code_compiled: [nil, ""]).each do |comp|
         load_component.(comp, to_component_name(comp.name))
       end
-      cl.component_sets.includes(:variants).each do |cs|
+      cl.component_sets.each do |cs|
         load_component_set.(cs, to_component_name(cs.name))
       end
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
@@ -271,7 +271,7 @@ module Renderable
         resolved.merge(new_refs)
         only.merge(new_refs)
         libraries.each do |cl|
-          cl.component_sets.includes(:variants).each do |cs|
+          cl.component_sets.each do |cs|
             react_name = to_component_name(cs.name)
             next unless new_refs.include?(react_name)
             load_component_set.(cs, react_name)
