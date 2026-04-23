@@ -621,7 +621,14 @@ module Figma
       @has_slot = true
       class_name = generate_class_name(ir[:name], false)
       @css_rules[class_name] = ir[:styles]
-      @css_rules["#{class_name} > *"] = { "width" => "100%", "height" => "auto" }
+      # Horizontal flex slots: children size naturally (width:auto overrides
+      # component-root width:100% which would otherwise push siblings out).
+      # Vertical flex slots: children fill width.
+      if ir[:styles]["flex-direction"] == "row"
+        @css_rules["#{class_name} > *"] = { "width" => "auto", "height" => "auto" }
+      else
+        @css_rules["#{class_name} > *"] = { "width" => "100%", "height" => "auto" }
+      end
       "<div className=\"#{class_name}\">{props.#{ir[:prop_name]}}</div>"
     end
 
