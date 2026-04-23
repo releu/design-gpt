@@ -799,7 +799,7 @@ module Figma
       end
 
       bbox = node["absoluteBoundingBox"]
-      if bbox
+      if bbox && node["layoutPositioning"] != "ABSOLUTE"
         w = bbox["width"]&.round
         h = bbox["height"]&.round
         sizing_h = node["layoutSizingHorizontal"]
