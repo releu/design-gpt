@@ -624,10 +624,15 @@ module Figma
       # Horizontal flex slots: children size naturally (width:auto overrides
       # component-root width:100% which would otherwise push siblings out).
       # Vertical flex slots: children fill width.
+      # Target `> [data-component]` for higher specificity than the child's own
+      # `.componentname-root` rule (both are class specificity, but attribute
+      # selectors make the compound rule win via specificity 0,2,0).
       if ir[:styles]["flex-direction"] == "row"
-        @css_rules["#{class_name} > *"] = { "width" => "auto", "height" => "auto" }
+        @css_rules["#{class_name} > *"] = { "height" => "auto" }
+        @css_rules["#{class_name} > [data-component]"] = { "width" => "auto" }
       else
-        @css_rules["#{class_name} > *"] = { "width" => "100%", "height" => "auto" }
+        @css_rules["#{class_name} > *"] = { "height" => "auto" }
+        @css_rules["#{class_name} > [data-component]"] = { "width" => "100%" }
       end
       "<div className=\"#{class_name}\">{props.#{ir[:prop_name]}}</div>"
     end
