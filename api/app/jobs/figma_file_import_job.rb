@@ -84,6 +84,12 @@ class FigmaFileImportJob < ApplicationJob
       cs.variants.each do |v|
         attrs = v.attributes.except("id", "component_set_id", "created_at", "updated_at")
         attrs["react_code_compiled"] = nil if needs_recompile
+        # Rewrite baked-in component set ID references in compiled code
+        if attrs["react_code_compiled"].present? && new_cs.id != cs.id
+          attrs["react_code_compiled"] = attrs["react_code_compiled"]
+            .gsub("cs_#{cs.id}__", "cs_#{new_cs.id}__")
+            .gsub("cs_#{cs.id}", "cs_#{new_cs.id}")
+        end
         new_cs.variants.create!(attrs)
       end
       cs.figma_assets.each do |a|
@@ -99,6 +105,13 @@ class FigmaFileImportJob < ApplicationJob
       attrs = c.attributes.except("id", "figma_file_id", "created_at", "updated_at")
       attrs["react_code_compiled"] = nil if needs_recompile
       new_c = ff.components.create!(attrs)
+      # Rewrite baked-in component ID references in compiled code
+      if new_c.react_code_compiled.present? && new_c.id != c.id
+        new_c.update_column(:react_code_compiled,
+          new_c.react_code_compiled
+            .gsub("c_#{c.id}__", "c_#{new_c.id}__")
+            .gsub("c_#{c.id}", "c_#{new_c.id}"))
+      end
       c.figma_assets.each do |a|
         FigmaAsset.create!(
           a.attributes.except("id", "component_id", "component_set_id", "created_at", "updated_at")
