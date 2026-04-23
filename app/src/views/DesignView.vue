@@ -156,6 +156,7 @@ export default {
       panelMode: parseDesignHash().panelMode,
       currentIterationId: null,
       pollTimer: null,
+      pollInterval: null,
       showExportMenu: false,
       saving: false,
       figmaRendering: false,
@@ -239,19 +240,23 @@ export default {
       }
 
       if (data.status === "generating") {
-        this.startPolling();
+        this.startPolling(1000);
       } else {
-        this.stopPolling();
+        // Slow background poll catches DS sync completion, system messages, etc.
+        this.startPolling(5000);
       }
     },
-    startPolling() {
-      if (this.pollTimer) return;
-      this.pollTimer = setInterval(() => this.fetchDesign(), 1000);
+    startPolling(interval) {
+      if (this.pollTimer && this.pollInterval === interval) return;
+      this.stopPolling();
+      this.pollInterval = interval;
+      this.pollTimer = setInterval(() => this.fetchDesign(), interval);
     },
     stopPolling() {
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
+        this.pollInterval = null;
       }
     },
     onCodeChange() {
@@ -365,7 +370,7 @@ export default {
   mounted() {
     this.fetchDesign();
     this.fetchAllDesigns();
-    this.startPolling();
+    this.startPolling(5000);
     this._closeExportMenu = (e) => {
       if (this.$el && !e.target.closest('[qa="export-btn"]')) {
         this.showExportMenu = false;
