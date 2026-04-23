@@ -112,13 +112,15 @@ module Renderable
       end
     end
 
-    # Load per-variant compiled code
-    sorted_variants = all_variants.sort_by { |v| [v.is_default ? 0 : 1, v.id] }
-    variant_index = sorted_variants.each_with_index.to_h { |v, i| [v.id, i] }
-
+    # Load per-variant compiled code and extract baked-in variant indices
+    variant_baked_index = {}
     matched.each do |v|
       next unless v.react_code_compiled.present?
       browser_code_parts << v.react_code_compiled
+      # Extract the baked-in index from the compiled function name (e.g. Button_cs_123__v42)
+      if (m = v.react_code_compiled.match(/#{Regexp.escape(react_name)}_#{Regexp.escape(component_id)}__v(\d+)/))
+        variant_baked_index[v.id] = m[1].to_i
+      end
     end
 
     # Generate a minimal dispatcher function
@@ -151,7 +153,8 @@ module Renderable
 
     # Sort non-default variants first (most specific), default last
     dispatch_lines = matched.sort_by { |v| [v.is_default ? 1 : 0, v.id] }.map do |v|
-      idx = variant_index[v.id]
+      idx = variant_baked_index[v.id]
+      next nil unless idx
       func_name = "#{react_name}_#{component_id}__v#{idx}"
       conditions = variant_prop_names.map do |prop_key|
         clean_key = prop_key.gsub(/#[\d:]+$/, "").strip
@@ -168,7 +171,8 @@ module Renderable
       "  if (#{conditions.join(' && ')}) return #{func_name}(props);"
     end.compact
 
-    default_idx = variant_index[default_variant.id]
+    default_idx = variant_baked_index[default_variant.id]
+    return false unless default_idx
     default_func = "#{react_name}_#{component_id}__v#{default_idx}"
     dispatch_lines << "  return #{default_func}(props);"
 
