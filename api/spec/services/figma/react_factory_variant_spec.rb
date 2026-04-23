@@ -299,8 +299,11 @@ RSpec.describe Figma::ReactFactory, "multi-variant dispatch" do
       factory.generate_component_set(multi_variant_set)
       variants = multi_variant_set.variants.where.not(react_code_compiled: nil)
 
-      all_compiled = variants.map(&:react_code_compiled).join("\n")
-      expect(all_compiled).to include("styles_cs_#{multi_variant_set.id}")
+      # CSS is now extracted out of react_code_compiled into css_code; the
+      # per-variant scoping is reflected in class names like chipv0-root.
+      all_css = variants.map(&:css_code).compact.join("\n")
+      expect(all_css).to include(".chipv0-root")
+      expect(all_css).to include(".chipv1-root")
     end
   end
 

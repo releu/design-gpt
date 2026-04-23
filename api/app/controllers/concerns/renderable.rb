@@ -56,7 +56,7 @@ module Renderable
 
   # Try to load only the needed variants for a component set.
   # Returns true if per-variant code was available and loaded, false to fall back to full blob.
-  def try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
+  def try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts, css_parts = nil)
     all_variants = cs.variants.to_a.select { |v| v.figma_json.present? }
     non_default_with_code = all_variants.select { |v| !v.is_default && v.react_code_compiled.present? }
     return false if non_default_with_code.empty?
@@ -117,6 +117,7 @@ module Renderable
     matched.each do |v|
       next unless v.react_code_compiled.present?
       browser_code_parts << v.react_code_compiled
+      css_parts << v.css_code if css_parts && v.css_code.present?
       # Extract the baked-in index from the compiled function name (e.g. Button_cs_123__v42)
       if (m = v.react_code_compiled.match(/#{Regexp.escape(react_name)}_#{Regexp.escape(component_id)}__v(\d+)/))
         variant_baked_index[v.id] = m[1].to_i
@@ -202,7 +203,7 @@ module Renderable
 
       if has_per_variant
         usages = component_usages&.dig(react_name)
-        if try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts)
+        if try_load_per_variant(cs, react_name, variant_prop_names, usages, browser_code_parts, css_parts)
           loaded_react_names << react_name
           return
         end
@@ -212,6 +213,7 @@ module Renderable
       variant = cs.default_variant
       return unless variant&.react_code_compiled.present?
       browser_code_parts << variant.react_code_compiled
+      css_parts << variant.css_code if variant.css_code.present?
       loaded_react_names << react_name
     }
 
@@ -220,6 +222,7 @@ module Renderable
       return if only && !only.include?(react_name)
       return unless comp.react_code_compiled.present?
       browser_code_parts << comp.react_code_compiled
+      css_parts << comp.css_code if comp.css_code.present?
       loaded_react_names << react_name
       container_names << react_name if comp.slots.present? && comp.slots.any?
     }
@@ -237,10 +240,6 @@ module Renderable
       end
       cl.components.where.not(react_code_compiled: [nil, ""]).each do |comp|
         load_component.(comp, to_component_name(comp.name))
-      end
-      cl.components.where.not(css_code: [nil, ""]).each do |comp|
-        react_name = to_component_name(comp.name)
-        css_parts << comp.css_code if !only || only.include?(react_name)
       end
     end
 

@@ -266,7 +266,8 @@ module Figma
           }
         else
           compiled = compile_for_browser(per_variant_code, component_name, component_id, scope_id: "#{component_id}_v#{entry[:index]}")
-          entry[:variant_record].update!(react_code_compiled: compiled)
+          js, css = split_css_from_compiled(compiled)
+          entry[:variant_record].update!(react_code_compiled: js, css_code: css)
         end
       end
 
@@ -295,8 +296,9 @@ module Figma
         nil
       else
         compiled = compile_for_browser(code, component_name, component_id)
-        record.update!(react_code_compiled: compiled)
-        compiled
+        js, css = split_css_from_compiled(compiled)
+        record.update!(react_code_compiled: js, css_code: css)
+        js
       end
     end
 
@@ -333,6 +335,22 @@ module Figma
       compiled.strip
     end
 
+    # Extract CSS from compiled JS: removes `const styles_X = \`...\`;` blocks
+    # and `React.createElement("style", null, styles_X),` references from the
+    # render output. Returns [js_without_style, extracted_css].
+    def split_css_from_compiled(compiled)
+      css_parts = []
+      js = compiled.gsub(/const (styles_\w+)\s*=\s*`([\s\S]*?)`;\s*/) do
+        css_parts << $2
+        ""
+      end
+      # Strip the React.createElement("style", ...) calls. The trailing comma
+      # is optional because the style tag might be the last child.
+      js = js.gsub(/(?:\/\* @__PURE__ \*\/\s*)?React\.createElement\("style",\s*null,\s*styles_\w+\)\s*,\s*/, "")
+      js = js.gsub(/(?:\/\* @__PURE__ \*\/\s*)?React\.createElement\("style",\s*null,\s*styles_\w+\)\s*/, "")
+      [js.strip, css_parts.join("\n")]
+    end
+
     def batch_compile_and_persist
       return if @pending_compilations.empty? && @pending_variant_compilations.empty?
 
@@ -359,7 +377,8 @@ module Figma
         raw = compiled_map[entry[:key]]
         if raw
           compiled = postprocess_compiled(raw)
-          entry[:record].update!(react_code_compiled: compiled)
+          js, css = split_css_from_compiled(compiled)
+          entry[:record].update!(react_code_compiled: js, css_code: css)
         else
           Rails.logger.error("Batch variant compilation missing output for #{entry[:name]}")
         end
@@ -377,10 +396,11 @@ module Figma
           end
         end
 
-        entry[:record].update!(react_code_compiled: compiled)
+        js, css = split_css_from_compiled(compiled)
+        entry[:record].update!(react_code_compiled: js, css_code: css)
 
         gen = @generated.values.find { |g| g[:name] == entry[:name] }
-        gen[:compiled_code] = compiled if gen
+        gen[:compiled_code] = js if gen
       end
 
       log "Batch compilation complete"
