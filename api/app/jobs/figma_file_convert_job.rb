@@ -96,6 +96,7 @@ class FigmaFileConvertJob < ApplicationJob
       ds.update!(status: "error", progress: ds.progress.merge("error" => "One or more files failed"))
     else
       ds.update!(status: "ready", version: ff.version, progress: ds.progress.merge("completed_at" => Time.current.iso8601))
+      DsUpdateNotifyJob.perform_later(ds.id)
     end
 
     # Schedule delayed shutdown — keeps worker alive for 10 min in case of re-sync

@@ -26,6 +26,25 @@ class Design < ApplicationRecord
     design_last_iteration
   end
 
+  def rebuild
+    last_tree = iterations.order(:id).where.not(tree: nil).last
+    return unless last_tree
+
+    # Mark the system message as started
+    chat_messages.where(author: "system", action: "rebuild").update_all(action: "rebuild_started")
+
+    rebuild_prompt = <<~PROMPT
+      The design system components have been updated. Rebuild the following design using the current component API. Preserve the layout, content, and structure as closely as possible. If a component or prop no longer exists, find the closest equivalent.
+
+      Previous design (JSON tree):
+      #{last_tree.tree.to_json}
+    PROMPT
+
+    update!(status: "generating")
+    create_new_iteration("Rebuild after design system update")
+    design_last_iteration(rebuild_prompt)
+  end
+
   def improve(prompt)
     update!(status: "generating")
 
@@ -39,17 +58,21 @@ class Design < ApplicationRecord
     design_last_iteration
   end
 
-  def design_last_iteration
+  def design_last_iteration(prompt_override = nil)
     i = iterations.last
 
-    ordered = iterations.order(:id).to_a
-    chat_context = ordered.each_with_index.map { |iter, idx|
-      "[Iteration #{idx + 1}] #{iter.comment}"
-    }.join("\n")
+    if prompt_override
+      chat_context = prompt_override
+    else
+      ordered = iterations.order(:id).to_a
+      chat_context = ordered.each_with_index.map { |iter, idx|
+        "[Iteration #{idx + 1}] #{iter.comment}"
+      }.join("\n")
 
-    previous_jsx = ordered[0...-1].reverse.find { |iter| iter.jsx.present? }&.jsx
-    if previous_jsx
-      chat_context += "\n\n[Current JSX]\n#{previous_jsx}"
+      previous_jsx = ordered[0...-1].reverse.find { |iter| iter.jsx.present? }&.jsx
+      if previous_jsx
+        chat_context += "\n\n[Current JSX]\n#{previous_jsx}"
+      end
     end
 
     gen = DesignGenerator.new(self)

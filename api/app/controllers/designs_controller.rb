@@ -71,6 +71,12 @@ class DesignsController < ApplicationController
     render json: { id: design.id }
   end
 
+  def rebuild
+    design = find_user_design(params[:id])
+    design.rebuild
+    render json: design.to_frontend_json.merge(is_owner: true)
+  end
+
   def save_code
     design = find_user_design(params[:id])
     iteration = design.iterations.create!(

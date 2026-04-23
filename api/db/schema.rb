@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_28_093408) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_22_152708) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -27,6 +27,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_28_093408) do
     t.text "message"
     t.string "state", default: "completed"
     t.integer "iteration_id"
+    t.string "action"
   end
 
   create_table "component_sets", force: :cascade do |t|

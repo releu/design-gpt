@@ -131,6 +131,7 @@ class FigmaFileImportJob < ApplicationJob
     elsif siblings.all? { |s| s.status == "ready" }
       # All files were unchanged and copied — finalize DS immediately
       ds.update!(status: "ready", version: ff.version, progress: ds.progress.merge("completed_at" => Time.current.iso8601))
+      DsUpdateNotifyJob.perform_later(ds.id)
       FigmaWorkerShutdownJob.set(wait: FigmaWorkerShutdownJob::IDLE_TIMEOUT).perform_later
     end
   end

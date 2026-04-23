@@ -8,6 +8,26 @@
         qa="chat-message"
       >
         <div
+          v-if="msg.author === 'system'"
+          class="ModuleChat__message ModuleChat__message_system"
+          qa="chat-message-system"
+        >
+          <div class="ModuleChat__message-body">{{ msg.message }}</div>
+          <button
+            v-if="msg.action === 'rebuild'"
+            class="ModuleChat__rebuild-btn"
+            qa="rebuild-btn"
+            @click="rebuild(msg)"
+          >Rebuild design</button>
+          <button
+            v-else-if="msg.action === 'rebuild_started'"
+            class="ModuleChat__rebuild-btn ModuleChat__rebuild-btn_disabled"
+            qa="rebuild-btn"
+            disabled
+          >Rebuilding...</button>
+        </div>
+        <div
+          v-else
           :class="['ModuleChat__message', `ModuleChat__message_${msg.author}`]"
           :qa="msg.author === 'user' ? 'chat-message-user' : 'chat-message-ai'"
         >
@@ -140,6 +160,23 @@ export default {
         this.thinkingTimer = null;
       }
     },
+    async rebuild(msg) {
+      try {
+        const token = await this.getToken();
+        await fetch(`/api/designs/${this.designId}/rebuild`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        msg.action = "rebuild_started";
+        this.$emit("sent");
+      } catch (e) {
+        console.warn("[ModuleChat] rebuild failed:", e);
+      }
+    },
     async send() {
       if (!this.canSend) return;
       this.sending = true;
@@ -245,6 +282,20 @@ export default {
       }
     }
 
+    /* System = CENTERED, muted notification style */
+    &_system {
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+
+      .ModuleChat__message-body {
+        font: var(--font-caption);
+        color: var(--darkgray);
+        text-align: center;
+      }
+    }
+
     /* AI/designer = RIGHT, gray bubble, left padding */
     &_designer {
       justify-content: flex-end;
@@ -265,6 +316,27 @@ export default {
     line-height: normal; word-spacing: -0.5px; font-kerning: none;
     word-wrap: break-word;
     overflow-wrap: break-word;
+  }
+
+  &__rebuild-btn {
+    font: var(--font-basic);
+    color: var(--white);
+    background: var(--black);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: transform 100ms ease;
+
+    &:active {
+      transform: scale(0.96);
+    }
+
+    &_disabled {
+      opacity: 0.4;
+      cursor: default;
+      pointer-events: none;
+    }
   }
 
   &__reset-btn {

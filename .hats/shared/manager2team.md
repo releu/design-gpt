@@ -1,5 +1,105 @@
 # Manager to Team
 
+## [10] 2026-04-22T13:00 -- Manager
+
+Re: DS sync notification — "rebuild design" chat message with AI re-generation
+
+### Problem
+
+When a design system is synced (components re-imported from Figma), existing designs that use that DS become stale. The component API may have changed — new props, renamed variants, different slots. The generated JSX references the old component structure. The user has no way to know this happened and no easy way to update their design.
+
+### Feature
+
+After a design system sync completes successfully, every design linked to that DS receives a **system chat message** prompting the user to rebuild. The message includes a button that triggers an AI re-generation, preserving the current design intent while adapting to the updated component API.
+
+### User flow
+
+1. User syncs their design system (or it syncs automatically)
+2. Sync completes — all Figma files are re-imported and converted
+3. Every design linked to that DS gets a new chat message:
+   - Author: `"system"` (new author type — not user, not designer)
+   - Message: `"Design system was updated. Components may have changed."`
+   - A **"Rebuild design"** action button visible in the chat
+4. User clicks "Rebuild design"
+5. The design enters `"generating"` state
+6. AI receives the **previous iteration's JSON tree** (not JSX) plus a system instruction: "The component library has been updated. Rebuild this design using the current component API. Preserve the layout and content as closely as possible."
+7. A new iteration is created with updated JSX
+8. Preview updates with the rebuilt design
+
+### Data model changes
+
+**ChatMessage** — new `author` value:
+- Add `"system"` as a valid author (alongside `"user"` and `"designer"`)
+- System messages are visually distinct from both user and AI messages in the frontend
+
+**ChatMessage** — new `action` field:
+- Add `action` string column (nullable, default nil)
+- When `action: "rebuild"`, the frontend renders a clickable button
+- After the user clicks, the message should update to reflect the action was taken (e.g. action becomes `"rebuild_started"`)
+
+### Backend changes
+
+**DesignSystem sync completion hook** — after DS status becomes `"ready"` in `FigmaFileConvertJob#maybe_finalize_design_system`:
+- Find all designs linked to this DS: `Design.where(design_system_id: ds.id)`
+- For each design, create a system chat message with `author: "system"`, `action: "rebuild"`
+- This should be a background job (`DsUpdateNotifyJob`) to avoid slowing down the sync pipeline
+
+**New API endpoint** — `POST /api/designs/:id/rebuild`:
+- Requires auth (uses `find_user_design`)
+- Takes no body params
+- Creates a new iteration with comment: `"Rebuild after design system update"`
+- Sends to AI with the last iteration's **tree** (JSON, not JSX) and an instruction to preserve the design while adapting to the updated component API
+- Returns 200 with design JSON
+
+**Design#rebuild method**:
+- Similar to `Design#improve` but instead of a user prompt, sends a structured rebuild instruction
+- The AI context includes: the previous tree JSON, the instruction to preserve layout/content, and the updated component schema
+- The chat message for the AI response should be `author: "designer"` as usual
+
+### Frontend changes
+
+**ModuleChat.vue** — render system messages:
+- New visual style for `author: "system"` messages — centered, muted color, smaller text (like a system notification, not a chat bubble)
+- When `msg.action === "rebuild"`: render a button labeled "Rebuild design"
+- When `msg.action === "rebuild_started"`: show "Rebuilding..." (disabled) or hide the button
+- Button click calls `POST /api/designs/:id/rebuild`, then triggers `fetchDesign()` to start polling
+
+### AI prompt for rebuild
+
+The rebuild prompt to the AI should be structured as:
+
+```
+The design system components have been updated. Rebuild the following design 
+using the current component API. Preserve the layout, content, and structure 
+as closely as possible. If a component or prop no longer exists, find the 
+closest equivalent.
+
+Previous design (JSON tree):
+{previous iteration tree JSON}
+```
+
+This goes as the user message. The system prompt (with updated component schema) is built normally by `DesignGenerator`.
+
+### Implementation notes
+
+- The rebuild uses the **tree** (structured JSON), not the JSX string, because tree is more meaningful for the AI — it contains component names, prop values, and slot structure that map directly to the schema
+- If a design has no iterations with a tree, skip the notification (nothing to rebuild)
+- The `DsUpdateNotifyJob` should only notify designs with status `"ready"` (not drafts or designs currently generating)
+- System messages should not trigger polling (they're not AI responses)
+
+### Action required
+
+**Developer** (`/hats:developer`):
+1. Add migration: `action` column on chat_messages, allow `"system"` as author
+2. Create `DsUpdateNotifyJob` — enqueued after DS sync completes
+3. Create `POST /api/designs/:id/rebuild` endpoint and `Design#rebuild` method
+4. Update `ModuleChat.vue` to render system messages with rebuild button
+5. Wire up button click → API call → polling
+
+**QA** (`/hats:qa`): New scenarios needed for rebuild flow.
+
+---
+
 ## [9] 2026-03-17T18:00 -- Manager
 
 Re: Component validation warnings — specs updated across import, browser, generation, and image workflow
