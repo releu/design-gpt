@@ -381,12 +381,17 @@ module Figma
       layout_sizing_h = node["layoutSizingHorizontal"]
       layout_sizing_v = node["layoutSizingVertical"]
 
+      is_absolute = node["layoutPositioning"] == "ABSOLUTE"
+      constraints = node["constraints"] || {}
+
       if layout_sizing_h == "FILL"
         unless node["layoutGrow"] && node["layoutGrow"] > 0
           styles["flex-grow"] = "1"
           styles["flex-basis"] = "0"
           styles["min-width"] = "0"
         end
+      elsif is_absolute && constraints["horizontal"] == "LEFT_RIGHT"
+        # Width determined by left+right positioning, not fixed pixels
       else
         styles["width"] = "#{width}px" if width
       end
@@ -397,6 +402,8 @@ module Figma
           styles["flex-basis"] = "0"
           styles["min-height"] = "0"
         end
+      elsif is_absolute && constraints["vertical"] == "TOP_BOTTOM"
+        # Height determined by top+bottom positioning, not fixed pixels
       else
         styles["height"] = "#{height}px" if height
       end
