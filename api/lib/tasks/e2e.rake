@@ -30,6 +30,7 @@ namespace :e2e do
 
     # Seed a DesignSystem so the home page design system list is populated
     e2e_ds = DesignSystem.find_or_create_by!(user: alice, name: "E2E Design System")
+    e2e_ds.update!(status: "ready") unless e2e_ds.status == "ready"
 
     ready_lib = alice.figma_files.find_or_create_by!(
       figma_url: "https://www.figma.com/design/e2eReadyLib123/e2e-ready-lib?node-id=0-1"
@@ -44,13 +45,26 @@ namespace :e2e do
     # Ensure status is ready even if it already existed
     ready_lib.update!(status: "ready") unless ready_lib.status == "ready"
 
-    # Link library to design system
-    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, figma_file: ready_lib)
-    DesignSystemLibrary.find_or_create_by!(design_system: e2e_ds, figma_file: second_lib)
+    # Link libraries to design system (FigmaFile now has direct design_system_id FK,
+    # replacing the old DesignSystemLibrary join table).
+    ready_lib.update!(design_system: e2e_ds) unless ready_lib.design_system_id == e2e_ds.id
+    second_lib.update!(design_system: e2e_ds) unless second_lib.design_system_id == e2e_ds.id
 
     # --- "Example" design system (needed for design generation tests) ---
+    # Since FigmaFile now has a single design_system_id, the "Example" DS needs
+    # its own figma_file (copy of ready_lib's content).
     example_ds = DesignSystem.find_or_create_by!(user: alice, name: "Example")
-    DesignSystemLibrary.find_or_create_by!(design_system: example_ds, figma_file: ready_lib)
+    example_ds.update!(status: "ready") unless example_ds.status == "ready"
+    example_lib = alice.figma_files.find_or_create_by!(
+      figma_url: "https://www.figma.com/design/e2eExampleLib123/e2e-example-lib?node-id=0-1"
+    ) do |lib|
+      lib.name          = "E2E Example Library"
+      lib.figma_file_key = "e2eExampleLib123"
+      lib.figma_file_name = "e2e-example-lib"
+      lib.status        = "ready"
+      lib.progress      = {}
+    end
+    example_lib.update!(status: "ready", design_system: example_ds) unless example_lib.design_system_id == example_ds.id
 
     # Seed a standalone component (TEXT_COMPONENT) with react_code and visual_diff score
     text_component = ready_lib.components.find_or_create_by!(node_id: "e2e:50") do |c|
@@ -232,8 +246,9 @@ namespace :e2e do
     end
     design_100.update!(status: "ready") unless design_100.status == "ready"
 
-    # Link component libraries to design
-    DesignFigmaFile.find_or_create_by!(design: design_100, figma_file: ready_lib)
+    # Link design to its design system (old DesignFigmaFile join table removed;
+    # Design now resolves figma files via design_system.current_figma_files).
+    design_100.update!(design_system: e2e_ds) unless design_100.design_system_id == e2e_ds.id
 
     # Seed iterations with JSX
     if design_100.iterations.empty?
@@ -255,7 +270,7 @@ namespace :e2e do
         d.prompt = "Test design #{i + 1}"
         d.status = "ready"
       end
-      DesignFigmaFile.find_or_create_by!(design: d, figma_file: ready_lib)
+      d.update!(design_system: e2e_ds) unless d.design_system_id == e2e_ds.id
       if d.iterations.empty?
         d.iterations.create!(comment: "Test design #{i + 1}", jsx: "<Page><Title text=\"Design #{i + 1}\" /></Page>")
       end
@@ -297,6 +312,27 @@ namespace :e2e do
       JSX
       v.react_code_compiled = "var PhotoImage = function(props){return React.createElement('div',{style:{width:'100%',height:'100%',backgroundSize:'cover'}});};"
     end
+
+    # Flexgrow convention fixture: standalone component with #flexgrow tag,
+    # is_flexgrow flag set, and css_code containing flex-grow: 1 so the
+    # ComponentDetail's <pre qa="component-code"> exposes it to the E2E assertion.
+    flexgrow_component = ready_lib.components.find_or_create_by!(node_id: "e2e:flex100") do |c|
+      c.name            = "flexgrow-example"
+      c.figma_file_key  = "e2eReadyLib123"
+      c.figma_file_name = "e2e-ready-lib"
+      c.status          = "imported"
+      c.enabled         = true
+      c.is_flexgrow     = true
+      c.description     = "#flexgrow"
+      c.figma_json      = {
+        "id" => "e2e:flex100", "type" => "COMPONENT", "name" => "flexgrow-example",
+        "children" => []
+      }
+      c.react_code      = "export function FlexgrowExample(props) { return <div className=\"root\">Flexgrow</div>; }"
+      c.react_code_compiled = "var FlexgrowExample = function(props){return React.createElement('div',{className:'root'},'Flexgrow');};"
+      c.css_code        = ".root { flex-grow: 1; }"
+    end
+    flexgrow_component.update!(is_flexgrow: true, css_code: ".root { flex-grow: 1; }")
 
     # Pre-seed an ImageCache record for E2E tests
     ImageCache.find_or_create_by!(query: "e2e test image") do |ic|
