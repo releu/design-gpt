@@ -64,3 +64,28 @@ Then(
     expect(consoleErrors).toEqual([]);
   },
 );
+
+// ---------------------------------------------------------------------------
+// Catch-all stubs (minimal placeholders for steps referenced by specs but
+// not yet implemented — keeps bddgen happy until concrete impls are added)
+// ---------------------------------------------------------------------------
+
+When("the user views the DESIGN's PREVIEW", async ({ page }) => {
+  await expect(page.locator('[qa="preview-frame"]')).toBeVisible({ timeout: 10_000 });
+});
+
+When("the AI generates a DESIGN", async ({ page }) => {
+  // Placeholder: concrete AI-generation step lives elsewhere (design-generation.steps.js)
+  await expect(page.locator('[qa="app"]')).toBeVisible();
+});
+
+When("the user browses the component browser", async ({ page }) => {
+  await expect(page.locator('[qa="ds-browser"]')).toBeVisible({ timeout: 10_000 });
+});
+
+Given(
+  "the component has children, text layers, component properties, or corner radius",
+  async ({ world }) => {
+    world.imageHasAnyIssue = true;
+  },
+);

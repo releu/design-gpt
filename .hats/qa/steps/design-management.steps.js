@@ -181,7 +181,9 @@ Given(
     });
     const designs = await res.json();
     const ready = designs.find((d) => d.status === "ready");
-    world.exportDesignId = ready ? ready.id : designs[0]?.id;
+    const id = ready ? ready.id : designs[0]?.id;
+    world.exportDesignId = id;
+    world.shareDesignId = id;
   },
 );
 
@@ -385,19 +387,6 @@ Then("the DESIGN is not found", async ({ world }) => {
 // Shared Design Links
 // ---------------------------------------------------------------------------
 
-Given(
-  "DESIGN #132 has a generated PREVIEW",
-  async ({ request, world }) => {
-    const token = world.authToken || createTestToken();
-    const res = await request.get("/api/designs", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const designs = await res.json();
-    const ready = designs.find((d) => d.status === "ready");
-    world.shareDesignId = ready ? ready.id : designs[0]?.id;
-  },
-);
-
 When("the user copies the share link", async ({ page, request, world }) => {
   const token = world.authToken || createTestToken();
   if (world.shareDesignId) {
@@ -447,7 +436,7 @@ Given(
 );
 
 When(
-  "an unauthenticated user visits /share/abc123",
+  "an unauthenticated user visits \\/share\\/abc123",
   async ({ request, world }) => {
     world.shareResponse = await request.get(
       `/api/share/${world.realShareCode}`,
@@ -472,7 +461,7 @@ Then("no login is required", async ({ world }) => {
 });
 
 When(
-  "an unauthenticated user requests /iterations/abc123/export-react",
+  "an unauthenticated user requests \\/iterations\\/abc123\\/export-react",
   async ({ request, world }) => {
     world.reactExportResponse = await request.get(
       `/api/iterations/${world.realShareCode}/export-react`,
@@ -481,7 +470,7 @@ When(
 );
 
 When(
-  "an unauthenticated user requests /iterations/abc123/export-figma",
+  "an unauthenticated user requests \\/iterations\\/abc123\\/export-figma",
   async ({ request, world }) => {
     world.figmaExportResponse = await request.get(
       `/api/iterations/${world.realShareCode}/export-figma`,

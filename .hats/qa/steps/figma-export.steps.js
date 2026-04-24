@@ -9,22 +9,6 @@ const { Given, When, Then } = createBdd(test);
 // Export Flow
 // ---------------------------------------------------------------------------
 
-Given("the user is on the design page", async ({ page, request, world }) => {
-  if (/\/designs\/\d+/.test(page.url())) return;
-
-  const token = world.authToken || createTestToken();
-  const res = await request.get("/api/designs", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const designs = await res.json();
-  const ready = designs.find((d) => d.status === "ready");
-  if (ready) {
-    world.exportDesignId = ready.id;
-    await page.goto(`/designs/${ready.id}`);
-    await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
-  }
-});
-
 When(
   'the user opens the export menu and chooses "Export to Figma"',
   async ({ page }) => {

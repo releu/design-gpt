@@ -17,7 +17,7 @@ function authHeaders(token) {
 // ---------------------------------------------------------------------------
 
 When(
-  "the user requests GET /api/images/render?prompt=modern+office",
+  "the user requests GET \\/api\\/images\\/render?prompt=modern+office",
   async ({ request, world }) => {
     world.imageResponse = await request.get(
       "/api/images/render?prompt=modern+office",
@@ -29,7 +29,7 @@ Then("the response status is {int}", async ({ world }, status) => {
   expect(world.imageResponse.status()).toBe(status);
 });
 
-Then("the Content-Type is image/*", async ({ world }) => {
+Then("the Content-Type is image\\/*", async ({ world }) => {
   const contentType = world.imageResponse.headers()["content-type"] || "";
   expect(contentType).toContain("image/");
 });
@@ -44,14 +44,14 @@ Then(
 );
 
 When(
-  "the user requests GET /api/images/render?prompt=",
+  "the user requests GET \\/api\\/images\\/render?prompt=",
   async ({ request, world }) => {
     world.imageResponse = await request.get("/api/images/render?prompt=");
   },
 );
 
 When(
-  "the user requests GET /api/images/render?prompt=sunset+beach",
+  "the user requests GET \\/api\\/images\\/render?prompt=sunset+beach",
   async ({ request, world }) => {
     world.imageResponse1 = await request.get(
       "/api/images/render?prompt=sunset+beach",
@@ -61,7 +61,7 @@ When(
 );
 
 When(
-  "the user requests GET /api/images/render?prompt=sunset+beach again",
+  "the user requests GET \\/api\\/images\\/render?prompt=sunset+beach again",
   async ({ request, world }) => {
     world.imageResponse2 = await request.get(
       "/api/images/render?prompt=sunset+beach",
@@ -80,7 +80,7 @@ Then(
 );
 
 When(
-  "an unauthenticated user requests GET /api/images?q=office",
+  "an unauthenticated user requests GET \\/api\\/images?q=office",
   async ({ request, world }) => {
     world.imageResponse = await request.get("/api/images?q=office");
   },

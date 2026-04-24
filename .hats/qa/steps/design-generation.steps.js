@@ -528,14 +528,6 @@ Then(
 // Validation Warnings in AI Schema
 // ---------------------------------------------------------------------------
 
-Given(
-  "the DESIGN_SYSTEM has components with validation warnings",
-  async ({ world }) => {
-    // Precondition: the DS used for generation has components with warnings
-    world.expectValidationWarnings = true;
-  },
-);
-
 Then(
   "components with validation warnings are not included in the AI schema",
   async ({ request, world }) => {

@@ -356,9 +356,24 @@ Then("a new ITERATION is created", async ({ page }) => {
 // Settings panel
 // ---------------------------------------------------------------------------
 
-Given("the user is on the design page", async ({ page, world }) => {
-  if (!/\/designs\/\d+/.test(page.url())) {
-    await page.goto(`/designs/${world.designId}`);
+Given("the user is on the design page", async ({ page, request, world }) => {
+  if (/\/designs\/\d+/.test(page.url())) return;
+
+  let designId = world.designId;
+  if (!designId) {
+    const token = world.authToken || (await import("../support/auth.js")).createTestToken();
+    const res = await request.get("/api/designs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const designs = await res.json();
+    const ready = designs.find((d) => d.status === "ready");
+    if (ready) {
+      designId = ready.id;
+      world.exportDesignId = ready.id;
+    }
+  }
+  if (designId) {
+    await page.goto(`/designs/${designId}`);
     await expect(page).toHaveURL(/\/designs\/\d+/, { timeout: 10_000 });
   }
 });

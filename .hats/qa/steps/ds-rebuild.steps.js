@@ -324,8 +324,8 @@ When(
 );
 
 Then(
-  'the {string} button is disabled',
-  async ({ page }, buttonLabel) => {
+  'the "Rebuild design" button is disabled',
+  async ({ page }) => {
     const rebuildBtn = page.locator('[qa="rebuild-btn"]');
     const isDisabled = await rebuildBtn.isDisabled({ timeout: 5_000 }).catch(() => false);
     // Button may have changed text to "Rebuilding..." or become disabled
@@ -421,8 +421,8 @@ Given(
 );
 
 When(
-  'the user clicks {string}',
-  async ({ page }, buttonLabel) => {
+  'the user clicks "Rebuild design"',
+  async ({ page }) => {
     await page.locator('[qa="rebuild-btn"]').click();
   },
 );
