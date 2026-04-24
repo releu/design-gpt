@@ -1,5 +1,25 @@
 # Manager to Team
 
+## [11] 2026-04-23T00:00 -- Manager
+
+Re: New Figma convention — `#flexgrow` description tag
+
+Two new scenarios added to `03-figma-import.feature` under the "Figma Conventions" section.
+
+**Convention:** a component with `#flexgrow` in its Figma description generates CSS containing `flex-grow: 1`.
+
+**Scope:**
+- Top-level component only (not nested child nodes)
+- Value is always `flex-grow: 1` (no parametric forms like `#flexgrow-2`)
+- No validation warning if the parent isn't a flex container — it's the DS author's responsibility
+- Mixing with other tags (`#root`, `#image`) is undefined; not specified in the spec
+
+**Verification:** QA asserts against `[qa="component-code"]` (the component source view).
+
+**Next:** QA writes step defs and a test fixture; Developer implements the parse-and-emit in the import pipeline.
+
+---
+
 ## [10] 2026-04-22T13:00 -- Manager
 
 Re: DS sync notification — "rebuild design" chat message with AI re-generation
