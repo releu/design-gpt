@@ -126,4 +126,24 @@ RSpec.describe Figma::Emitter do
       expect(emitter.css_rules["root"]).to include("display" => "flex")
     end
   end
+
+  describe "#emit with is_flexgrow" do
+    it "injects flex-grow: 1 on the root class when is_flexgrow is true" do
+      tree = Figma::IR.frame(node_id: "1", name: "panel", styles: { "display" => "flex" }, children: [])
+      ir = Figma::IR.component(name: "Panel", react_name: "Panel", props: {}, tree: tree,
+                                imports: [], is_flexgrow: true)
+      code = described_class.new("Panel").emit(ir)
+      expect(code).to include("flex-grow: 1")
+      # Scoped class names use .{scope_id}-root — ensure the flex-grow is scoped to root.
+      expect(code).to match(/\.panel-root\s*\{[^}]*flex-grow:\s*1/m)
+    end
+
+    it "does not inject flex-grow when is_flexgrow is false" do
+      tree = Figma::IR.frame(node_id: "1", name: "panel", styles: { "display" => "flex" }, children: [])
+      ir = Figma::IR.component(name: "Panel", react_name: "Panel", props: {}, tree: tree,
+                                imports: [], is_flexgrow: false)
+      code = described_class.new("Panel").emit(ir)
+      expect(code).not_to include("flex-grow: 1")
+    end
+  end
 end

@@ -718,6 +718,108 @@ Then(
 );
 
 // ---------------------------------------------------------------------------
+// FLEXGROW Components
+// ---------------------------------------------------------------------------
+
+async function ensureDsBrowserOpen(page, request, world, preferredDsName = "E2E Design System") {
+  if (await page.locator('[qa="ds-browser"]').isVisible({ timeout: 1_000 }).catch(() => false)) {
+    return;
+  }
+  const token = world.authToken;
+  if (!token) return;
+  const dsRes = await request.get("/api/design-systems", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const systems = await dsRes.json();
+  const withFiles = systems.filter(
+    (d) => (d.figma_file_ids?.length || d.libraries?.length || 0) > 0,
+  );
+  const ds = withFiles.find((d) => d.name === preferredDsName) || withFiles[0];
+  if (!ds) return;
+  const item = page.locator('[qa="library-item"]', { hasText: ds.name }).first();
+  if (await item.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await item.locator('[qa="library-browse-btn"]').click();
+    await expect(page.locator('[qa="ds-browser"]')).toBeVisible({ timeout: 30_000 });
+  }
+}
+
+Given(
+  'a FIGMA_FILE contains a component with "#flexgrow" in its description',
+  async ({ page, request, world }) => {
+    // Fixture expectation: the seeded test DS contains a component named
+    // "flexgrow-example" with is_flexgrow=true and css_code containing
+    // "flex-grow: 1". Open the DS browser so "When the import completes"
+    // finds [qa="ds-browser"] visible and later Thens can navigate.
+    world.expectFlexgrowComponent = true;
+    world.expectedFlexgrowName = world.expectedFlexgrowName || "flexgrow-example";
+    await ensureDsBrowserOpen(page, request, world);
+  },
+);
+
+Given(
+  'a FIGMA_FILE contains a component without "#flexgrow" in its description',
+  async ({ page, request, world }) => {
+    // Any component imported without the #flexgrow tag qualifies. "Text" is
+    // seeded by e2e:setup and has no css_code / flex-grow styling.
+    world.expectNoFlexgrow = true;
+    world.expectedNonFlexgrowName = world.expectedNonFlexgrowName || "Text";
+    await ensureDsBrowserOpen(page, request, world);
+  },
+);
+
+async function openComponentAndReadCode(page, componentName) {
+  const menuItem = page.locator('[qa="ds-menu-item"]', { hasText: componentName });
+  if (await menuItem.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await menuItem.first().click();
+  }
+  // Expand the React Code section if it's collapsed
+  const codeHeader = page.locator('[qa="component-section-header"]', {
+    hasText: /React Code|CSS|Code/i,
+  });
+  if (await codeHeader.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await codeHeader.first().click().catch(() => {});
+  }
+  // Collect text from all candidate code views (the UI may show CSS in the
+  // same [qa="component-code"] block as React source, or in a sibling
+  // [qa="component-css"] attribute once Developer surfaces it).
+  const candidates = [
+    '[qa="component-code"] .cm-content',
+    '[qa="component-code"]',
+    '[qa="component-css"] .cm-content',
+    '[qa="component-css"]',
+  ];
+  const parts = [];
+  for (const sel of candidates) {
+    const loc = page.locator(sel);
+    const count = await loc.count().catch(() => 0);
+    for (let i = 0; i < count; i++) {
+      const t = await loc.nth(i).textContent().catch(() => "");
+      if (t) parts.push(t);
+    }
+  }
+  return parts.join("\n");
+}
+
+Then(
+  'the component\'s generated CSS includes "flex-grow: 1"',
+  async ({ page, world }) => {
+    const name = world.expectedFlexgrowName || "flexgrow-example";
+    const text = await openComponentAndReadCode(page, name);
+    // Accept either CSS rule form or JSX inline-style form
+    expect(text).toMatch(/flex-grow\s*:\s*1\b|flexGrow\s*:\s*1\b/);
+  },
+);
+
+Then(
+  'the component\'s generated CSS does not include "flex-grow: 1"',
+  async ({ page, world }) => {
+    const name = world.expectedNonFlexgrowName || "Text";
+    const text = await openComponentAndReadCode(page, name);
+    expect(text).not.toMatch(/flex-grow\s*:\s*1\b|flexGrow\s*:\s*1\b/);
+  },
+);
+
+// ---------------------------------------------------------------------------
 // General Validation Warnings
 // ---------------------------------------------------------------------------
 

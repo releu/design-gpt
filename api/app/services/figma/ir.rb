@@ -93,17 +93,18 @@ module Figma
 
     # Top-level wrapper for a resolved component
     def self.component(name:, react_name:, props:, tree:, imports: [], is_image: false, is_svg: false,
-                       svg_content: nil, has_slot: false, nested_props: {})
+                       svg_content: nil, has_slot: false, nested_props: {}, is_flexgrow: false)
       { kind: :component, name: name, react_name: react_name, props: props,
         tree: tree, imports: imports, is_image: is_image, is_svg: is_svg,
-        svg_content: svg_content, has_slot: has_slot, nested_props: nested_props }
+        svg_content: svg_content, has_slot: has_slot, nested_props: nested_props,
+        is_flexgrow: is_flexgrow }
     end
 
     # Top-level wrapper for a multi-variant component set
-    def self.multi_variant(name:, react_name:, variant_prop_names:, prop_definitions:, variants:)
+    def self.multi_variant(name:, react_name:, variant_prop_names:, prop_definitions:, variants:, is_flexgrow: false)
       { kind: :multi_variant, name: name, react_name: react_name,
         variant_prop_names: variant_prop_names, prop_definitions: prop_definitions,
-        variants: variants }
+        variants: variants, is_flexgrow: is_flexgrow }
     end
 
     # One variant within a multi-variant set

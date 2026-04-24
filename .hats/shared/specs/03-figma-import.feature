@@ -146,6 +146,16 @@ Feature: Figma Import
     Then the component is marked as an IMAGE component
     And the component has a validation warning for each issue
 
+  Scenario: Figma conventions apply flex-grow to components with "#flexgrow"
+    Given a FIGMA_FILE contains a component with "#flexgrow" in its description
+    When the import completes
+    Then the component's generated CSS includes "flex-grow: 1"
+
+  Scenario: Components without "#flexgrow" do not get flex-grow
+    Given a FIGMA_FILE contains a component without "#flexgrow" in its description
+    When the import completes
+    Then the component's generated CSS does not include "flex-grow: 1"
+
   # --- General Validation Warnings ---
   # Any component that fails validation is imported but flagged with warnings.
   # Components with warnings are visible in the browser but excluded from AI generation.

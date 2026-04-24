@@ -8,7 +8,7 @@ require_relative "../../../app/services/figma/resolver"
 
 # Lightweight stand-ins for AR models — Resolver uses duck typing.
 ComponentSetData = Struct.new(:node_id, :name, :description, :figma_json, :component_key,
-                              :prop_definitions, :slots, :is_root, :is_image,
+                              :prop_definitions, :slots, :is_root, :is_image, :is_flexgrow,
                               :is_list, :figma_file_key, :figma_file_name,
                               :validation_warnings, keyword_init: true) do
   def default_variant
@@ -45,7 +45,7 @@ VariantData = Struct.new(:id, :node_id, :name, :figma_json, :is_default,
 end
 
 ComponentData = Struct.new(:node_id, :name, :figma_json, :component_key,
-                           :prop_definitions, :slots, :is_root, :is_image,
+                           :prop_definitions, :slots, :is_root, :is_image, :is_flexgrow,
                            :is_list, :figma_file_key, :figma_file_name,
                            :validation_warnings, keyword_init: true) do
   def vector?

@@ -34,6 +34,7 @@
 | `component-prop-row` | row/div | Individual prop row containing name, control, and type. Contains `select`, `input[type="checkbox"]`, or `input[type="text"]` for controls |
 | `component-prop-name` | span/label | Prop name label inside a prop row |
 | `component-code` | container | Code section wrapper (contains `.cm-content` CodeMirror editor inside) |
+| `component-css` | container | Optional CSS code section wrapper, if Developer surfaces CSS separately from React source. Contains `.cm-content` inside, or plain text. |
 | `component-root-tag` | badge/tag | "Root" indicator tag on root components |
 | `component-children` | list/container | Allowed children list for slots |
 | `component-child` | list item | Individual allowed child entry |
@@ -125,6 +126,7 @@ Do NOT check CSS classes for active states. Instead assert the corresponding pan
 - Import errors: components with errors show "no code" via `[qa="component-status"]`
 - Browse components: `[qa="ds-menu-item"]` lists components, `[qa="ds-menu-subtitle"]` groups by file
 - Figma conventions (#root, slots, INSTANCE_SWAP, vectors): `[qa="component-root-tag"]`, `[qa="component-children"]`, `[qa="component-child"]`, `[qa="component-type"]` contains "vector"
+- `#flexgrow` description tag: component's generated CSS must include `flex-grow: 1` — observable in `[qa="component-code"]` or `[qa="component-css"]` (either CSS rule `flex-grow: 1` or JSX inline `flexGrow: 1` is accepted).
 - Sync: `[qa="component-sync-btn"]` triggers re-import, `[qa="component-name"]` updates
 - Add/remove files: `[qa="ds-add-figma-btn"]`, `[qa="ds-import-btn"]`
 - Error handling: `[qa="ds-box"]` shows error text, `[qa="component-sync-btn"]` enabled for retry

@@ -59,7 +59,8 @@ module Figma
 
       if component_set.is_image
         return Figma::IR.component(name: component_set.name, react_name: component_name,
-                                    props: {}, tree: nil, is_image: true)
+                                    props: {}, tree: nil, is_image: true,
+                                    is_flexgrow: component_set.is_flexgrow)
       end
 
       prop_definitions = component_set.prop_definitions || {}
@@ -90,7 +91,8 @@ module Figma
 
       if component.is_image
         return Figma::IR.component(name: component.name, react_name: component_name,
-                                    props: {}, tree: nil, is_image: true)
+                                    props: {}, tree: nil, is_image: true,
+                                    is_flexgrow: component.is_flexgrow)
       end
 
       node = if figma["type"] == "COMPONENT_SET"
@@ -130,7 +132,8 @@ module Figma
       Figma::IR.component(name: component.name, react_name: component_name,
                            props: all_props, tree: tree, imports: all_imports,
                            has_slot: @has_slot_during_resolve,
-                           is_svg: !!svg_content, svg_content: svg_content)
+                           is_svg: !!svg_content, svg_content: svg_content,
+                           is_flexgrow: component.is_flexgrow)
     end
 
     def resolve_node(node, prop_definitions: nil, current_props: nil, slot_map: nil, is_root: false, parent_layout_mode: nil)
@@ -559,7 +562,8 @@ module Figma
       Figma::IR.component(name: component_set.name, react_name: component_name,
                            props: all_props, tree: tree, imports: all_imports,
                            has_slot: @has_slot_during_resolve, nested_props: @nested_instance_props || {},
-                           is_svg: !!svg_content, svg_content: svg_content)
+                           is_svg: !!svg_content, svg_content: svg_content,
+                           is_flexgrow: component_set.is_flexgrow)
     end
 
     def resolve_multi_variant(component_set, component_name, all_variants, variant_prop_names, prop_definitions)
@@ -600,7 +604,8 @@ module Figma
         react_name: component_name,
         variant_prop_names: variant_prop_names,
         prop_definitions: prop_definitions,
-        variants: variant_entries
+        variants: variant_entries,
+        is_flexgrow: component_set.is_flexgrow
       )
     end
 

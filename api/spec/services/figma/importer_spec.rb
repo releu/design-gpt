@@ -466,6 +466,104 @@ RSpec.describe Figma::Importer do
       end
     end
 
+    context "with #flexgrow in name or description" do
+      it "sets is_flexgrow true when description contains #flexgrow" do
+        figma_response = {
+          "name" => "flexgrow-test",
+          "componentSets" => {
+            "1:100" => { "name" => "Panel", "description" => "Fills the available space #flexgrow", "key" => "panel-key" }
+          },
+          "components" => {
+            "1:101" => { "name" => "Default", "componentSetId" => "1:100", "description" => "" }
+          },
+          "styles" => {},
+          "document" => {
+            "children" => [{
+              "id" => "0:1", "name" => "Page 1", "type" => "CANVAS",
+              "children" => [{
+                "id" => "1:100",
+                "name" => "Panel",
+                "type" => "COMPONENT_SET",
+                "description" => "Fills the available space #flexgrow",
+                "componentPropertyDefinitions" => {},
+                "children" => [{
+                  "id" => "1:101", "name" => "Default", "type" => "COMPONENT",
+                  "children" => [{ "id" => "1:102", "type" => "RECTANGLE", "name" => "bg",
+                    "fills" => [{ "type" => "SOLID", "color" => { "r" => 1, "g" => 1, "b" => 1 } }], "strokes" => [] }]
+                }]
+              }]
+            }]
+          }
+        }
+
+        ds = FigmaFile.create!(
+          user: user,
+          name: "Flexgrow Desc Test",
+          figma_url: "https://www.figma.com/design/TESTFG1/flexgrow-desc-test",
+          status: "importing"
+        )
+
+        mock_client = instance_double(Figma::Client)
+        allow(Figma::Client).to receive(:new).and_return(mock_client)
+        allow(mock_client).to receive(:get).and_return(figma_response)
+
+        described_class.new(ds).import
+        ds.reload
+
+        panel_set = ds.component_sets.find_by(name: "Panel")
+        expect(panel_set).to be_present
+        expect(panel_set.is_flexgrow).to be true
+      end
+
+      it "leaves is_flexgrow false when neither name nor description contains #flexgrow" do
+        figma_response = {
+          "name" => "no-flexgrow-test",
+          "componentSets" => {
+            "1:100" => { "name" => "Card", "description" => "A card component", "key" => "card-key" }
+          },
+          "components" => {
+            "1:101" => { "name" => "Default", "componentSetId" => "1:100", "description" => "" }
+          },
+          "styles" => {},
+          "document" => {
+            "children" => [{
+              "id" => "0:1", "name" => "Page 1", "type" => "CANVAS",
+              "children" => [{
+                "id" => "1:100",
+                "name" => "Card",
+                "type" => "COMPONENT_SET",
+                "description" => "A card component",
+                "componentPropertyDefinitions" => {},
+                "children" => [{
+                  "id" => "1:101", "name" => "Default", "type" => "COMPONENT",
+                  "children" => [{ "id" => "1:102", "type" => "RECTANGLE", "name" => "bg",
+                    "fills" => [{ "type" => "SOLID", "color" => { "r" => 1, "g" => 1, "b" => 1 } }], "strokes" => [] }]
+                }]
+              }]
+            }]
+          }
+        }
+
+        ds = FigmaFile.create!(
+          user: user,
+          name: "No Flexgrow Test",
+          figma_url: "https://www.figma.com/design/TESTFG2/no-flexgrow-test",
+          status: "importing"
+        )
+
+        mock_client = instance_double(Figma::Client)
+        allow(Figma::Client).to receive(:new).and_return(mock_client)
+        allow(mock_client).to receive(:get).and_return(figma_response)
+
+        described_class.new(ds).import
+        ds.reload
+
+        card_set = ds.component_sets.find_by(name: "Card")
+        expect(card_set).to be_present
+        expect(card_set.is_flexgrow).to be false
+      end
+    end
+
     context "with no file key" do
       it "skips import" do
         ds = FigmaFile.new(id: 0, figma_file_key: nil)

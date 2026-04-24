@@ -151,6 +151,7 @@ module Figma
         data[:slots] = extract_slots(data[:prop_definitions], key_to_name, set_node, image_keys)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
         data[:is_image] = data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
+        data[:is_flexgrow] = data[:name].to_s.include?("#flexgrow") || data[:description].to_s.include?("#flexgrow")
 
         default_variant_id = find_default_variant_id(set_node, data[:prop_definitions])
 
@@ -176,6 +177,7 @@ module Figma
         data[:slots] = extract_slots(data[:prop_definitions], key_to_name, comp_node, image_keys)
         data[:is_root] = data[:name].to_s.include?("#root") || data[:description].to_s.include?("#root")
         data[:is_image] = data[:name].to_s.include?("#image") || data[:description].to_s.include?("#image")
+        data[:is_flexgrow] = data[:name].to_s.include?("#flexgrow") || data[:description].to_s.include?("#flexgrow")
       end
     end
 
@@ -340,6 +342,7 @@ module Figma
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
+          is_flexgrow: data[:is_flexgrow] || false,
           component_key: data[:component_key],
           content_hash: compute_component_set_hash(data),
           validation_warnings: validation_warnings
@@ -409,6 +412,7 @@ module Figma
           slots: data[:slots] || [],
           is_root: data[:is_root] || false,
           is_image: data[:is_image] || false,
+          is_flexgrow: data[:is_flexgrow] || false,
           component_key: data[:component_key],
           content_hash: compute_component_hash(data),
           validation_warnings: validation_warnings,
@@ -435,6 +439,7 @@ module Figma
       digest.update((data[:slots] || []).to_json)
       digest.update((data[:is_root] || false).to_s)
       digest.update((data[:is_image] || false).to_s)
+      digest.update((data[:is_flexgrow] || false).to_s)
       data[:variants].each do |_, vd|
         digest.update(vd[:figma_json].to_json) if vd[:figma_json]
       end
@@ -448,6 +453,7 @@ module Figma
       digest.update((data[:slots] || []).to_json)
       digest.update((data[:is_root] || false).to_s)
       digest.update((data[:is_image] || false).to_s)
+      digest.update((data[:is_flexgrow] || false).to_s)
       digest.update(data[:figma_json].to_json) if data[:figma_json]
       digest.hexdigest[0..15]
     end

@@ -152,3 +152,7 @@ The renderer pages (served as HTML) include React 18, ReactDOM 18, Babel standal
 2. Parent sends `{ type: "render", jsx: "<ComponentTree />" }` to renderer
 3. Renderer compiles JSX via Babel, renders into `#root` with React
 4. On error, renderer catches and displays error in `#root`
+
+## Figma Description-Tag Conventions
+
+Components carry importer-recognized tags in either the Figma component name or description. Supported tags: `#root` (page-root component), `#image` (image placeholder slot), `#list` (list-component dedup), and `#flexgrow`. When a component has `#flexgrow` in its name or description, the emitter injects `flex-grow: 1` onto the component's `.root` CSS class so it fills its parent flex container (the DS author is responsible for ensuring the parent is a flex container). Tag status and the raw CSS are exposed in the `GET /api/figma-files/:id/components` response: component sets include `is_flexgrow` and `default_variant_css_code`; standalone components include `is_flexgrow` and `css_code`.

@@ -121,6 +121,7 @@ class FigmaFilesController < ApplicationController
         figma_file_id: cl.id,
         is_vector: cs.vector?,
         is_root: cs.is_root,
+        is_flexgrow: cs.is_flexgrow,
         slots: cs.slots,
         figma_url: cs.figma_url,
         description: cs.description,
@@ -128,6 +129,7 @@ class FigmaFilesController < ApplicationController
         validation_warnings: cs.validation_warnings || [],
         react_name: to_component_name(cs.name),
         default_variant_react_code: dv&.react_code,
+        default_variant_css_code: dv&.css_code,
         default_variant_match_percent: dv&.match_percent,
         variants_count: cs.variants.size,
         variants: cs.variants.map { |v|
@@ -152,6 +154,7 @@ class FigmaFilesController < ApplicationController
         figma_file_id: cl.id,
         is_vector: c.vector?,
         is_root: c.is_root,
+        is_flexgrow: c.is_flexgrow,
         slots: c.slots,
         status: c.status,
         match_percent: c.match_percent,
@@ -163,6 +166,7 @@ class FigmaFilesController < ApplicationController
         validation_warnings: c.validation_warnings || [],
         react_name: to_component_name(c.name),
         react_code: c.react_code,
+        css_code: c.css_code,
         has_html: c.html_code.present?,
         has_react: c.react_code.present?
       }

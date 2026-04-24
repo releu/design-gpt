@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_22_152708) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -46,6 +46,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_22_152708) do
     t.boolean "is_image", default: false, null: false
     t.string "content_hash"
     t.jsonb "validation_warnings", default: []
+    t.boolean "is_flexgrow", default: false, null: false
     t.index ["figma_file_id", "node_id"], name: "index_component_sets_on_figma_file_id_and_node_id", unique: true
     t.index ["figma_file_id"], name: "index_component_sets_on_figma_file_id"
     t.index ["node_id"], name: "index_component_sets_on_node_id"
@@ -106,6 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_22_152708) do
     t.boolean "is_image", default: false, null: false
     t.string "content_hash"
     t.jsonb "validation_warnings", default: []
+    t.boolean "is_flexgrow", default: false, null: false
     t.index ["figma_file_id", "node_id"], name: "index_components_on_figma_file_id_and_node_id", unique: true
   end
 

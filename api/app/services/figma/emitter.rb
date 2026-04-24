@@ -76,6 +76,12 @@ module Figma
       end
 
       jsx = emit_node(ir[:tree], 0, is_root: true)
+
+      if ir[:is_flexgrow]
+        @css_rules["root"] ||= {}
+        @css_rules["root"]["flex-grow"] = "1"
+      end
+
       css = generate_css(@css_rules)
 
       imports = (ir[:imports] || []).join("\n")
@@ -99,6 +105,12 @@ module Figma
         scope_id = "#{component_name.downcase.gsub(/[^a-z0-9]/, "")}v#{v_ir[:index]}"
 
         jsx = emit_node(v_ir[:tree], 0, is_root: true)
+
+        if ir[:is_flexgrow]
+          @css_rules["root"] ||= {}
+          @css_rules["root"]["flex-grow"] = "1"
+        end
+
         css = generate_css(@css_rules)
 
         scoped_css = css.gsub(/^\.([a-z0-9_-]+)/i) { ".#{scope_id}-#{$1}" }

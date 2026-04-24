@@ -88,6 +88,12 @@
         @load="onPreviewIframeLoad"
       />
     </div>
+
+    <!-- Code (React + CSS) -->
+    <div v-if="codeDisplay" class="ComponentDetail__code-section">
+      <div class="ComponentDetail__label">code</div>
+      <pre qa="component-code" class="ComponentDetail__code">{{ codeDisplay }}</pre>
+    </div>
   </div>
 </template>
 
@@ -161,6 +167,11 @@ export default {
       }
 
       return rows;
+    },
+    codeDisplay() {
+      const react = this.comp.react_code || this.comp.default_variant_react_code;
+      const css = this.comp.css_code || this.comp.default_variant_css_code;
+      return [react, css].filter(Boolean).join("\n\n/* --- CSS --- */\n");
     },
     previewJsx() {
       const name = this.comp.react_name;
@@ -404,6 +415,25 @@ export default {
     border: none;
     border-radius: 12px;
     background: var(--fill);
+  }
+
+  &__code-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__code {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--black);
+    background: var(--fill);
+    border-radius: 8px;
+    padding: 12px;
+    overflow: auto;
+    white-space: pre;
+    max-height: 400px;
+    margin: 0;
   }
 }
 </style>
