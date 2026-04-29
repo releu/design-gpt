@@ -126,10 +126,22 @@ module Figma
             iw = inst_bbox["width"].to_f
             ih = inst_bbox["height"].to_f
 
-            if sw > 0 && sh > 0 && ((sw - iw).abs > 1 || (sh - ih).abs > 1)
-              warnings << "Instance \"#{node["name"]}\" is manually resized " \
-                "(#{iw.round}x#{ih.round} vs component #{sw.round}x#{sh.round}) — " \
-                "size overrides bypass component props"
+            sizing_h = node["layoutSizingHorizontal"]
+            sizing_v = node["layoutSizingVertical"]
+
+            # Only flag mismatch on axes where sizing is FIXED (or absent).
+            # FILL/HUG axes are parent-driven — the JSX emits flex-grow / fit-content
+            # instead of a hardcoded px value, so a bbox diff is not a rendering problem.
+            # Mirrors Figma::Resolver#extract_instance_style_overrides (resolver.rb:813-814).
+            h_problem = sw > 0 && (sw - iw).abs > 1 && (sizing_h.nil? || sizing_h == "FIXED")
+            v_problem = sh > 0 && (sh - ih).abs > 1 && (sizing_v.nil? || sizing_v == "FIXED")
+
+            if h_problem || v_problem
+              axes = []
+              axes << "width #{iw.round}→#{sw.round}" if h_problem
+              axes << "height #{ih.round}→#{sh.round}" if v_problem
+              warnings << "Instance \"#{node["name"]}\" has FIXED-axis size override " \
+                "(#{axes.join(", ")}) — bypasses component props"
             end
           end
         end

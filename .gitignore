@@ -21,6 +21,8 @@ api/public/favicon.ico
 app/node_modules/
 app/.env
 
+.claude
+
 # QA
 .hats/qa/node_modules/
 .hats/qa/.features-gen/
