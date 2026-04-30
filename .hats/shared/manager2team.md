@@ -600,3 +600,34 @@ Key file: `qa/steps/modal-ui.steps.js` -- find the timeout for `.DesignSystemMod
 3. QA fixes Bug 3 (modal timeout) -- low effort, unblocks 14 DS modal scenarios
 
 ---
+
+## [9] 2026-04-29T17:55 -- Manager
+
+Re: Added 4 INSTANCE size-override scenarios to `03-figma-import.feature`
+
+Tracks Dev #23 in `dev2qa.md`. Validator (`api/app/services/figma/component_validator.rb#find_resized_instances`, already merged in `8b204f6`) now only flags an INSTANCE's bbox mismatch on a **FIXED** axis. **FILL** (parent-driven `flex-grow: 1`) and **HUG** (`fit-content`) axes are expected to differ from the source variant's bbox and are no longer warnings.
+
+### New scenarios — under "Instance size-override warnings" section in `03-figma-import.feature`
+
+1. **FIXED-axis override → warning** (positive). Width differs by >1px on a FIXED-sized axis → warning identifies the width axis.
+2. **FILL bbox mismatch → no warning** (negative). Parent-driven width differs from source → no size-override warning.
+3. **HUG bbox mismatch → no warning** (negative). Content-hugging height differs from source → no size-override warning.
+4. **Mixed sizing** (one of each). FILL horizontal mismatched + FIXED vertical mismatched → warning fires only on the height axis.
+
+### Scope decisions I made
+
+- **No spec for `layoutSizing*` missing/null.** Dev #23 noted the code treats nil as FIXED. I'm leaving that as implementation-default fallback rather than user-visible behaviour. If a real Figma file in the wild stops behaving as expected, we can revisit.
+- **Wording in spec is `FIXED-axis size override`** to match the new warning string. The previous "manually resized" phrasing is gone — any test still asserting on it will fail until updated.
+- Scenarios use FIGMA_FILE-level Givens (no fixture references). QA decides how to construct the fixture.
+
+### What QA needs to do (from Dev #23)
+
+- Build (or extend `#flexgrow`) a fixture variant + INSTANCE pair with the four `layoutSizing*` permutations.
+- Map step defs for `INSTANCE has FIXED|FILL|HUG horizontal/vertical sizing` and the new "validation warning about a FIXED-axis size override on the INSTANCE / identifies the <axis> axis / does not mention the <axis> axis" assertions.
+- Drop or rewrite any test currently asserting the old `manually resized` substring.
+
+### Next role
+
+`/hats:qa` to write the tests against these scenarios.
+
+---

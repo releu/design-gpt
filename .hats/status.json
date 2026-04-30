@@ -1,11 +1,11 @@
 {
   "messages": {
     "manager2team": {
-      "count": 8,
+      "count": 9,
       "read_by": {
         "cto": 7,
-        "qa": 8,
-        "developer": 8,
+        "qa": 9,
+        "developer": 9,
         "designer": 7
       }
     },
@@ -13,7 +13,7 @@
       "count": 7,
       "read_by": {
         "cto": 7,
-        "manager": 2,
+        "manager": 7,
         "qa": 7,
         "developer": 7
       }
@@ -22,14 +22,14 @@
       "count": 24,
       "read_by": {
         "developer": 24,
-        "manager": 11
+        "manager": 24
       }
     },
     "dev2qa": {
-      "count": 22,
+      "count": 23,
       "read_by": {
-        "qa": 22,
-        "manager": 9
+        "qa": 23,
+        "manager": 23
       }
     },
     "cto2team": {
@@ -38,7 +38,7 @@
         "developer": 9,
         "designer": 6,
         "qa": 9,
-        "manager": 3
+        "manager": 9
       }
     }
   }

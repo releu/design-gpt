@@ -186,6 +186,43 @@ Feature: Figma Import
     When the import completes
     Then the component has a validation warning about fixed-position elements
 
+  # --- Instance size-override warnings ---
+  # An INSTANCE on a FIXED-sized axis whose bbox differs from its source variant
+  # is a manual size override that bypasses component props. On FILL or HUG axes,
+  # the size is parent-driven (flex-grow / fit-content) so a bbox diff is expected
+  # and not flagged.
+
+  Scenario: INSTANCE with a FIXED-axis size override is imported with a validation warning
+    Given a FIGMA_FILE contains a component that places an INSTANCE of another component
+    And the INSTANCE has FIXED horizontal sizing
+    And the INSTANCE's width differs from the source component's width by more than 1px
+    When the import completes
+    Then the component has a validation warning about a FIXED-axis size override on the INSTANCE
+    And the warning identifies the width axis
+
+  Scenario: INSTANCE with a FILL-axis bbox mismatch produces no warning
+    Given a FIGMA_FILE contains a component that places an INSTANCE of another component
+    And the INSTANCE has FILL horizontal sizing driven by its parent
+    And the INSTANCE's rendered width differs from the source component's width
+    When the import completes
+    Then the component has no validation warning about a size override
+
+  Scenario: INSTANCE with a HUG-axis bbox mismatch produces no warning
+    Given a FIGMA_FILE contains a component that places an INSTANCE of another component
+    And the INSTANCE has HUG vertical sizing that follows its content
+    And the INSTANCE's rendered height differs from the source component's height
+    When the import completes
+    Then the component has no validation warning about a size override
+
+  Scenario: INSTANCE with mixed sizing only warns on the FIXED axis
+    Given a FIGMA_FILE contains a component that places an INSTANCE of another component
+    And the INSTANCE has FILL horizontal sizing with a width that differs from the source
+    And the INSTANCE has FIXED vertical sizing with a height that differs from the source
+    When the import completes
+    Then the component has a validation warning about a FIXED-axis size override on the INSTANCE
+    And the warning identifies the height axis only
+    And the warning does not mention the width axis
+
   Scenario: Component with multiple validation issues carries all warnings
     Given a FIGMA_FILE contains a component with a glass effect AND overflowing children
     When the import completes

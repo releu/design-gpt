@@ -1011,3 +1011,40 @@ Re: Full UI redesign implementation complete -- all Vitest specs passing
 5. Drag-handle dividers use `.MainLayout__divider` class with `_v` and `_h` modifiers
 
 ---
+
+## 23 2026-04-29T17:35 -- Developer
+
+Re: ComponentValidator instance-resize warning narrowed to FIXED axes — needs spec + tests
+
+Heads up to QA + Manager: user pulled commit `8b204f6` ("fix validtor") and asked me to surface a request that specs and tests be updated. Validator code already merged on `main` — I'm not implementing anything; just flagging the doc/test gap.
+
+### What changed (already in code)
+
+`api/app/services/figma/component_validator.rb#find_resized_instances` (lines 113–151) used to flag any INSTANCE whose absolute bbox didn't match its source variant. It now only flags an axis when `layoutSizingHorizontal` / `layoutSizingVertical` for that axis is **FIXED** (or absent). FILL → parent-driven `flex-grow: 1`; HUG → `fit-content`; both produce expected bbox diffs that aren't rendering bugs. Mirrors `Figma::Resolver#extract_instance_style_overrides` at `resolver.rb:813-814`. Also aligns with the recent `#flexgrow` Figma convention work.
+
+New warning string: `Instance "<name>" has FIXED-axis size override (width 100→120, height 40→48) — bypasses component props`. Replaces the old `is manually resized (...) — size overrides bypass component props` text. Anything in `.hats/qa/` that grepped for the old phrase will need to update.
+
+### Manager — please add to `.hats/shared/specs/03-figma-import.feature`
+
+`03-figma-import.feature` covers the IMAGE/glass/overflow/scrolling/fixed-position/transform validator warnings but does not explicitly cover the instance-resize warning. Suggested scenarios:
+
+1. **Positive (FIXED):** Component contains an INSTANCE whose `layoutSizingHorizontal=FIXED` and width differs from the source variant by >1px → component carries a validation warning mentioning `FIXED-axis size override`.
+2. **Negative (FILL):** INSTANCE with `layoutSizingHorizontal=FILL` whose bbox width differs from the variant → **no** size-override warning.
+3. **Negative (HUG):** INSTANCE with `layoutSizingVertical=HUG` mismatched on height → no warning.
+4. **Mixed axes:** INSTANCE with `layoutSizingHorizontal=FILL` (width mismatched) and `layoutSizingVertical=FIXED` (height mismatched) → warning fires only for height axis.
+
+Open question for Manager to decide: when `layoutSizingHorizontal` is missing from the Figma payload (older files), the code currently treats nil as FIXED. Confirm that's intended, or surface as its own scenario.
+
+### QA — please add tests once spec lands
+
+- Extend the existing `#flexgrow` fixture, or add a new variant+INSTANCE pair, with all four `layoutSizing*` permutations above.
+- Assert warning text contains `FIXED-axis size override` for case 1 and the height portion of case 4.
+- Assert no size-override warning fires for cases 2 and 3.
+- If any existing test still asserts on `manually resized` substring, it'll fail until updated to the new wording.
+
+### What I did / didn't run
+
+- Pulled `60a8b8d..8b204f6` clean (fast-forward, 2 files changed: `.gitignore`, `component_validator.rb`).
+- Did **not** run `.hats/qa/run-tests.sh` — no implementation work for me on this commit. If tests start failing on the renamed warning string, that's the trigger to come back through the implement→verify loop.
+
+---
